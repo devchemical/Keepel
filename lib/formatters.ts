@@ -8,7 +8,7 @@
  * @returns Formatted string with Spanish locale (dots as thousands separators)
  */
 export function formatNumber(value: number): string {
-  return value.toLocaleString("es-ES");
+  return value.toLocaleString("es-ES")
 }
 
 /**
@@ -17,7 +17,7 @@ export function formatNumber(value: number): string {
  * @returns Formatted string with "km" suffix
  */
 export function formatMileage(mileage: number): string {
-  return `${formatNumber(mileage)} km`;
+  return `${formatNumber(mileage)} km`
 }
 
 /**
@@ -26,14 +26,11 @@ export function formatMileage(mileage: number): string {
  * @param currency - Currency code (default: 'EUR')
  * @returns Formatted currency string
  */
-export function formatCurrency(
-  amount: number,
-  currency: string = "EUR"
-): string {
+export function formatCurrency(amount: number, currency: string = "EUR"): string {
   return new Intl.NumberFormat("es-ES", {
     style: "currency",
     currency: currency,
-  }).format(amount);
+  }).format(amount)
 }
 
 /**
@@ -46,7 +43,7 @@ export function formatDate(dateString: string): string {
     year: "numeric",
     month: "long",
     day: "numeric",
-  });
+  })
 }
 
 /**
@@ -59,5 +56,5 @@ export function formatShortDate(dateString: string): string {
     year: "numeric",
     month: "short",
     day: "numeric",
-  });
+  })
 }

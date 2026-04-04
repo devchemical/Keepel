@@ -1,18 +1,18 @@
-"use client";
+"use client"
 
-import { Car } from "lucide-react";
+import { Car } from "lucide-react"
 
 interface LoadingScreenProps {
-  message?: string;
+  message?: string
 }
 
 export function LoadingScreen({ message = "Cargando..." }: LoadingScreenProps) {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted">
+    <div className="from-background to-muted flex min-h-screen items-center justify-center bg-gradient-to-br">
       <div className="flex flex-col items-center gap-4">
-        <Car className="h-8 w-8 text-primary animate-pulse" />
+        <Car className="text-primary h-8 w-8 animate-pulse" />
         <p className="text-muted-foreground">{message}</p>
       </div>
     </div>
-  );
+  )
 }

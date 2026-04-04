@@ -59,15 +59,15 @@ export function RecentActivity({ maintenanceRecords }: RecentActivityProps) {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Activity className="text-green-700 h-5 w-5" />
+            <Activity className="h-5 w-5 text-green-700" />
             Actividad Reciente
           </CardTitle>
           <CardDescription>No hay actividad reciente</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="py-8 text-center">
-            <Activity className="text-slate-300 h-12 w-12 mx-auto mb-4" />
-            <p className="text-slate-500 mb-6 leading-relaxed">Aún no has registrado ningún mantenimiento</p>
+            <Activity className="mx-auto mb-4 h-12 w-12 text-slate-300" />
+            <p className="mb-6 leading-relaxed text-slate-500">Aún no has registrado ningún mantenimiento</p>
             <Button variant="outline" asChild>
               <Link href="/vehicles">Agregar Mantenimiento</Link>
             </Button>
@@ -83,7 +83,7 @@ export function RecentActivity({ maintenanceRecords }: RecentActivityProps) {
         <div className="flex items-center justify-between">
           <div>
             <CardTitle className="flex items-center gap-2">
-              <Activity className="text-green-700 h-5 w-5" />
+              <Activity className="h-5 w-5 text-green-700" />
               Actividad Reciente
             </CardTitle>
             <CardDescription>Últimos {Math.min(maintenanceRecords.length, 5)} mantenimientos</CardDescription>
@@ -100,17 +100,17 @@ export function RecentActivity({ maintenanceRecords }: RecentActivityProps) {
               key={record.id}
               className="flex items-center gap-4 rounded-xl border border-slate-100 bg-white p-4 transition-colors hover:bg-slate-50/50"
             >
-              <div className="bg-green-100 rounded-xl p-2.5">
-                <Activity className="text-green-700 h-5 w-5" />
+              <div className="rounded-xl bg-green-100 p-2.5">
+                <Activity className="h-5 w-5 text-green-700" />
               </div>
 
               <div className="min-w-0 flex-1">
                 <div className="mb-1 flex items-center gap-2">
-                  <span className="text-slate-900 text-sm font-medium">
+                  <span className="text-sm font-medium text-slate-900">
                     {maintenanceTypes[record.type as keyof typeof maintenanceTypes] || record.type}
                   </span>
                   {record.cost && (
-                    <Badge variant="outline" className="bg-slate-50 text-slate-600 text-xs border-slate-200">
+                    <Badge variant="outline" className="border-slate-200 bg-slate-50 text-xs text-slate-600">
                       {formatCurrency(record.cost)}
                     </Badge>
                   )}

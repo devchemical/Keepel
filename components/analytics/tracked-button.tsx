@@ -1,14 +1,14 @@
 "use client"
 
 import * as React from "react"
-import { Button, buttonVariants } from "@/components/ui/button"
+import type { buttonVariants } from "@/components/ui/button"
+import { Button } from "@/components/ui/button"
 import { useAnalytics } from "@/hooks/use-analytics"
 import { type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
 interface TrackedButtonProps
-  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
-    VariantProps<typeof buttonVariants> {
+  extends React.ButtonHTMLAttributes<HTMLButtonElement>, VariantProps<typeof buttonVariants> {
   asChild?: boolean
   trackName: string
   trackProperties?: Record<string, string | number | boolean | null>

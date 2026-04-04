@@ -5,13 +5,14 @@
   "scripts": {
     "build": "next build",
     "dev": "next dev",
-    "lint": "next lint",
     "start": "next start",
     "type-check": "tsc --noEmit",
     "clean": "bun dlx rimraf .next out node_modules/.cache",
     "clean:install": "bun clean && bun install",
-    "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "fmt": "oxfmt",
+    "fmt:check": "oxfmt --check",
+    "lint": "oxlint",
+    "lint:fix": "oxlint --fix"
   },
   "packageManager": "bun@1.3.9",
   "engines": {
@@ -82,8 +83,9 @@
     "@types/node": "^22",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
+    "oxfmt": "^0.43.0",
+    "oxlint": "^1.58.0",
     "postcss": "^8.5",
-    "prettier": "^3.3.3",
     "prettier-plugin-tailwindcss": "^0.6.8",
     "tailwindcss": "^4.1.9",
     "tw-animate-css": "1.3.3",

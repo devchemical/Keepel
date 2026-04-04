@@ -3,6 +3,7 @@
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import Link from "next/link"
+import Image from "next/image"
 import { Car, Shield, Calendar, BarChart3, Users, CheckCircle } from "lucide-react"
 
 export function LandingPage() {
@@ -20,20 +21,10 @@ export function LandingPage() {
             de tu automóvil con Keepel.
           </p>
           <div className="flex flex-col justify-center gap-4 sm:flex-row">
-            <Button
-              size="lg"
-              asChild
-              className="bg-primary hover:bg-primary/90"
-              data-track="landing_signup_click"
-            >
+            <Button size="lg" asChild className="bg-primary hover:bg-primary/90" data-track="landing_signup_click">
               <Link href="/auth/signup">Comenzar Gratis</Link>
             </Button>
-            <Button
-              size="lg"
-              variant="outline"
-              asChild
-              data-track="landing_login_click"
-            >
+            <Button size="lg" variant="outline" asChild data-track="landing_login_click">
               <Link href="/auth/login">Iniciar Sesión</Link>
             </Button>
           </div>
@@ -171,7 +162,7 @@ export function LandingPage() {
       <footer className="border-border/50 bg-background/80 border-t backdrop-blur-sm">
         <div className="container mx-auto px-4 py-8 text-center">
           <div className="mb-4 flex items-center justify-center gap-2">
-            <img src="/logo_keepel_grueso.svg" alt="Keepel" className="h-5 w-5" />
+            <Image src="/logo_keepel_grueso.svg" alt="Keepel" width={20} height={20} />
             <span className="text-foreground text-lg font-semibold">Keepel</span>
           </div>
           <p className="text-muted-foreground text-sm">© 2026 Keepel. Todos los derechos reservados.</p>

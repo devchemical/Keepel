@@ -34,7 +34,7 @@ export function VehicleOverview({ vehicles }: VehicleOverviewProps) {
         </CardHeader>
         <CardContent>
           <div className="py-8 text-center">
-            <Car className="text-muted-foreground/30 h-12 w-12 mx-auto mb-4" />
+            <Car className="text-muted-foreground/30 mx-auto mb-4 h-12 w-12" />
             <p className="text-muted-foreground mb-6 leading-relaxed">Comienza agregando tu primer vehículo</p>
             <Button asChild>
               <Link href="/vehicles">
@@ -51,7 +51,7 @@ export function VehicleOverview({ vehicles }: VehicleOverviewProps) {
   return (
     <Card>
       <CardHeader>
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <CardTitle className="flex items-center gap-2">
               <Car className="text-primary h-5 w-5" />
@@ -71,17 +71,17 @@ export function VehicleOverview({ vehicles }: VehicleOverviewProps) {
           {vehicles.slice(0, 3).map((vehicle) => (
             <div
               key={vehicle.id}
-              className="flex items-center justify-between rounded-xl border border-border/50 bg-card p-4 transition-all duration-200 hover:bg-accent/50 active:scale-[0.98] cursor-pointer"
+              className="border-border/50 bg-card hover:bg-accent/50 flex cursor-pointer items-center justify-between rounded-xl border p-4 transition-all duration-200 active:scale-[0.98]"
             >
               <div className="flex items-center gap-4">
                 <div className="bg-primary/10 rounded-xl p-2.5">
                   <Car className="text-primary h-5 w-5" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <div className="text-foreground font-medium truncate">
+                  <div className="text-foreground truncate font-medium">
                     {vehicle.make} {vehicle.model}
                   </div>
-                  <div className="flex items-center gap-2 text-sm mt-0.5">
+                  <div className="mt-0.5 flex items-center gap-2 text-sm">
                     <Badge variant="secondary" className="text-xs">
                       {vehicle.year}
                     </Badge>
@@ -89,8 +89,8 @@ export function VehicleOverview({ vehicles }: VehicleOverviewProps) {
                   </div>
                 </div>
               </div>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground ml-2">
-                <Gauge className="h-4 w-4 text-muted-foreground/60" />
+              <div className="text-muted-foreground ml-2 flex items-center gap-2 text-sm">
+                <Gauge className="text-muted-foreground/60 h-4 w-4" />
                 <span className="whitespace-nowrap">{formatMileage(vehicle.mileage)}</span>
               </div>
             </div>

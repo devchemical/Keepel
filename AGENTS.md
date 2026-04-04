@@ -36,49 +36,49 @@ This project uses the following technologies. Agents should understand these reg
 
 ### Frontend
 
-| Category | Technology |
-| -------- | ----------- |
-| Framework | Next.js 16.x (App Router) |
-| UI Library | React 19.x |
-| Language | TypeScript 5.x |
-| Styling | TailwindCSS 4.x |
-| Components | shadcn/ui (Radix UI primitives) |
-| Icons | lucide-react |
-| Forms | react-hook-form + zod |
-| Charts | recharts |
-| Fonts | next/font/google (Inter, JetBrains Mono) |
-| Toasts | sonner |
-| Themes | next-themes |
-| Dates | date-fns |
+| Category   | Technology                               |
+| ---------- | ---------------------------------------- |
+| Framework  | Next.js 16.x (App Router)                |
+| UI Library | React 19.x                               |
+| Language   | TypeScript 5.x                           |
+| Styling    | TailwindCSS 4.x                          |
+| Components | shadcn/ui (Radix UI primitives)          |
+| Icons      | lucide-react                             |
+| Forms      | react-hook-form + zod                    |
+| Charts     | recharts                                 |
+| Fonts      | next/font/google (Inter, JetBrains Mono) |
+| Toasts     | sonner                                   |
+| Themes     | next-themes                              |
+| Dates      | date-fns                                 |
 
 ### Backend & Database
 
-| Category | Technology |
-| -------- | ----------- |
-| Backend | Supabase (BaaS) |
-| Database | PostgreSQL (via Supabase) |
-| Auth | Supabase Auth (JWT + OAuth Google) |
-| Storage | Supabase Storage |
-| Security | Row Level Security (RLS) |
+| Category      | Technology                          |
+| ------------- | ----------------------------------- |
+| Backend       | Supabase (BaaS)                     |
+| Database      | PostgreSQL (via Supabase)           |
+| Auth          | Supabase Auth (JWT + OAuth Google)  |
+| Storage       | Supabase Storage                    |
+| Security      | Row Level Security (RLS)            |
 | Rate Limiting | @upstash/ratelimit + @upstash/redis |
-| Analytics | @vercel/analytics |
+| Analytics     | @vercel/analytics                   |
 
 ### PWA
 
-| Category | Technology |
-| -------- | ----------- |
-| PWA Library | @ducanh2912/next-pwa |
-| Service Worker | Workbox |
+| Category         | Technology                                  |
+| ---------------- | ------------------------------------------- |
+| PWA Library      | @ducanh2912/next-pwa                        |
+| Service Worker   | Workbox                                     |
 | Offline Strategy | NetworkFirst for API, CacheFirst for assets |
 
 ### Build & Tools
 
-| Category | Technology |
-| -------- | ----------- |
-| Package Manager | bun |
-| Bundler | Turbopack (Next.js built-in) |
-| Linting | ESLint |
-| Formatting | Prettier + prettier-plugin-tailwindcss |
+| Category        | Technology                   |
+| --------------- | ---------------------------- |
+| Package Manager | bun                          |
+| Bundler         | Turbopack (Next.js built-in) |
+| Linting         | Oxlint                       |
+| Formatting      | Oxfmt                        |
 
 ---
 
@@ -95,9 +95,9 @@ This project uses the following technologies. Agents should understand these reg
 bun dev              # Development server (PWA disabled)
 bun build            # Production build
 bun start            # Start production build
-bun lint             # ESLint
+bun lint             # oxlint
 bun type-check       # TypeScript check without emitting
-bun format           # Prettier format
+bun format           # oxfmt format
 bun format:check     # Check formatting without writing
 bun clean            # Remove .next cache
 bun clean:install    # Clean + reinstall dependencies
@@ -286,25 +286,25 @@ CarCare/
 
 ### Key Files
 
-| File | Purpose |
-| ---- |---------|
-| `middleware.ts` | Session refresh + route protection |
-| `lib/auth/authManager.ts` | Auth singleton |
-| `lib/supabase/client.ts` | Browser client |
-| `lib/supabase/server.ts` | Server client |
-| `contexts/AuthContext.tsx` | Auth state |
-| `contexts/DataContext.tsx` | Data + optimistic mutations |
-| `app/auth/actions.ts` | Login/signup Server Actions |
+| File                       | Purpose                            |
+| -------------------------- | ---------------------------------- |
+| `middleware.ts`            | Session refresh + route protection |
+| `lib/auth/authManager.ts`  | Auth singleton                     |
+| `lib/supabase/client.ts`   | Browser client                     |
+| `lib/supabase/server.ts`   | Server client                      |
+| `contexts/AuthContext.tsx` | Auth state                         |
+| `contexts/DataContext.tsx` | Data + optimistic mutations        |
+| `app/auth/actions.ts`      | Login/signup Server Actions        |
 
 ### Contexts & Hooks
 
-| Item | Import | Exposes |
-|------|--------|--------|
-| `useAuth()` | `@/contexts` | user, profile, isAuthenticated, signOut |
-| `useData()` | `@/contexts` | vehicles, maintenance, CRUD methods |
-| `useSupabase()` | `@/contexts` | Raw Supabase client |
-| `useProtectedRoute()` | `@/hooks` | Redirect to login if unauthenticated |
-| `useGuestRoute()` | `@/hooks` | Redirect to `/` if authenticated |
+| Item                  | Import       | Exposes                                 |
+| --------------------- | ------------ | --------------------------------------- |
+| `useAuth()`           | `@/contexts` | user, profile, isAuthenticated, signOut |
+| `useData()`           | `@/contexts` | vehicles, maintenance, CRUD methods     |
+| `useSupabase()`       | `@/contexts` | Raw Supabase client                     |
+| `useProtectedRoute()` | `@/hooks`    | Redirect to login if unauthenticated    |
+| `useGuestRoute()`     | `@/hooks`    | Redirect to `/` if authenticated        |
 
 ---
 
