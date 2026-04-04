@@ -118,99 +118,83 @@ export function Header() {
               </span>
 
               {/* Dropdown de Vehículos */}
-              <div
-                className="group relative"
-                onMouseEnter={() => setShowVehiclesDropdown(true)}
-                onMouseLeave={() => setShowVehiclesDropdown(false)}
-              >
-                <DropdownMenu open={showVehiclesDropdown} onOpenChange={setShowVehiclesDropdown}>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => router.push("/vehicles")}
-                      className="hover:bg-accent cursor-pointer"
-                    >
-                      <Car className="mr-2 h-4 w-4" />
-                      Vehículos
-                      <ChevronDown className="ml-2 h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-64">
-                    <DropdownMenuItem asChild>
-                      <Link href="/vehicles" className="cursor-pointer">
-                        <Plus className="mr-2 h-4 w-4" />
-                        Añadir Vehículo
-                      </Link>
-                    </DropdownMenuItem>
+              <DropdownMenu modal={false} open={showVehiclesDropdown} onOpenChange={setShowVehiclesDropdown}>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => router.push("/vehicles")}
+                    className="hover:bg-accent cursor-pointer"
+                  >
+                    <Car className="mr-2 h-4 w-4" />
+                    Vehículo
+                    <ChevronDown className="ml-2 h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-64">
+                  <DropdownMenuItem asChild>
+                    <Link href="/vehicles" className="cursor-pointer">
+                      <Plus className="mr-2 h-4 w-4" />
+                      Añadir Vehículo
+                    </Link>
+                  </DropdownMenuItem>
 
-                    {vehicles.length > 0 && (
-                      <>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuLabel>Mis Vehículos</DropdownMenuLabel>
-                      </>
-                    )}
+                  {vehicles.length > 0 && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuLabel>Mis Vehículos</DropdownMenuLabel>
+                    </>
+                  )}
 
-                    {vehicles.length > 0 ? (
-                      vehicles.map((vehicle) => (
-                        <DropdownMenuItem key={vehicle.id} asChild>
-                          <Link href={`/vehicles/${vehicle.id}`} className="flex cursor-pointer items-center">
-                            <Car className="text-muted-foreground mr-2 h-4 w-4" />
-                            <div className="flex flex-col">
-                              <span className="text-sm font-medium">
-                                {vehicle.make} {vehicle.model} {vehicle.year}
-                              </span>
-                              {vehicle.license_plate && (
-                                <span className="text-muted-foreground text-xs">{vehicle.license_plate}</span>
-                              )}
-                            </div>
-                          </Link>
-                        </DropdownMenuItem>
-                      ))
-                    ) : (
-                      <DropdownMenuItem disabled>
-                        <span className="text-muted-foreground text-sm">No hay vehículos añadidos</span>
+                  {vehicles.length > 0 ? (
+                    vehicles.map((vehicle) => (
+                      <DropdownMenuItem key={vehicle.id} asChild>
+                        <Link href={`/vehicles/${vehicle.id}`} className="flex cursor-pointer items-center">
+                          <Car className="text-muted-foreground mr-2 h-4 w-4" />
+                          <div className="flex flex-col">
+                            <span className="text-sm font-medium">
+                              {vehicle.make} {vehicle.model} {vehicle.year}
+                            </span>
+                            {vehicle.license_plate && (
+                              <span className="text-muted-foreground text-xs">{vehicle.license_plate}</span>
+                            )}
+                          </div>
+                        </Link>
                       </DropdownMenuItem>
-                    )}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-              {/* Dropdown del usuario */}
-              <div
-                className="group relative"
-                onMouseEnter={() => setShowUserDropdown(true)}
-                onMouseLeave={() => setShowUserDropdown(false)}
-              >
-                <DropdownMenu open={showUserDropdown} onOpenChange={setShowUserDropdown}>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="hover:bg-accent flex cursor-pointer items-center gap-2"
-                    >
-                      <div className="bg-primary/10 flex h-8 w-8 items-center justify-center rounded-full">
-                        <User className="text-primary h-4 w-4" />
-                      </div>
-                      <ChevronDown className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-56">
-                    <DropdownMenuLabel>
-                      <div className="flex flex-col space-y-1">
-                        <p className="text-sm leading-none font-medium">{profile?.full_name || "Usuario"}</p>
-                        <p className="text-muted-foreground text-xs leading-none">{user.email}</p>
-                      </div>
-                    </DropdownMenuLabel>
-
-                    <DropdownMenuSeparator />
-
-                    <DropdownMenuItem onClick={handleSignOut} className="cursor-pointer">
-                      <LogOut className="mr-2 h-4 w-4" />
-                      <span>Cerrar Sesión</span>
+                    ))
+                  ) : (
+                    <DropdownMenuItem disabled>
+                      <span className="text-muted-foreground text-sm">No hay vehículos añadidos</span>
                     </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+              {/* Dropdown del usuario */}
+              <DropdownMenu modal={false} open={showUserDropdown} onOpenChange={setShowUserDropdown}>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm" className="hover:bg-accent flex cursor-pointer items-center gap-2">
+                    <div className="bg-primary/10 flex h-8 w-8 items-center justify-center rounded-full">
+                      <User className="text-primary h-4 w-4" />
+                    </div>
+                    <ChevronDown className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuLabel>
+                    <div className="flex flex-col space-y-1">
+                      <p className="text-sm leading-none font-medium">{profile?.full_name || "Usuario"}</p>
+                      <p className="text-muted-foreground text-xs leading-none">{user.email}</p>
+                    </div>
+                  </DropdownMenuLabel>
+
+                  <DropdownMenuSeparator />
+
+                  <DropdownMenuItem onClick={handleSignOut} className="cursor-pointer">
+                    <LogOut className="mr-2 h-4 w-4" />
+                    <span>Cerrar Sesión</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
 
             {/* Mobile Hamburger Menu */}
