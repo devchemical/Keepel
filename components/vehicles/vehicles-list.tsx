@@ -3,6 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Skeleton } from "@/components/ui/skeleton"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Car, MoreVertical, Edit, Trash2, Calendar, Gauge } from "lucide-react"
 import { EditVehicleDialog } from "./edit-vehicle-dialog"
@@ -10,6 +11,7 @@ import { DeleteVehicleDialog } from "./delete-vehicle-dialog"
 import { useState } from "react"
 import Link from "next/link"
 import { formatMileage } from "@/lib/formatters"
+import { VehiclesSkeleton } from "@/components/skeletons/vehicles-skeleton"
 
 interface Vehicle {
   id: string
@@ -26,11 +28,16 @@ interface Vehicle {
 
 interface VehiclesListProps {
   vehicles: Vehicle[]
+  isLoading?: boolean
 }
 
-export function VehiclesList({ vehicles }: VehiclesListProps) {
+export function VehiclesList({ vehicles, isLoading }: VehiclesListProps) {
   const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null)
   const [deletingVehicle, setDeletingVehicle] = useState<Vehicle | null>(null)
+
+  if (isLoading) {
+    return <VehiclesSkeleton />
+  }
 
   return (
     <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">

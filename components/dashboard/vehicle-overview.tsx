@@ -3,6 +3,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { Skeleton } from "@/components/ui/skeleton"
 import { Car, Plus, Gauge } from "lucide-react"
 import Link from "next/link"
 import { formatMileage } from "@/lib/formatters"
@@ -19,9 +20,46 @@ interface Vehicle {
 
 interface VehicleOverviewProps {
   vehicles: Vehicle[]
+  isLoading?: boolean
 }
 
-export function VehicleOverview({ vehicles }: VehicleOverviewProps) {
+export function VehicleOverview({ vehicles, isLoading }: VehicleOverviewProps) {
+  if (isLoading) {
+    return (
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Skeleton className="h-5 w-5 rounded-full" />
+              <Skeleton className="h-5 w-28" />
+            </div>
+            <Skeleton className="h-8 w-20" />
+          </div>
+          <Skeleton className="mt-2 h-4 w-40" />
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="flex items-center justify-between rounded-xl border p-4">
+                <div className="flex items-center gap-4">
+                  <Skeleton className="h-10 w-10 rounded-xl" />
+                  <div className="space-y-2">
+                    <Skeleton className="h-4 w-32" />
+                    <div className="flex gap-2">
+                      <Skeleton className="h-5 w-12 rounded-md" />
+                      <Skeleton className="h-5 w-20 rounded-md" />
+                    </div>
+                  </div>
+                </div>
+                <Skeleton className="h-4 w-20" />
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
   if (vehicles.length === 0) {
     return (
       <Card>

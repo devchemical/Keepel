@@ -7,6 +7,7 @@ import { DashboardStats } from "@/components/dashboard/dashboard-stats"
 import { RecentActivity } from "@/components/dashboard/recent-activity"
 import { UpcomingMaintenance } from "@/components/dashboard/upcoming-maintenance"
 import { VehicleOverview } from "@/components/dashboard/vehicle-overview"
+import { DashboardSkeleton } from "@/components/skeletons/dashboard-skeleton"
 
 interface Vehicle {
   id: string
@@ -36,9 +37,14 @@ interface DashboardProps {
   vehicles: Vehicle[]
   maintenanceRecords: any[]
   upcomingMaintenance: any[]
+  isLoading?: boolean
 }
 
-export function Dashboard({ user, profile, vehicles, maintenanceRecords, upcomingMaintenance }: DashboardProps) {
+export function Dashboard({ user, profile, vehicles, maintenanceRecords, upcomingMaintenance, isLoading }: DashboardProps) {
+  if (isLoading) {
+    return <DashboardSkeleton />
+  }
+
   return (
     <div className="container mx-auto px-4 py-8">
       {/* Welcome Section */}
@@ -64,19 +70,19 @@ export function Dashboard({ user, profile, vehicles, maintenanceRecords, upcomin
       </div>
 
       {/* Dashboard Stats */}
-      <DashboardStats vehicles={vehicles} maintenanceRecords={maintenanceRecords} />
+      <DashboardStats vehicles={vehicles} maintenanceRecords={maintenanceRecords} isLoading={isLoading} />
 
       {/* Main Content Grid */}
       <div className="mt-10 grid gap-8 lg:grid-cols-3">
         {/* Left Column - Vehicle Overview */}
         <div className="space-y-8 lg:col-span-2">
-          <VehicleOverview vehicles={vehicles} />
-          <RecentActivity maintenanceRecords={maintenanceRecords} />
+          <VehicleOverview vehicles={vehicles} isLoading={isLoading} />
+          <RecentActivity maintenanceRecords={maintenanceRecords} isLoading={isLoading} />
         </div>
 
         {/* Right Column - Upcoming Maintenance */}
         <div className="space-y-8">
-          <UpcomingMaintenance upcomingMaintenance={upcomingMaintenance} />
+          <UpcomingMaintenance upcomingMaintenance={upcomingMaintenance} isLoading={isLoading} />
         </div>
       </div>
     </div>
