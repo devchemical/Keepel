@@ -30,6 +30,7 @@ export default function HomePage() {
           vehicles={vehicles}
           maintenanceRecords={maintenanceRecords}
           upcomingMaintenance={upcomingMaintenance}
+          isLoading={dataLoading}
         />
       ) : (
         <LandingPage />

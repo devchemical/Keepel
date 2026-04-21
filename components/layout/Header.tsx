@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetClose } from "@/components/ui/sheet"
 import { useAuth, useData } from "@/contexts"
+import { HeaderSkeleton } from "@/components/skeletons/header-skeleton"
 
 export function Header() {
   const { user, profile, isLoading: authLoading, isLoggingOut, signOut } = useAuth()
@@ -66,24 +67,7 @@ export function Header() {
 
   // Mostrar skeleton durante la carga inicial para evitar parpadeo
   if (authLoading) {
-    return (
-      <header className="border-border/50 fixed top-0 right-0 left-0 z-50 border-b bg-white/80 backdrop-blur-md">
-        <div className="container mx-auto flex items-center justify-between px-4 py-4">
-          {/* Logo y nombre */}
-          <Link href="/" className="flex items-center gap-2 transition-opacity hover:opacity-80">
-            <Image src="/logo_keepel_grueso.svg" alt="Keepel" width={32} height={32} />
-            <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Keepel</h1>
-          </Link>
-
-          {/* Skeleton para el área de navegación */}
-          <div className="flex items-center gap-4">
-            <div className="hidden h-4 w-20 animate-pulse rounded-lg bg-slate-100 sm:block"></div>
-            <div className="h-8 w-24 animate-pulse rounded-lg bg-slate-100"></div>
-            <div className="h-8 w-8 animate-pulse rounded-full bg-slate-100"></div>
-          </div>
-        </div>
-      </header>
-    )
+    return <HeaderSkeleton />
   }
 
   return (

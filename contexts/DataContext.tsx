@@ -74,8 +74,8 @@ export function DataProvider({ children }: DataProviderProps) {
   const [maintenanceRecords, setMaintenanceRecords] = useState<MaintenanceRecord[]>([])
   const [upcomingMaintenance, setUpcomingMaintenance] = useState<any[]>([])
 
-  const [isVehiclesLoading, setIsVehiclesLoading] = useState(false)
-  const [isMaintenanceLoading, setIsMaintenanceLoading] = useState(false)
+  const [isVehiclesLoading, setIsVehiclesLoading] = useState(true)
+  const [isMaintenanceLoading, setIsMaintenanceLoading] = useState(true)
 
   const supabase = useSupabase()
 

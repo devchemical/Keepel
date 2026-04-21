@@ -3,11 +3,13 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Skeleton } from "@/components/ui/skeleton"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Calendar, DollarSign, Gauge, MoreVertical, Edit, Trash2, AlertCircle, CheckCircle } from "lucide-react"
 import { EditMaintenanceDialog } from "./edit-maintenance-dialog"
 import { DeleteMaintenanceDialog } from "./delete-maintenance-dialog"
 import { useState } from "react"
+import { MaintenanceSkeleton } from "@/components/skeletons/maintenance-skeleton"
 
 interface MaintenanceRecord {
   id: string
@@ -25,6 +27,7 @@ interface MaintenanceRecord {
 interface MaintenanceListProps {
   records: MaintenanceRecord[]
   vehicleId: string
+  isLoading?: boolean
 }
 
 const maintenanceTypes = {
@@ -43,9 +46,13 @@ const maintenanceTypes = {
   other: "Otro",
 }
 
-export function MaintenanceList({ records, vehicleId }: MaintenanceListProps) {
+export function MaintenanceList({ records, vehicleId, isLoading }: MaintenanceListProps) {
   const [editingRecord, setEditingRecord] = useState<MaintenanceRecord | null>(null)
   const [deletingRecord, setDeletingRecord] = useState<MaintenanceRecord | null>(null)
+
+  if (isLoading) {
+    return <MaintenanceSkeleton />
+  }
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("es-ES", {
