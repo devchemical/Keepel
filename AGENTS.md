@@ -12,7 +12,7 @@ This document provides context for AI agents working on this project. It follows
 
 - **Project Name**: Keepel (formerly CarCare)
 - **Purpose**: Web application to manage vehicle maintenance
-- **Type**: Progressive Web App (PWA)
+- **Type**: Web Application
 - **License**: MIT
 - **Repository**: https://github.com/devchemical/CarCare
 - **Demo**: https://keepel.chemicaldev.com
@@ -26,7 +26,7 @@ Keepel lets users:
 - Schedule future services
 - Monitor maintenance costs
 - View statistics and reports
-- Access from any device (responsive PWA with offline support)
+- Access from any device (responsive, mobile-friendly)
 
 ---
 
@@ -46,7 +46,7 @@ This project uses the following technologies. Agents should understand these reg
 | Icons      | lucide-react                             |
 | Forms      | react-hook-form + zod                    |
 | Charts     | recharts                                 |
-| Fonts      | next/font/google (Inter, JetBrains Mono) |
+| Fonts      | next/font/google (Inter, JetBrains Mono), Geist |
 | Toasts     | sonner                                   |
 | Themes     | next-themes                              |
 | Dates      | date-fns                                 |
@@ -61,15 +61,7 @@ This project uses the following technologies. Agents should understand these reg
 | Storage       | Supabase Storage                    |
 | Security      | Row Level Security (RLS)            |
 | Rate Limiting | @upstash/ratelimit + @upstash/redis |
-| Analytics     | @vercel/analytics                   |
-
-### PWA
-
-| Category         | Technology                                  |
-| ---------------- | ------------------------------------------- |
-| PWA Library      | @ducanh2912/next-pwa                        |
-| Service Worker   | Workbox                                     |
-| Offline Strategy | NetworkFirst for API, CacheFirst for assets |
+| Analytics     | @vercel/analytics, @openpanel/nextjs |
 
 ### Build & Tools
 
@@ -92,7 +84,7 @@ This project uses the following technologies. Agents should understand these reg
 ### Building & Testing
 
 ```bash
-bun dev              # Development server (PWA disabled)
+bun dev              # Development server
 bun build            # Production build
 bun start            # Start production build
 bun lint             # oxlint
@@ -169,7 +161,7 @@ Three main tables with RLS:
 
 - **Themes**: Light / Dark / System mode via next-themes
 - **Styling**: TailwindCSS 4.x with CSS-based config (no tailwind.config.js)
-- **Fonts**: Inter (UI), JetBrains Mono (code)
+- **Fonts**: Inter (UI), JetBrains Mono (code), Geist Sans/Mono
 - **Toasts**: sonner (not use-toast)
 
 ---
@@ -206,6 +198,10 @@ Three main tables with RLS:
 
 This project has skills for common tasks. Load them when working on specific areas.
 
+### Project-specific skills
+
+These skills encode architecture and framework guidance specific to this codebase.
+
 ### `next-best-practices`
 
 **When to load**: Writing or reviewing Next.js code — pages, layouts, Route Handlers, Server Actions, metadata, fonts, images, RSC boundaries.
@@ -221,6 +217,86 @@ This project has skills for common tasks. Load them when working on specific are
 ### `web-design-guidelines`
 
 **When to load**: Reviewing UI code, checking accessibility, auditing design.
+
+### Workflow skills
+
+These skills define execution process and should be used by OpenCode when the task intent matches.
+
+- `spec-driven-development`
+- `planning-and-task-breakdown`
+- `incremental-implementation`
+- `test-driven-development`
+- `debugging-and-error-recovery`
+- `code-review-and-quality`
+- `code-simplification`
+- `api-and-interface-design`
+- `frontend-ui-engineering`
+- `shipping-and-launch`
+
+---
+
+## OpenCode Execution Rules
+
+For OpenCode, use a skill-first workflow powered by the local `skills/` directory.
+
+### Skill location
+
+- Skills are located in `skills/<skill-name>/SKILL.md`
+- If a task matches a skill, invoke it before implementing directly
+- Do not skip an applicable skill just because the task seems small
+- Follow the selected skill workflow completely, not partially
+
+### Intent → Skill Mapping
+
+- **Feature / new functionality** → `spec-driven-development`, then `planning-and-task-breakdown`, then `incremental-implementation`, then `test-driven-development`
+- **Planning / breakdown** → `planning-and-task-breakdown`
+- **Bug / failure / unexpected behavior** → `debugging-and-error-recovery`
+- **Code review** → `code-review-and-quality`
+- **Refactoring / simplification** → `code-simplification`
+- **API or interface design** → `api-and-interface-design`
+- **UI work** → `frontend-ui-engineering`
+- **Release / deploy / launch** → `shipping-and-launch`
+
+### Preferred composition
+
+When multiple skills apply, combine workflow skills with project-specific skills.
+
+1. Use workflow skills to drive process discipline
+2. Use project-specific skills to respect this codebase's architecture and stack
+3. Prefer the most specific skill available when two overlap
+
+### Examples
+
+- **New Next.js feature** → `spec-driven-development` + `planning-and-task-breakdown` + `incremental-implementation` + `test-driven-development` + `next-best-practices`
+- **Supabase schema or RLS change** → `spec-driven-development` + `supabase-postgres-best-practices`
+- **UI page or component work** → `frontend-ui-engineering` + `web-design-guidelines` + `vercel-react-best-practices`
+- **Production bug** → `debugging-and-error-recovery` + relevant project-specific skill
+- **Pre-merge review** → `code-review-and-quality` + relevant project-specific skill
+
+### Execution lifecycle
+
+OpenCode should internally follow this lifecycle when relevant:
+
+- **DEFINE** → `spec-driven-development`
+- **PLAN** → `planning-and-task-breakdown`
+- **BUILD** → `incremental-implementation` + `test-driven-development`
+- **VERIFY** → `debugging-and-error-recovery`
+- **REVIEW** → `code-review-and-quality`
+- **SHIP** → `shipping-and-launch`
+
+### Anti-rationalization
+
+The following reasoning is incorrect and should be avoided:
+
+- "This is too small for a skill"
+- "I can just implement this quickly"
+- "I'll gather context first and maybe use a skill later"
+
+Correct behavior:
+
+- Always check whether a skill applies first
+- If a skill applies, use it
+- Only implement directly when no skill is relevant
 
 ---
 
@@ -251,12 +327,13 @@ CarCare/
 │   └── page.tsx                     # Landing/dashboard
 │
 ├── components/                       # React components
+│   ├── analytics/                   # Analytics barrel export
 │   ├── auth/                        # Auth components
 │   ├── dashboard/                   # Dashboard components
 │   ├── home/                        # Landing page
 │   ├── layout/                      # Header, Layout
 │   ├── maintenance/                 # Maintenance CRUD
-│   ├── pwa/                         # PWA components
+│   ├── skeletons/                   # Loading skeletons
 │   ├── ui/                          # shadcn/ui components
 │   └── vehicles/                    # Vehicle CRUD
 │
@@ -264,18 +341,19 @@ CarCare/
 │   ├── AppProviders.tsx             # Root provider tree
 │   ├── AuthContext.tsx              # Auth state
 │   ├── DataContext.tsx              # App data + optimistic updates
-│   └── SupabaseContext.tsx         # Supabase client
+│   └── SupabaseContext.tsx          # Supabase client
 │
 ├── hooks/                            # Custom hooks
-├── lib/                             # Utilities
+├── lib/                              # Utilities
 │   ├── auth/                        # AuthManager singleton
 │   ├── supabase/                    # Client, server, middleware
-│   └── utils/                        # Utilities
-│
+│   ├── formatters.ts                # Data formatters
+│   ├── ratelimit.ts                 # Rate limiting config
+│   └── utils.ts                     # General utilities
 ├── scripts/                          # SQL migrations
-├── styles/                          # Additional styles
-├── public/                         # Static assets + PWA
-├── middleware.ts                    # Next.js middleware
+├── styles/                           # Additional styles
+├── public/                           # Static assets
+├── middleware.ts                     # Next.js middleware
 ├── next.config.mjs                   # Next.js config
 └── package.json
 ```
@@ -292,9 +370,11 @@ CarCare/
 | `lib/auth/authManager.ts`  | Auth singleton                     |
 | `lib/supabase/client.ts`   | Browser client                     |
 | `lib/supabase/server.ts`   | Server client                      |
+| `lib/ratelimit.ts`         | Rate limiting configuration        |
 | `contexts/AuthContext.tsx` | Auth state                         |
 | `contexts/DataContext.tsx` | Data + optimistic mutations        |
 | `app/auth/actions.ts`      | Login/signup Server Actions        |
+| `app/api/auth/signout/route.ts` | Sign-out API route            |
 
 ### Contexts & Hooks
 
@@ -305,6 +385,9 @@ CarCare/
 | `useSupabase()`       | `@/contexts` | Raw Supabase client                     |
 | `useProtectedRoute()` | `@/hooks`    | Redirect to login if unauthenticated    |
 | `useGuestRoute()`     | `@/hooks`    | Redirect to `/` if authenticated        |
+| `useDashboardData()`  | `@/hooks`    | Dashboard data fetching                 |
+| `useAnalytics()`      | `@/hooks`    | @openpanel/nextjs analytics integration |
+| `useMediaQuery()`     | `@/hooks`    | Responsive breakpoint detection         |
 
 ---
 
@@ -313,7 +396,6 @@ CarCare/
 ### v1.1 (In Development)
 
 - [ ] Full REST API for integrations
-- [ ] Push notifications for maintenance reminders
 - [ ] Advanced reports with improved charts
 - [ ] Internationalization (i18n) Spanish/English
 - [ ] Advanced search with multiple filters
@@ -336,5 +418,5 @@ CarCare/
 
 ---
 
-**Last updated**: March 2026
+**Last updated**: April 2026
 **Format**: AGENTS.md (open standard)
