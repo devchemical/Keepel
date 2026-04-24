@@ -19,8 +19,8 @@
 
 ---
 
-[![Next.js](https://img.shields.io/badge/Next.js-14.2.16-black?logo=next.js&logoColor=white)](https://nextjs.org/)
-[![React](https://img.shields.io/badge/React-18-blue?logo=react&logoColor=white)](https://reactjs.org/)
+[![Next.js](https://img.shields.io/badge/Next.js-16.1.1-black?logo=next.js&logoColor=white)](https://nextjs.org/)
+[![React](https://img.shields.io/badge/React-19-blue?logo=react&logoColor=white)](https://reactjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Supabase](https://img.shields.io/badge/Supabase-Latest-green?logo=supabase&logoColor=white)](https://supabase.com/)
 [![TailwindCSS](https://img.shields.io/badge/TailwindCSS-4.1.9-blue?logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
@@ -39,25 +39,9 @@ Keepel cuenta con un **sistema de autenticación de clase empresarial**:
 - ✅ **Token Refresh Automático**: Renovación transparente de tokens sin interrupciones
 - ✅ **Hooks de Protección**: `useProtectedRoute()` y `useGuestRoute()` para control de acceso
 
-📚 [Ver documentación completa del sistema de auth](./AUTH_SYSTEM.md)
-
 ## 📸 Demo
 
 > 🚧 **Nota**: Las capturas de pantalla serán agregadas próximamente
-
-<div align="center">
-  <img src="public/placeholder.jpg" alt="Dashboard Principal" width="800">
-  <p><em>Dashboard principal con estadísticas y vista general</em></p>
-</div>
-
-<details>
-<summary>Ver más capturas de pantalla</summary>
-
-|                      Gestión de Vehículos                      |                     Historial de Mantenimiento                     |
-| :------------------------------------------------------------: | :----------------------------------------------------------------: |
-| <img src="public/placeholder.jpg" alt="Vehículos" width="400"> | <img src="public/placeholder.jpg" alt="Mantenimiento" width="400"> |
-
-</details>
 
 ## ✨ Características
 
@@ -79,7 +63,6 @@ Keepel cuenta con un **sistema de autenticación de clase empresarial**:
 
 - Recordatorios de mantenimiento
 - Programación de servicios futuros
-- Notificaciones automáticas
 - Calendario integrado
 
 </td>
@@ -101,8 +84,6 @@ Keepel cuenta con un **sistema de autenticación de clase empresarial**:
 
 - Registro detallado de servicios
 - Notas y observaciones
-- Archivos adjuntos
-- Exportación de datos
 
 </td>
 </tr>
@@ -136,7 +117,7 @@ Keepel cuenta con un **sistema de autenticación de clase empresarial**:
 - 🌙 **Modo Oscuro**: Tema adaptable según preferencias del usuario
 - ♿ **Accesibilidad**: Cumple con estándares WCAG
 - ⚡ **Rendimiento**: Optimizado para carga rápida
-- 🌐 **PWA Ready**: Preparado para funcionar como aplicación web progresiva
+- 🌐 **Responsive**: Diseño adaptativo para cualquier dispositivo
 
 ## 🛠️ Stack Tecnológico
 
@@ -144,8 +125,8 @@ Keepel cuenta con un **sistema de autenticación de clase empresarial**:
 
 |                                               Frontend                                               |                                        Backend & Database                                         |                                       Tools & Utilities                                       |
 | :--------------------------------------------------------------------------------------------------: | :-----------------------------------------------------------------------------------------------: | :-------------------------------------------------------------------------------------------: |
-|     ![Next.js](https://img.shields.io/badge/Next.js-14.2.16-black?logo=next.js&logoColor=white)      | ![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL-green?logo=supabase&logoColor=white) | ![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?logo=typescript&logoColor=white) |
-|           ![React](https://img.shields.io/badge/React-18-blue?logo=react&logoColor=white)            | ![Supabase Auth](https://img.shields.io/badge/Auth-Supabase-green?logo=supabase&logoColor=white)  |                    ![Zod](https://img.shields.io/badge/Zod-Validation-red)                    |
+|     ![Next.js](https://img.shields.io/badge/Next.js-16.1.1-black?logo=next.js&logoColor=white)      | ![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL-green?logo=supabase&logoColor=white) | ![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?logo=typescript&logoColor=white) |
+|           ![React](https://img.shields.io/badge/React-19-blue?logo=react&logoColor=white)            | ![Supabase Auth](https://img.shields.io/badge/Auth-Supabase-green?logo=supabase&logoColor=white)  |                    ![Zod](https://img.shields.io/badge/Zod-Validation-red)                    |
 | ![TailwindCSS](https://img.shields.io/badge/TailwindCSS-4.1.9-blue?logo=tailwindcss&logoColor=white) |               ![Row Level Security](https://img.shields.io/badge/RLS-Enabled-green)               |         ![React Hook Form](https://img.shields.io/badge/React_Hook_Form-7.60.0-pink)          |
 |                ![shadcn/ui](https://img.shields.io/badge/shadcn/ui-Components-black)                 |              ![Realtime](https://img.shields.io/badge/Realtime-Subscriptions-green)               |                ![Lucide React](https://img.shields.io/badge/Lucide-Icons-blue)                |
 
@@ -195,13 +176,12 @@ sequenceDiagram
 
 ### Características Técnicas
 
-- **🏗️ App Router**: Utilizando el nuevo App Router de Next.js 14
+- **🏗️ App Router**: Utilizando el App Router de Next.js 16
 - **🎨 Design System**: Componentes consistentes con shadcn/ui
 - **🔄 Real-time**: Actualizaciones en tiempo real con Supabase
 - **🔐 Auth v2.0**: Sistema event-driven con AuthManager singleton
 - **💾 Session Cache**: Middleware optimizado con caché de sesiones
 - **🔗 Cross-Tab Sync**: Sincronización de auth entre pestañas
-- **📱 Progressive Web App**: Preparado para funcionar offline
 - **🔒 Type Safety**: TypeScript en toda la aplicación
 - **✅ Form Validation**: Validación robusta con Zod y React Hook Form
 
@@ -454,51 +434,64 @@ Keepel/
 │   │   ├── login/                   # Inicio de sesión
 │   │   ├── signup/                  # Registro de usuario
 │   │   ├── signup-success/          # Confirmación de registro
+│   │   ├── callback/                # OAuth callback
 │   │   └── error/                   # Página de errores
-│   ├── 📊 dashboard/                # Dashboard principal
+│   ├── api/                         # API routes
+│   │   └── auth/signout/            # Sign-out endpoint
 │   ├── 🚗 vehicles/                 # Gestión de vehículos
+│   │   ├── page.tsx                 # Lista de vehículos
 │   │   └── [id]/maintenance/        # Mantenimiento por vehículo
 │   ├── layout.tsx                   # Layout principal
-│   ├── page.tsx                     # Landing page
-│   └── globals.css                  # Estilos globales
+│   ├── page.tsx                     # Landing page / Dashboard
+│   └── globals.css                  # Estilos globales + Tailwind theme
 ├── 📁 components/                   # Componentes React
+│   ├── analytics/                   # Analytics barrel export
+│   ├── auth/                        # Componentes de autenticación
 │   ├── dashboard/                   # Componentes del dashboard
+│   │   ├── Dashboard.tsx            # Dashboard principal
 │   │   ├── dashboard-stats.tsx      # Estadísticas generales
 │   │   ├── recent-activity.tsx      # Actividad reciente
 │   │   ├── upcoming-maintenance.tsx # Próximos mantenimientos
 │   │   └── vehicle-overview.tsx     # Vista general de vehículos
-│   ├── vehicles/                    # Componentes de vehículos
-│   │   ├── add-vehicle-dialog.tsx   # Diálogo agregar vehículo
-│   │   ├── edit-vehicle-dialog.tsx  # Diálogo editar vehículo
-│   │   ├── delete-vehicle-dialog.tsx# Diálogo eliminar vehículo
-│   │   └── vehicles-list.tsx        # Lista de vehículos
+│   ├── home/                        # Landing page components
+│   ├── layout/                      # Header, Layout
 │   ├── maintenance/                 # Componentes de mantenimiento
 │   │   ├── add-maintenance-dialog.tsx    # Agregar mantenimiento
 │   │   ├── edit-maintenance-dialog.tsx   # Editar mantenimiento
 │   │   ├── delete-maintenance-dialog.tsx # Eliminar mantenimiento
 │   │   └── maintenance-list.tsx          # Lista de mantenimientos
+│   ├── skeletons/                   # Loading skeletons
 │   ├── ui/                          # Componentes UI (shadcn/ui)
-│   │   ├── button.tsx               # Botones personalizados
-│   │   ├── dialog.tsx               # Diálogos modales
-│   │   ├── input.tsx                # Campos de entrada
-│   │   ├── card.tsx                 # Tarjetas de contenido
-│   │   └── ...                      # Más componentes UI
-│   └── theme-provider.tsx           # Proveedor de tema
+│   └── vehicles/                    # Componentes de vehículos
+│       ├── add-vehicle-dialog.tsx   # Diálogo agregar vehículo
+│       ├── edit-vehicle-dialog.tsx  # Diálogo editar vehículo
+│       ├── delete-vehicle-dialog.tsx# Diálogo eliminar vehículo
+│       └── vehicles-list.tsx        # Lista de vehículos
+├── 📁 contexts/                     # React Contexts
+│   ├── AppProviders.tsx             # Root provider tree
+│   ├── AuthContext.tsx              # Auth state
+│   ├── DataContext.tsx              # App data + optimistic updates
+│   └── SupabaseContext.tsx          # Supabase client
+├── 📁 hooks/                        # Custom React hooks
 ├── 📁 lib/                          # Utilidades y configuración
-│   ├── utils.ts                     # Funciones de utilidad
-│   └── supabase/                    # Configuración de Supabase
-│       ├── client.ts                # Cliente de Supabase
-│       ├── server.ts                # Cliente del servidor
-│       └── middleware.ts            # Middleware de autenticación
+│   ├── auth/                        # AuthManager singleton
+│   ├── supabase/                    # Clientes y middleware de Supabase
+│   │   ├── client.ts                # Cliente del navegador
+│   │   ├── server.ts                # Cliente del servidor
+│   │   └── middleware.ts            # Middleware de autenticación
+│   ├── formatters.ts                # Formateadores de datos
+│   ├── ratelimit.ts                 # Configuración de rate limiting
+│   └── utils.ts                     # Funciones de utilidad
 ├── 📁 scripts/                      # Scripts SQL de base de datos
 │   ├── 001_create_tables.sql        # Creación de tablas
-│   └── 002_create_profile_trigger.sql # Triggers de perfiles
+│   ├── 002_create_profile_trigger.sql # Triggers de perfiles
+│   └── 003_maintenance_function.sql   # Funciones de mantenimiento
+├── 📁 styles/                       # Estilos adicionales
 ├── 📁 public/                       # Archivos estáticos
-│   ├── placeholder-logo.svg         # Logo del proyecto
-│   └── ...                          # Imágenes y assets
+│   ├── keepel_logo.svg              # Logo del proyecto
+│   └── robots.txt                   # Reglas para crawlers
 ├── 📄 middleware.ts                 # Middleware de Next.js
 ├── 📄 next.config.mjs               # Configuración de Next.js
-├── 📄 tailwind.config.js            # Configuración de TailwindCSS
 ├── 📄 tsconfig.json                 # Configuración de TypeScript
 └── 📄 package.json                  # Dependencias del proyecto
 ```
@@ -508,7 +501,7 @@ Keepel/
 ```mermaid
 graph TD
     A[App Layout] --> B[Auth Pages]
-    A --> C[Dashboard]
+    A --> C[Dashboard / Landing]
     A --> D[Vehicles]
     A --> E[Maintenance]
 
@@ -548,9 +541,8 @@ graph TD
 **Características de Seguridad:**
 
 - ✅ Registro con email y contraseña
-- ✅ Verificación de email automática
 - ✅ Inicio de sesión seguro
-- ✅ Recuperación de contraseña
+- ✅ OAuth con Google
 - ✅ Protección de rutas con middleware
 - ✅ Gestión automática de sesiones
 - ✅ Tokens JWT seguros
@@ -1053,32 +1045,38 @@ Este proyecto sigue la especificación de [all-contributors](https://github.com/
 
 ### 🚀 Próximas Características (v1.1)
 
+- 🧪 **Testing setup** con Vitest (unit/integration) y Playwright (e2e)
 - 🔄 **API REST completa** para integraciones
-- 📱 **Aplicación móvil nativa** (React Native)
-- 🔔 **Notificaciones push** para recordatorios
 - 📊 **Reportes avanzados** con gráficos mejorados
-- 🌍 **Internacionalización** (i18n) multi-idioma
+- 🌍 **Internacionalización** (i18n) Español/Inglés
 - 🔍 **Búsqueda avanzada** con filtros múltiples
 
-### 🎨 Mejoras Futuras (v1.2+)
+### 🎨 Mejoras Futuras (v1.2)
 
-- 🤖 **IA para predicción** de mantenimientos
+- 📱 **Aplicación móvil nativa** (React Native)
 - 📸 **OCR para facturas** automático
 - 🔗 **Integración con talleres** mecánicos
 - 💳 **Gestión de presupuestos** y finanzas
 - 🚗 **Comparador de costos** entre vehículos
+
+### 🚀 Visión a Largo Plazo (v2.0)
+
+- 🤖 **IA para predicción** de mantenimientos
 - 📈 **Analytics avanzados** de rendimiento
+- 🔧 **Integraciones con APIs** de fabricantes
+- 🛒 **Marketplace de servicios**
+- 💡 **Motor de recomendaciones**
 
 <details>
 <summary><strong>Ver roadmap detallado</strong></summary>
 
 | Característica       | Prioridad |      Estado      | Versión Estimada |
 | -------------------- | :-------: | :--------------: | :--------------: |
+| Testing Setup        |  🔥 Alta  |  📋 Planificado  |       v1.1       |
 | API REST             |  🔥 Alta  |  🔄 En progreso  |       v1.1       |
-| App Móvil            |  🔥 Alta  |  📋 Planificado  |       v1.1       |
-| Notificaciones Push  |  🔥 Alta  |  📋 Planificado  |       v1.1       |
 | Reportes Avanzados   | 🟡 Media  |  📋 Planificado  |       v1.1       |
 | Multi-idioma         | 🟡 Media  |  📋 Planificado  |       v1.1       |
+| App Móvil            |  🔥 Alta  |  📋 Planificado  |       v1.2       |
 | OCR para Facturas    | 🟡 Media  | 💡 Investigación |       v1.2       |
 | IA Predictiva        |  🔵 Baja  | 💡 Investigación |       v2.0       |
 | Integración Talleres |  🔵 Baja  | 💡 Investigación |       v2.0       |
@@ -1157,9 +1155,9 @@ Ver el archivo [`LICENSE`](LICENSE) para más detalles.
 
 ### 📧 Contacto Directo
 
-- **📧 Email**: [soporte@carcare.dev](mailto:soporte@carcare.dev)
+- **📧 Email**: [soporte@keepel.dev](mailto:soporte@keepel.dev)
 - **🐦 Twitter**: [@KeepelDev](https://twitter.com/KeepelDev)
-- **💼 LinkedIn**: [Keepel](https://linkedin.com/company/carcare-pro)
+- **💼 LinkedIn**: [Keepel](https://linkedin.com/company/keepel)
 
 ### ⚡ Tiempo de Respuesta
 
@@ -1187,9 +1185,9 @@ Ver el archivo [`LICENSE`](LICENSE) para más detalles.
 
 ---
 
-<img src="public/placeholder-logo.svg" alt="Keepel" width="60" height="60">
+<div align="center">
 
-**Keepel** - _Mantén tus vehículos en perfecto estado_ 🚗✨
+**Keepel** - *Mantén tus vehículos en perfecto estado* 🚗✨
 
 Desarrollado con ❤️ por [DevChemical](https://github.com/devchemical)
 
