@@ -241,7 +241,7 @@ For OpenCode, use a skill-first workflow powered by the local `skills/` director
 
 ### Skill location
 
-- Skills are located in `skills/<skill-name>/SKILL.md`
+- Skills are located in `.agents/skills/<skill-name>/SKILL.md`
 - If a task matches a skill, invoke it before implementing directly
 - Do not skip an applicable skill just because the task seems small
 - Follow the selected skill workflow completely, not partially
@@ -395,6 +395,7 @@ CarCare/
 
 ### v1.1 (In Development)
 
+- [ ] Testing setup with Vitest (unit/integration) and Playwright (e2e)
 - [ ] Full REST API for integrations
 - [ ] Advanced reports with improved charts
 - [ ] Internationalization (i18n) Spanish/English

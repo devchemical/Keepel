@@ -39,10 +39,13 @@ Start with a high-level vision. Ask the human clarifying questions until require
 
 ```
 ASSUMPTIONS I'M MAKING:
-1. This is a web application (not native mobile)
-2. Authentication uses session-based cookies (not JWT)
-3. The database is PostgreSQL (based on existing Prisma schema)
-4. We're targeting modern browsers only (no IE11)
+1. Next.js 16 App Router (not Pages Router)
+2. Authentication via Supabase Auth (JWT + OAuth Google)
+3. Database is PostgreSQL via Supabase (no ORM; raw SQL in migrations)
+4. Package manager is bun (not npm or pnpm)
+5. Styling uses TailwindCSS 4.x with CSS-based config (no tailwind.config.js)
+6. UI components use shadcn/ui (Radix primitives + Tailwind)
+7. Targeting modern browsers only (no IE11)
 → Correct me now or I'll proceed with these.
 ```
 
@@ -54,20 +57,24 @@ Don't silently fill in ambiguous requirements. The spec's entire purpose is to s
 
 2. **Commands** — Full executable commands with flags, not just tool names.
    ```
-   Build: npm run build
-   Test: npm test -- --coverage
-   Lint: npm run lint --fix
-   Dev: npm run dev
+   Dev:  bun dev
+   Build: bun build
+   Lint: bun lint
+   Type-check: bun type-check
+   Format: bun format
+   Format check: bun format:check
    ```
 
-3. **Project Structure** — Where source code lives, where tests go, where docs belong.
+3. **Project Structure** — Where source code lives, where configs go, where migrations belong.
    ```
-   src/           → Application source code
-   src/components → React components
-   src/lib        → Shared utilities
-   tests/         → Unit and integration tests
-   e2e/           → End-to-end tests
-   docs/          → Documentation
+   app/              → Next.js App Router (pages, layouts, Server Actions, API routes)
+   components/       → React components organized by feature
+   contexts/         → React Contexts (auth, data, supabase)
+   hooks/            → Custom React hooks
+   lib/              → Utilities, Supabase clients, auth manager
+   scripts/          → SQL migrations for Supabase
+   styles/           → Additional global styles
+   public/           → Static assets
    ```
 
 4. **Code Style** — One real code snippet showing your style beats three paragraphs describing it. Include naming conventions, formatting rules, and examples of good output.
@@ -75,9 +82,9 @@ Don't silently fill in ambiguous requirements. The spec's entire purpose is to s
 5. **Testing Strategy** — What framework, where tests live, coverage expectations, which test levels for which concerns.
 
 6. **Boundaries** — Three-tier system:
-   - **Always do:** Run tests before commits, follow naming conventions, validate inputs
-   - **Ask first:** Database schema changes, adding dependencies, changing CI config
-   - **Never do:** Commit secrets, edit vendor directories, remove failing tests without approval
+   - **Always do:** Authenticate inside Server Actions, enable RLS on new tables, validate inputs with Zod, run `bun lint` and `bun type-check` before considering done
+   - **Ask first:** Database schema changes, adding dependencies, modifying `next.config.mjs`, changing auth flow
+   - **Never do:** Commit `.env.local` or API keys, remove RLS policies without approval, bypass rate limiting, edit `scripts/` without SQL review
 
 **Spec template:**
 
@@ -91,7 +98,7 @@ Don't silently fill in ambiguous requirements. The spec's entire purpose is to s
 [Framework, language, key dependencies with versions]
 
 ## Commands
-[Build, test, lint, dev — full commands]
+[Build, lint, type-check, dev — full commands]
 
 ## Project Structure
 [Directory layout with descriptions]
@@ -106,6 +113,9 @@ Don't silently fill in ambiguous requirements. The spec's entire purpose is to s
 - Always: [...]
 - Ask first: [...]
 - Never: [...]
+
+## Database Considerations
+[When the feature touches data: tables, relationships, RLS policies, indexes. Skip if not applicable.]
 
 ## Success Criteria
 [How we'll know this is done — specific, testable conditions]
@@ -146,7 +156,7 @@ Break the plan into discrete, implementable tasks:
 
 - Each task should be completable in a single focused session
 - Each task has explicit acceptance criteria
-- Each task includes a verification step (test, build, manual check)
+- Each task includes a verification step (build, lint, type-check, manual check)
 - Tasks are ordered by dependency, not by perceived importance
 - No task should require changing more than ~5 files
 
@@ -154,13 +164,17 @@ Break the plan into discrete, implementable tasks:
 ```markdown
 - [ ] Task: [Description]
   - Acceptance: [What must be true when done]
-  - Verify: [How to confirm — test command, build, manual check]
+  - Verify: [How to confirm — lint, type-check, build, manual check]
   - Files: [Which files will be touched]
 ```
 
 ### Phase 4: Implement
 
-Execute tasks one at a time following `incremental-implementation` and `test-driven-development` skills. Use `context-engineering` to load the right spec sections and source files at each step rather than flooding the agent with the entire spec.
+Execute tasks one at a time incrementally. Load only the relevant spec sections and source files at each step rather than flooding the agent with the entire spec.
+
+## Testing Note for This Project
+
+Currently, the project has **no testing framework installed**. When writing specs for features that need automated verification, note that the intended future stack is **Vitest** for unit and integration tests, and **Playwright** for end-to-end tests. Do not create test directories or files until that setup is implemented.
 
 ## Keeping the Spec Alive
 
@@ -187,7 +201,7 @@ The spec is a living document, not a one-time artifact:
 - Asking "should I just start building?" before clarifying what "done" means
 - Implementing features not mentioned in any spec or task list
 - Making architectural decisions without documenting them
-- Skipping the spec because "it's obvious what to build"
+- Skipping the spec because "it's obvious what to build" — even adding a new shadcn/ui dialog can have auth or RLS implications
 
 ## Verification
 
