@@ -69,8 +69,6 @@ export function AddMaintenanceDialog({ children, vehicleId }: AddMaintenanceDial
   const [formData, setFormData] = useState({
     mileage: "",
     service_date: new Date().toISOString().split("T")[0],
-    next_service_date: "",
-    next_service_mileage: "",
     notes: "",
   })
 
@@ -116,14 +114,9 @@ export function AddMaintenanceDialog({ children, vehicleId }: AddMaintenanceDial
 
       // Validar números comunes
       const mileage = formData.mileage ? parseInt(formData.mileage, 10) : null
-      const nextServiceMileage = formData.next_service_mileage ? parseInt(formData.next_service_mileage, 10) : null
 
       if (formData.mileage && (isNaN(mileage!) || mileage! < 0)) {
         throw new Error("El kilometraje debe ser un número válido mayor o igual a 0")
-      }
-
-      if (formData.next_service_mileage && (isNaN(nextServiceMileage!) || nextServiceMileage! < 0)) {
-        throw new Error("El kilometraje del próximo servicio debe ser un número válido mayor o igual a 0")
       }
 
       // Preparar datos para inserción múltiple
@@ -145,8 +138,6 @@ export function AddMaintenanceDialog({ children, vehicleId }: AddMaintenanceDial
           cost,
           mileage,
           service_date: formData.service_date,
-          next_service_date: formData.next_service_date || null,
-          next_service_mileage: nextServiceMileage,
           notes: formData.notes?.trim() || null,
         }
       })
@@ -172,8 +163,6 @@ export function AddMaintenanceDialog({ children, vehicleId }: AddMaintenanceDial
       setFormData({
         mileage: "",
         service_date: new Date().toISOString().split("T")[0],
-        next_service_date: "",
-        next_service_mileage: "",
         notes: "",
       })
 
@@ -300,40 +289,6 @@ export function AddMaintenanceDialog({ children, vehicleId }: AddMaintenanceDial
                 </div>
               </div>
             ))}
-          </div>
-
-          {/* Sección próximo servicio */}
-          <div className="border-border space-y-3 border-t pt-3">
-            <h4 className="text-foreground flex items-center gap-2 text-xs font-medium tracking-wider uppercase">
-              📅 Próximo Servicio (Opcional)
-            </h4>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <Label htmlFor="next_service_date" className="text-sm font-medium">
-                  Fecha
-                </Label>
-                <Input
-                  id="next_service_date"
-                  type="date"
-                  value={formData.next_service_date}
-                  onChange={(e) => setFormData({ ...formData, next_service_date: e.target.value })}
-                  className="h-10"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="next_service_mileage" className="text-sm font-medium">
-                  Kilometraje
-                </Label>
-                <Input
-                  id="next_service_mileage"
-                  type="number"
-                  placeholder="55000"
-                  value={formData.next_service_mileage}
-                  onChange={(e) => setFormData({ ...formData, next_service_mileage: e.target.value })}
-                  className="h-10"
-                />
-              </div>
-            </div>
           </div>
 
           <div className="space-y-1.5">

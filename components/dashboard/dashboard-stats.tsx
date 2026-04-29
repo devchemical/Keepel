@@ -2,7 +2,8 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Car, Wrench, DollarSign, AlertTriangle } from "lucide-react"
+import { Car, Wrench, DollarSign, Calendar } from "lucide-react"
+import type { ScheduledService } from "@/contexts"
 
 interface Vehicle {
   id: string
@@ -11,19 +12,14 @@ interface Vehicle {
   year: number
 }
 
-interface MaintenanceRecord {
-  id: string
-  cost?: number
-  next_service_date?: string
-}
-
 interface DashboardStatsProps {
   vehicles: Vehicle[]
-  maintenanceRecords: MaintenanceRecord[]
+  maintenanceRecords: { cost?: number }[]
+  scheduledServices: ScheduledService[]
   isLoading?: boolean
 }
 
-export function DashboardStats({ vehicles, maintenanceRecords, isLoading }: DashboardStatsProps) {
+export function DashboardStats({ vehicles, maintenanceRecords, scheduledServices, isLoading }: DashboardStatsProps) {
   if (isLoading) {
     return (
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
@@ -49,12 +45,12 @@ export function DashboardStats({ vehicles, maintenanceRecords, isLoading }: Dash
     return sum + (record.cost || 0)
   }, 0)
 
-  const upcomingServices = maintenanceRecords.filter((record) => {
-    if (!record.next_service_date) return false
-    const nextDate = new Date(record.next_service_date)
+  const upcomingServices = scheduledServices.filter((service) => {
+    if (!service.scheduled_date) return false
+    const scheduledDate = new Date(service.scheduled_date)
     const today = new Date()
     const thirtyDaysFromNow = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000)
-    return nextDate >= today && nextDate <= thirtyDaysFromNow
+    return scheduledDate >= today && scheduledDate <= thirtyDaysFromNow
   }).length
 
   const formatCurrency = (amount: number) => {
@@ -89,7 +85,7 @@ export function DashboardStats({ vehicles, maintenanceRecords, isLoading }: Dash
     {
       title: "Próximos Servicios",
       value: upcomingServices.toString(),
-      icon: AlertTriangle,
+      icon: Calendar,
       description: "En los próximos 30 días",
       color: upcomingServices > 0 ? "text-amber-600" : "text-muted-foreground",
     },
