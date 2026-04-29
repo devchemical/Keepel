@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "../styles/pwa.css";
+@import "../styles/responsive.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -118,17 +119,128 @@
   --color-sidebar-ring: var(--sidebar-ring);
 }
 
+/* ── Modern CSS Reset 2026 ────────────────────────────────────────────── */
 @layer base {
-  * {
+  /* 1. Box model & inheritance (Tailwind preflight covers box-sizing, we enhance) */
+  *, *::before, *::after {
     @apply border-border outline-ring/50;
   }
-  html {
-    scrollbar-gutter: stable;
+
+  /* 2. Selection theming */
+  ::selection {
+    background-color: var(--primary);
+    color: var(--primary-foreground);
   }
+
+  /* 3. Body typography */
   body {
     @apply bg-background text-foreground antialiased;
+    line-height: 1.5;
     font-feature-settings:
       "rlig" 1,
       "calt" 1;
+  }
+
+  /* 4. Heading typography */
+  h1, h2, h3, h4, h5, h6 {
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  p, h1, h2, h3, h4, h5, h6 {
+    overflow-wrap: break-word;
+  }
+
+  /* 5. Media defaults */
+  img,
+  picture,
+  video,
+  canvas,
+  svg {
+    display: block;
+    max-width: 100%;
+    height: auto;
+  }
+
+  /* 6 Form controls theming */
+  input,
+  textarea,
+  select,
+  progress,
+  meter {
+    accent-color: var(--primary);
+    caret-color: var(--primary);
+  }
+
+  textarea {
+    field-sizing: content;
+    min-height: 2.5rem;
+  }
+
+  /* 7. Native dialog / popover backdrop */
+  dialog::backdrop,
+  [popover]::backdrop {
+    background-color: hsl(0 0% 0% / 0.5);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+  }
+
+  /* 8. Scrollbar theming (Firefox + WebKit fallback) */
+  * {
+    scrollbar-color: var(--muted) transparent;
+    scrollbar-width: thin;
+  }
+
+  .dark * {
+    scrollbar-color: var(--muted) transparent;
+  }
+
+  /* 9. List reset for navs (semantic lists that don't look like lists) */
+  :where(ul, ol):where([role="list"]) {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  /* 10. Anchor defaults */
+  a:not([class]) {
+    text-decoration-skip-ink: auto;
+    color: currentColor;
+  }
+
+  /* 11. Table defaults */
+  table {
+    border-collapse: collapse;
+    text-indent: 0;
+  }
+
+  /* 12. Reduced motion */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+  html {
+    interpolate-size: allow-keywords;
+  }
+}
+
+  /* 13. High contrast mode support */
+  @media (prefers-contrast: more) {
+    *,
+    *::before,
+    *::after {
+      border-color: currentColor !important;
+    }
   }
 }
