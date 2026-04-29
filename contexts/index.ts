@@ -7,4 +7,4 @@ export { SupabaseProvider, useSupabase } from "./SupabaseContext"
 // Types
 export type { AuthUser, Profile } from "./AuthContext"
 
-export type { Vehicle, MaintenanceRecord } from "./DataContext"
+export type { Vehicle, MaintenanceRecord, ScheduledService, ScheduledServiceStatus } from "./DataContext"
