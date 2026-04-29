@@ -121,9 +121,8 @@
 
 /* ── Modern CSS Reset 2026 ────────────────────────────────────────────── */
 @layer base {
-  /* 1. Box model & inheritance (Tailwind preflight covers most, we enhance) */
+  /* 1. Box model & inheritance (Tailwind preflight covers box-sizing, we enhance) */
   *, *::before, *::after {
-    box-sizing: border-box;
     @apply border-border outline-ring/50;
   }
 
@@ -137,7 +136,6 @@
   body {
     @apply bg-background text-foreground antialiased;
     line-height: 1.5;
-    -webkit-font-smoothing: antialiased;
     font-feature-settings:
       "rlig" 1,
       "calt" 1;
