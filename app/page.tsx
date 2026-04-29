@@ -8,7 +8,7 @@ import { useAuth, useData } from "@/contexts"
 
 export default function HomePage() {
   const { user, profile, isLoading: authLoading, signOut } = useAuth()
-  const { vehicles, maintenanceRecords, upcomingMaintenance, isLoading: dataLoading, refreshAll } = useData()
+  const { vehicles, maintenanceRecords, scheduledServices, isLoading: dataLoading, refreshAll } = useData()
 
   // Show loading screen only during initial auth check to prevent flash
   const showLoadingScreen = authLoading
@@ -29,7 +29,7 @@ export default function HomePage() {
           profile={profile}
           vehicles={vehicles}
           maintenanceRecords={maintenanceRecords}
-          upcomingMaintenance={upcomingMaintenance}
+          upcomingMaintenance={scheduledServices}
           isLoading={dataLoading}
         />
       ) : (

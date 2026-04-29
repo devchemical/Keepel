@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react"
 import { useSupabase } from "@/hooks/useSupabase"
 import { useAuth } from "@/hooks/useAuth"
+import type { ScheduledService } from "@/contexts"
 
 interface Vehicle {
   id: string
@@ -20,7 +21,7 @@ interface Vehicle {
 interface DashboardData {
   vehicles: Vehicle[]
   maintenanceRecords: any[]
-  upcomingMaintenance: any[]
+  upcomingMaintenance: ScheduledService[]
 }
 
 export function useDashboardData(): DashboardData & {
@@ -33,7 +34,7 @@ export function useDashboardData(): DashboardData & {
   const { user, profile, isLoading: authLoading, signOut } = useAuth()
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
   const [maintenanceRecords, setMaintenanceRecords] = useState<any[]>([])
-  const [upcomingMaintenance, setUpcomingMaintenance] = useState<any[]>([])
+  const [upcomingMaintenance, setUpcomingMaintenance] = useState<ScheduledService[]>([])
   const [isDataLoading, setIsDataLoading] = useState(false)
   const supabase = useSupabase()
 
@@ -109,28 +110,28 @@ export function useDashboardData(): DashboardData & {
         thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30)
 
         const { data, error } = await supabase
-          .from("maintenance_records")
+          .from("scheduled_services")
           .select(
             `
-          *,
-          vehicles (
-            make,
-            model,
-            year,
-            license_plate
-          )
-        `
+            *,
+            vehicles (
+              make,
+              model,
+              year,
+              license_plate
+            )
+          `
           )
           .eq("user_id", userId)
-          .not("next_service_date", "is", null)
-          .lte("next_service_date", thirtyDaysFromNow.toISOString().split("T")[0])
-          .order("next_service_date", { ascending: true })
+          .eq("status", "pending")
+          .lte("scheduled_date", thirtyDaysFromNow.toISOString().split("T")[0])
+          .order("scheduled_date", { ascending: true, nullsFirst: true })
 
         if (error) {
           console.error("Upcoming maintenance error:", error)
           setUpcomingMaintenance([])
         } else if (data) {
-          setUpcomingMaintenance(data)
+          setUpcomingMaintenance(data as ScheduledService[])
         } else {
           setUpcomingMaintenance([])
         }

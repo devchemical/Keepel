@@ -10,8 +10,10 @@ import Link from "next/link"
 interface UpcomingMaintenanceRecord {
   id: string
   type: string
-  next_service_date: string
-  vehicles: {
+  scheduled_date?: string
+  scheduled_mileage?: number
+  status: string
+  vehicles?: {
     make: string
     model: string
     year: number
@@ -128,8 +130,9 @@ export function UpcomingMaintenance({ upcomingMaintenance, isLoading }: Upcoming
       <CardContent>
         <div className="space-y-3">
           {upcomingMaintenance.slice(0, 5).map((maintenance) => {
-            const daysUntil = getDaysUntil(maintenance.next_service_date)
-            const overdue = isOverdue(maintenance.next_service_date)
+            const scheduledDate = maintenance.scheduled_date || ""
+            const daysUntil = scheduledDate ? getDaysUntil(scheduledDate) : null
+            const overdue = scheduledDate ? isOverdue(scheduledDate) : false
 
             return (
               <div
@@ -153,20 +156,27 @@ export function UpcomingMaintenance({ upcomingMaintenance, isLoading }: Upcoming
                       variant={overdue ? "destructive" : "secondary"}
                       className={`border-0 text-xs ${overdue ? "" : "bg-amber-100 text-amber-700"}`}
                     >
-                      {overdue ? "Vencido" : `${daysUntil} días`}
+                      {overdue ? "Vencido" : daysUntil !== null ? `${daysUntil} días` : "Programado"}
                     </Badge>
                   </div>
 
                   <div className="flex items-center gap-2 text-xs text-slate-500">
                     <Car className="h-3.5 w-3.5 text-slate-400" />
-                    <span>
-                      {maintenance.vehicles.make} {maintenance.vehicles.model} {maintenance.vehicles.year}
-                    </span>
-                    {maintenance.vehicles.license_plate && <span className="text-slate-300">•</span>}
-                    {maintenance.vehicles.license_plate && <span>{maintenance.vehicles.license_plate}</span>}
+                    {maintenance.vehicles && (
+                      <span>
+                        {maintenance.vehicles.make} {maintenance.vehicles.model} {maintenance.vehicles.year}
+                        {maintenance.vehicles.license_plate && <span className="text-slate-300"> •</span>}
+                        {maintenance.vehicles.license_plate && <span> {maintenance.vehicles.license_plate}</span>}
+                      </span>
+                    )}
                   </div>
 
-                  <div className="mt-1.5 text-xs text-slate-500">{formatDate(maintenance.next_service_date)}</div>
+                  <div className="mt-1.5 text-xs text-slate-500">
+                      {scheduledDate && formatDate(scheduledDate)}
+                      {maintenance.scheduled_mileage && (
+                        <span> &middot; {maintenance.scheduled_mileage.toLocaleString("es-ES")} km</span>
+                      )}
+                    </div>
                 </div>
               </div>
             )
