@@ -2,10 +2,17 @@ import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 import { MaintenanceList } from "@/components/maintenance/maintenance-list"
 import { AddMaintenanceDialog } from "@/components/maintenance/add-maintenance-dialog"
+import { ScheduleServiceDialog } from "@/components/maintenance/schedule-service-dialog"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { ArrowLeft, Car, Plus, Wrench, Gauge } from "lucide-react"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { ArrowLeft, Car, Plus, Wrench, Gauge, Calendar, ChevronDown } from "lucide-react"
 import Link from "next/link"
 import { Layout } from "../../../../components/layout/Layout"
 
@@ -73,15 +80,38 @@ export default async function VehicleMaintenancePage({ params }: PageProps) {
                   </div>
                 </div>
 
-                {/* Botón separado en su propia fila para mejor responsive */}
+                {/* Acciones: Registrar o Programar */}
                 <div className="border-border/50 flex justify-end border-t pt-2">
-                  <AddMaintenanceDialog vehicleId={id}>
-                    <Button className="bg-primary hover:bg-primary/90 w-full sm:w-auto">
-                      <Plus className="mr-2 h-4 w-4" />
-                      <span className="hidden sm:inline">Agregar Mantenimiento</span>
-                      <span className="sm:hidden">Agregar</span>
-                    </Button>
-                  </AddMaintenanceDialog>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button className="bg-primary hover:bg-primary/90 w-full sm:w-auto">
+                        <Plus className="mr-2 h-4 w-4" />
+                        <span className="hidden sm:inline">Agregar</span>
+                        <span className="sm:hidden">Agregar</span>
+                        <ChevronDown className="ml-1 h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <AddMaintenanceDialog vehicleId={id}>
+                        <DropdownMenuItem
+                          className="cursor-pointer"
+                          onSelect={(e) => e.preventDefault()}
+                        >
+                          <Wrench className="mr-2 h-4 w-4" />
+                          Registrar Mantenimiento
+                        </DropdownMenuItem>
+                      </AddMaintenanceDialog>
+                      <ScheduleServiceDialog vehicleId={id}>
+                        <DropdownMenuItem
+                          className="cursor-pointer"
+                          onSelect={(e) => e.preventDefault()}
+                        >
+                          <Calendar className="mr-2 h-4 w-4" />
+                          Programar Servicio
+                        </DropdownMenuItem>
+                      </ScheduleServiceDialog>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
               </div>
             </CardHeader>
