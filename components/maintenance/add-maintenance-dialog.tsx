@@ -22,8 +22,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Wrench, Loader2, Plus, X } from "lucide-react"
 
 interface AddMaintenanceDialogProps {
-  children: React.ReactNode
+  children?: React.ReactNode
   vehicleId: string
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
 }
 
 interface ServiceItem {
@@ -49,8 +51,10 @@ const maintenanceTypes = [
   { value: "other", label: "Otro" },
 ]
 
-export function AddMaintenanceDialog({ children, vehicleId }: AddMaintenanceDialogProps) {
-  const [open, setOpen] = useState(false)
+export function AddMaintenanceDialog({ children, vehicleId, open: controlledOpen, onOpenChange }: AddMaintenanceDialogProps) {
+  const [internalOpen, setInternalOpen] = useState(false)
+  const open = controlledOpen !== undefined ? controlledOpen : internalOpen
+  const setOpen = onOpenChange ?? setInternalOpen
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -179,7 +183,7 @@ export function AddMaintenanceDialog({ children, vehicleId }: AddMaintenanceDial
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>{children}</DialogTrigger>
+      {children && <DialogTrigger asChild>{children}</DialogTrigger>}
       <DialogContent className="sm:max-w-[600px]">
         <DialogHeader className="space-y-2">
           <DialogTitle className="flex items-center gap-2 text-lg">
