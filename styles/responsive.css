@@ -1,43 +1,23 @@
-/* Mejoras responsive para modales y navegación */
+/* ── Responsive & Mobile Optimizations ─────────────────────────────────── */
 
-/* Prevenir scroll horizontal global */
-html,
-body {
-  max-width: 100vw;
-  overflow-x: hidden;
-}
-
-/* Asegurar que el header no cause problemas con safe areas */
-header {
-  box-sizing: border-box;
-}
-
-/* Ajustes para modales en mobile */
+/* ── Touch Targets ─────────────────────────────────────────────────────── */
 @media (max-width: 640px) {
-  /* Los modales ahora usan bottom sheet, este código es redundante pero lo dejamos por compatibilidad */
+  button,
+  [role="button"],
+  a,
+  summary {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+/* ── Bottom Sheet & Dialogs ────────────────────────────────────────────── */
+@media (max-width: 640px) {
   [data-slot="dialog-content"] {
     max-height: 95dvh;
     max-width: 100vw;
   }
 
-  /* Mejorar táctil en elementos interactivos */
-  button,
-  [role="button"],
-  a {
-    min-height: 44px; /* Tamaño mínimo recomendado para touch targets */
-  }
-
-  /* Inputs más grandes en mobile para mejor usabilidad */
-  input:not([type="checkbox"]):not([type="radio"]),
-  textarea,
-  select {
-    font-size: 16px; /* Previene zoom automático en iOS */
-  }
-}
-
-/* Bottom Sheet específico - patrón moderno */
-@media (max-width: 640px) {
-  /* Sheet desde abajo - ocupa hasta 95% de la pantalla */
   [data-radix-dialog-content][data-side="bottom"],
   [data-radix-sheet-content][data-side="bottom"] {
     max-height: 95dvh;
@@ -47,30 +27,21 @@ header {
   }
 }
 
-/* Mejoras para el Sheet (menú lateral) */
+/* ── Sheet (sidebar) ───────────────────────────────────────────────────── */
 [data-slot="sheet-content"] {
-  /* Scroll suave en contenido */
   overflow-y: auto;
+  overscroll-behavior-y: contain;
   -webkit-overflow-scrolling: touch;
 }
 
-/* Optimización de dropdowns en mobile */
+/* ── Dropdowns ─────────────────────────────────────────────────────────── */
 @media (max-width: 1024px) {
   [data-slot="dropdown-menu-content"] {
     max-width: calc(100vw - 2rem);
   }
 }
 
-/* Mejoras de accesibilidad */
-@media (prefers-reduced-motion: reduce) {
-  * {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-  }
-}
-
-/* Safe area para dispositivos con notch - solo afecta el padding del body, no el header */
+/* ── Safe Areas (notch / dynamic island) ───────────────────────────────── */
 @supports (padding: max(0px)) {
   main {
     padding-left: max(0px, env(safe-area-inset-left));
@@ -78,14 +49,22 @@ header {
   }
 }
 
-/* Mejorar contraste de focus para navegación por teclado */
+/* ── Focus Visibility ──────────────────────────────────────────────────── */
 *:focus-visible {
-  outline: 2px solid hsl(var(--ring));
+  outline: 2px solid var(--ring);
   outline-offset: 2px;
 }
 
-/* Optimización de formularios */
+/* ── Form Optimizations ────────────────────────────────────────────────── */
 form {
-  /* Prevenir zoom en iOS cuando se enfocan inputs */
   -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+@media (max-width: 640px) {
+  input:not([type="checkbox"]):not([type="radio"]),
+  textarea,
+  select {
+    font-size: 16px;
+  }
 }
