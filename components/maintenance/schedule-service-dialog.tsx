@@ -20,8 +20,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Calendar, Loader2 } from "lucide-react"
 
 interface ScheduleServiceDialogProps {
-  children: React.ReactNode
+  children?: React.ReactNode
   vehicleId: string
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
 }
 
 const maintenanceTypes = [
@@ -40,8 +42,10 @@ const maintenanceTypes = [
   { value: "other", label: "Otro" },
 ]
 
-export function ScheduleServiceDialog({ children, vehicleId }: ScheduleServiceDialogProps) {
-  const [open, setOpen] = useState(false)
+export function ScheduleServiceDialog({ children, vehicleId, open: controlledOpen, onOpenChange }: ScheduleServiceDialogProps) {
+  const [internalOpen, setInternalOpen] = useState(false)
+  const open = controlledOpen !== undefined ? controlledOpen : internalOpen
+  const setOpen = onOpenChange ?? setInternalOpen
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -122,7 +126,7 @@ export function ScheduleServiceDialog({ children, vehicleId }: ScheduleServiceDi
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>{children}</DialogTrigger>
+      {children && <DialogTrigger asChild>{children}</DialogTrigger>}
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader className="space-y-2">
           <DialogTitle className="flex items-center gap-2 text-lg">
