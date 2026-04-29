@@ -20,8 +20,6 @@ interface MaintenanceRecord {
   cost?: number
   mileage?: number
   service_date: string
-  next_service_date?: string
-  next_service_mileage?: number
   notes?: string
 }
 
@@ -63,8 +61,6 @@ export function EditMaintenanceDialog({ record, vehicleId, open, onOpenChange }:
     cost: record.cost?.toString() || "",
     mileage: record.mileage?.toString() || "",
     service_date: record.service_date,
-    next_service_date: record.next_service_date || "",
-    next_service_mileage: record.next_service_mileage?.toString() || "",
     notes: record.notes || "",
   })
 
@@ -75,8 +71,6 @@ export function EditMaintenanceDialog({ record, vehicleId, open, onOpenChange }:
       cost: record.cost?.toString() || "",
       mileage: record.mileage?.toString() || "",
       service_date: record.service_date,
-      next_service_date: record.next_service_date || "",
-      next_service_mileage: record.next_service_mileage?.toString() || "",
       notes: record.notes || "",
     })
   }, [record])
@@ -107,7 +101,6 @@ export function EditMaintenanceDialog({ record, vehicleId, open, onOpenChange }:
       // Preparar datos para actualización con validación de números
       const cost = formData.cost ? parseFloat(formData.cost) : null
       const mileage = formData.mileage ? parseInt(formData.mileage, 10) : null
-      const nextServiceMileage = formData.next_service_mileage ? parseInt(formData.next_service_mileage, 10) : null
 
       // Verificar que los números sean válidos si se proporcionaron
       if (formData.cost && (isNaN(cost!) || cost! < 0)) {
@@ -118,18 +111,12 @@ export function EditMaintenanceDialog({ record, vehicleId, open, onOpenChange }:
         throw new Error("El kilometraje debe ser un número válido mayor o igual a 0")
       }
 
-      if (formData.next_service_mileage && (isNaN(nextServiceMileage!) || nextServiceMileage! < 0)) {
-        throw new Error("El kilometraje del próximo servicio debe ser un número válido mayor o igual a 0")
-      }
-
       const updateData = {
         type: formData.type,
         description: formData.description?.trim() || null,
         cost,
         mileage,
         service_date: formData.service_date,
-        next_service_date: formData.next_service_date || null,
-        next_service_mileage: nextServiceMileage,
         notes: formData.notes?.trim() || null,
         updated_at: new Date().toISOString(),
       }
@@ -236,31 +223,6 @@ export function EditMaintenanceDialog({ record, vehicleId, open, onOpenChange }:
                 value={formData.mileage}
                 onChange={(e) => setFormData({ ...formData, mileage: e.target.value })}
               />
-            </div>
-          </div>
-
-          <div className="border-border border-t pt-4">
-            <h4 className="text-foreground mb-3 text-sm font-medium">Próximo Servicio (Opcional)</h4>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="next_service_date">Fecha del Próximo Servicio</Label>
-                <Input
-                  id="next_service_date"
-                  type="date"
-                  value={formData.next_service_date}
-                  onChange={(e) => setFormData({ ...formData, next_service_date: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="next_service_mileage">Kilometraje del Próximo Servicio</Label>
-                <Input
-                  id="next_service_mileage"
-                  type="number"
-                  placeholder="55000"
-                  value={formData.next_service_mileage}
-                  onChange={(e) => setFormData({ ...formData, next_service_mileage: e.target.value })}
-                />
-              </div>
             </div>
           </div>
 

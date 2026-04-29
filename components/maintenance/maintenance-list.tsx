@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { Calendar, DollarSign, Gauge, MoreVertical, Edit, Trash2, AlertCircle, CheckCircle } from "lucide-react"
+import { Calendar, DollarSign, Gauge, MoreVertical, Edit, Trash2 } from "lucide-react"
 import { EditMaintenanceDialog } from "./edit-maintenance-dialog"
 import { DeleteMaintenanceDialog } from "./delete-maintenance-dialog"
 import { useState } from "react"
@@ -18,8 +18,6 @@ interface MaintenanceRecord {
   cost?: number
   mileage?: number
   service_date: string
-  next_service_date?: string
-  next_service_mileage?: number
   notes?: string
   created_at: string
 }
@@ -67,19 +65,6 @@ export function MaintenanceList({ records, vehicleId, isLoading }: MaintenanceLi
       style: "currency",
       currency: "EUR",
     }).format(amount)
-  }
-
-  const isOverdue = (nextServiceDate?: string) => {
-    if (!nextServiceDate) return false
-    return new Date(nextServiceDate) < new Date()
-  }
-
-  const isUpcoming = (nextServiceDate?: string) => {
-    if (!nextServiceDate) return false
-    const nextDate = new Date(nextServiceDate)
-    const today = new Date()
-    const thirtyDaysFromNow = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000)
-    return nextDate >= today && nextDate <= thirtyDaysFromNow
   }
 
   return (
@@ -138,41 +123,6 @@ export function MaintenanceList({ records, vehicleId, isLoading }: MaintenanceLi
                 </div>
               )}
             </div>
-
-            {(record.next_service_date || record.next_service_mileage) && (
-              <div className="border-border border-t pt-3">
-                <h4 className="text-foreground mb-2 text-sm font-medium">Próximo Servicio:</h4>
-                <div className="flex flex-wrap gap-2">
-                  {record.next_service_date && (
-                    <Badge
-                      variant={
-                        isOverdue(record.next_service_date)
-                          ? "destructive"
-                          : isUpcoming(record.next_service_date)
-                            ? "warning"
-                            : "success"
-                      }
-                      className="flex items-center gap-1"
-                    >
-                      {isOverdue(record.next_service_date) ? (
-                        <AlertCircle className="h-3 w-3" />
-                      ) : isUpcoming(record.next_service_date) ? (
-                        <Calendar className="h-3 w-3" />
-                      ) : (
-                        <CheckCircle className="h-3 w-3" />
-                      )}
-                      {formatDate(record.next_service_date)}
-                    </Badge>
-                  )}
-                  {record.next_service_mileage && (
-                    <Badge variant="outline" className="flex items-center gap-1">
-                      <Gauge className="h-3 w-3" />
-                      {record.next_service_mileage.toLocaleString("es-ES")} km
-                    </Badge>
-                  )}
-                </div>
-              </div>
-            )}
 
             {record.notes && (
               <div className="border-border border-t pt-3">

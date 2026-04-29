@@ -71,7 +71,7 @@ export function Dashboard({ user, profile, vehicles, maintenanceRecords, upcomin
       </div>
 
       {/* Dashboard Stats */}
-      <DashboardStats vehicles={vehicles} maintenanceRecords={maintenanceRecords} isLoading={isLoading} />
+      <DashboardStats vehicles={vehicles} maintenanceRecords={maintenanceRecords} scheduledServices={upcomingMaintenance} isLoading={isLoading} />
 
       {/* Main Content Grid */}
       <div className="mt-10 grid gap-8 lg:grid-cols-3">
