@@ -127,21 +127,13 @@
     @apply border-border outline-ring/50;
   }
 
-  /* 2. Document-level defaults */
-  html {
-    color-scheme: light dark;
-    interpolate-size: allow-keywords;
-    -webkit-text-size-adjust: 100%;
-    text-size-adjust: 100%;
-  }
-
-  /* 3. Selection theming */
+  /* 2. Selection theming */
   ::selection {
     background-color: var(--primary);
     color: var(--primary-foreground);
   }
 
-  /* 4. Body typography */
+  /* 3. Body typography */
   body {
     @apply bg-background text-foreground antialiased;
     line-height: 1.5;
@@ -151,7 +143,7 @@
       "calt" 1;
   }
 
-  /* 5. Heading typography */
+  /* 4. Heading typography */
   h1, h2, h3, h4, h5, h6 {
     text-wrap: balance;
   }
@@ -164,7 +156,7 @@
     overflow-wrap: break-word;
   }
 
-  /* 6. Media defaults */
+  /* 5. Media defaults */
   img,
   picture,
   video,
@@ -175,7 +167,7 @@
     height: auto;
   }
 
-  /* 7. Form controls theming */
+  /* 6 Form controls theming */
   input,
   textarea,
   select,
@@ -190,7 +182,7 @@
     min-height: 2.5rem;
   }
 
-  /* 8. Native dialog / popover backdrop */
+  /* 7. Native dialog / popover backdrop */
   dialog::backdrop,
   [popover]::backdrop {
     background-color: hsl(0 0% 0% / 0.5);
@@ -198,7 +190,7 @@
     -webkit-backdrop-filter: blur(4px);
   }
 
-  /* 9. Scrollbar theming (Firefox + WebKit fallback) */
+  /* 8. Scrollbar theming (Firefox + WebKit fallback) */
   * {
     scrollbar-color: var(--muted) transparent;
     scrollbar-width: thin;
@@ -208,26 +200,26 @@
     scrollbar-color: var(--muted) transparent;
   }
 
-  /* 10. List reset for navs (semantic lists that don't look like lists) */
+  /* 9. List reset for navs (semantic lists that don't look like lists) */
   :where(ul, ol):where([role="list"]) {
     list-style: none;
     padding: 0;
     margin: 0;
   }
 
-  /* 11. Anchor defaults */
+  /* 10. Anchor defaults */
   a:not([class]) {
     text-decoration-skip-ink: auto;
     color: currentColor;
   }
 
-  /* 12. Table defaults */
+  /* 11. Table defaults */
   table {
     border-collapse: collapse;
     text-indent: 0;
   }
 
-  /* 13. Reduced motion */
+  /* 12. Reduced motion */
   @media (prefers-reduced-motion: reduce) {
     *,
     *::before,
@@ -239,7 +231,13 @@
     }
   }
 
-  /* 14. High contrast mode support */
+  @media (prefers-reduced-motion: no-preference) {
+  html {
+    interpolate-size: allow-keywords;
+  }
+}
+
+  /* 13. High contrast mode support */
   @media (prefers-contrast: more) {
     *,
     *::before,
