@@ -8,6 +8,7 @@ import { RecentActivity } from "@/components/dashboard/recent-activity"
 import { UpcomingMaintenance } from "@/components/dashboard/upcoming-maintenance"
 import { VehicleOverview } from "@/components/dashboard/vehicle-overview"
 import { DashboardSkeleton } from "@/components/skeletons/dashboard-skeleton"
+import type { ScheduledService } from "@/contexts"
 
 interface Vehicle {
   id: string
@@ -36,7 +37,7 @@ interface DashboardProps {
   profile: Profile | null
   vehicles: Vehicle[]
   maintenanceRecords: any[]
-  upcomingMaintenance: any[]
+  upcomingMaintenance: ScheduledService[]
   isLoading?: boolean
 }
 
