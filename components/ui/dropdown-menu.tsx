@@ -6,15 +6,138 @@ import { CheckIcon, ChevronRightIcon, CircleIcon } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 
-const DropdownMenu = DropdownMenuPrimitive.Root
+// ── Internal context to share open state between Root and Trigger ──────────
+
+interface DropdownMenuInternalContextValue {
+  open: boolean
+  setOpen: (open: boolean) => void
+}
+
+const DropdownMenuInternalContext = React.createContext<DropdownMenuInternalContextValue | null>(null)
+
+function useDropdownMenuInternal() {
+  const context = React.useContext(DropdownMenuInternalContext)
+  if (!context) {
+    throw new Error("DropdownMenuTrigger must be used within DropdownMenu")
+  }
+  return context
+}
+
+// ── DropdownMenu wrapper (always controlled internally so the Trigger can toggle it) ──
+
+function DropdownMenu({
+  open: openProp,
+  onOpenChange,
+  children,
+  ...props
+}: React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Root>) {
+  const [internalOpen, setInternalOpen] = React.useState(false)
+  const isControlled = openProp !== undefined
+  const open = isControlled ? openProp : internalOpen
+
+  const setOpen = React.useCallback(
+    (value: boolean) => {
+      if (!isControlled) {
+        setInternalOpen(value)
+      }
+      onOpenChange?.(value)
+    },
+    [isControlled, onOpenChange]
+  )
+
+  return (
+    <DropdownMenuInternalContext.Provider value={{ open, setOpen }}>
+      <DropdownMenuPrimitive.Root open={open} onOpenChange={setOpen} {...props}>
+        {children}
+      </DropdownMenuPrimitive.Root>
+    </DropdownMenuInternalContext.Provider>
+  )
+}
 
 const DropdownMenuPortal = DropdownMenuPrimitive.Portal
+
+// ── DropdownMenuTrigger (touch-scroll safe) ────────────────────────────────
+// Radix opens the menu on pointerDown and calls preventDefault(), which blocks
+// native scrolling on mobile. We intercept touch pointerDown in capture phase
+// so Radix never sees it, then manually toggle the menu on pointerUp if the
+// user did not scroll.
 
 const DropdownMenuTrigger = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.Trigger>,
   React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Trigger>
->(({ ...props }, ref) => <DropdownMenuPrimitive.Trigger ref={ref} data-slot="dropdown-menu-trigger" {...props} />)
+>(({ children, ...props }, forwardedRef) => {
+  const { open, setOpen } = useDropdownMenuInternal()
+  const wrapperRef = React.useRef<HTMLDivElement>(null)
+  const touchStartPos = React.useRef<{ x: number; y: number } | null>(null)
+  const hasScrolled = React.useRef(false)
+
+  React.useEffect(() => {
+    const wrapper = wrapperRef.current
+    if (!wrapper) return
+
+    const SCROLL_THRESHOLD = 10
+
+    const handlePointerDown = (e: PointerEvent) => {
+      if (e.pointerType !== "touch") return
+      touchStartPos.current = { x: e.clientX, y: e.clientY }
+      hasScrolled.current = false
+    }
+
+    const handlePointerMove = (e: PointerEvent) => {
+      if (e.pointerType !== "touch" || !touchStartPos.current) return
+      const dx = Math.abs(e.clientX - touchStartPos.current.x)
+      const dy = Math.abs(e.clientY - touchStartPos.current.y)
+      if (dx > SCROLL_THRESHOLD || dy > SCROLL_THRESHOLD) {
+        hasScrolled.current = true
+      }
+    }
+
+    // Capture phase: stop Radix from receiving touch pointerDown so it cannot
+    // call preventDefault() and block scrolling.
+    const handleCapturePointerDown = (e: PointerEvent) => {
+      if (e.pointerType !== "touch") return
+      e.stopImmediatePropagation()
+
+      touchStartPos.current = { x: e.clientX, y: e.clientY }
+      hasScrolled.current = false
+    }
+
+    // On pointerUp, toggle the menu only when the user did not scroll.
+    const handleCapturePointerUp = (e: PointerEvent) => {
+      if (e.pointerType !== "touch") return
+
+      if (!hasScrolled.current) {
+        setOpen(!open)
+      }
+
+      hasScrolled.current = false
+      touchStartPos.current = null
+    }
+
+    wrapper.addEventListener("pointerdown", handlePointerDown)
+    wrapper.addEventListener("pointermove", handlePointerMove)
+    wrapper.addEventListener("pointerdown", handleCapturePointerDown, true)
+    wrapper.addEventListener("pointerup", handleCapturePointerUp, true)
+
+    return () => {
+      wrapper.removeEventListener("pointerdown", handlePointerDown)
+      wrapper.removeEventListener("pointermove", handlePointerMove)
+      wrapper.removeEventListener("pointerdown", handleCapturePointerDown, true)
+      wrapper.removeEventListener("pointerup", handleCapturePointerUp, true)
+    }
+  }, [open, setOpen])
+
+  return (
+    <div ref={wrapperRef} className="inline-block" style={{ touchAction: "pan-y" }}>
+      <DropdownMenuPrimitive.Trigger ref={forwardedRef} data-slot="dropdown-menu-trigger" {...props}>
+        {children}
+      </DropdownMenuPrimitive.Trigger>
+    </div>
+  )
+})
 DropdownMenuTrigger.displayName = DropdownMenuPrimitive.Trigger.displayName
+
+// ── Remaining Radix exports (unchanged behaviour) ──────────────────────────
 
 const DropdownMenuContent = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.Content>,
