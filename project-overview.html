@@ -1,0 +1,1123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Keepel — Project Overview</title>
+  <style>
+    :root {
+      --bg: #0a0a0f;
+      --surface: #111118;
+      --surface-hover: #1a1a24;
+      --border: #252535;
+      --text: #e2e2ec;
+      --text-secondary: #9090a0;
+      --text-muted: #606070;
+      --accent: #6366f1;
+      --accent-soft: #6366f11a;
+      --accent-glow: #6366f133;
+      --green: #22c55e;
+      --green-soft: #22c55e1a;
+      --amber: #f59e0b;
+      --amber-soft: #f59e0b1a;
+      --rose: #f43f5e;
+      --rose-soft: #f43f5e1a;
+      --cyan: #06b6d4;
+      --cyan-soft: #06b6d41a;
+      --radius: 12px;
+      --radius-sm: 8px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html {
+      scroll-behavior: smooth;
+      scroll-padding-top: 80px;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Navigation */
+    .nav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      background: rgba(10, 10, 15, 0.8);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      z-index: 100;
+      padding: 0 24px;
+    }
+
+    .nav-inner {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 64px;
+    }
+
+    .nav-logo {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--accent);
+      letter-spacing: -0.02em;
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 4px;
+      list-style: none;
+    }
+
+    .nav-links a {
+      color: var(--text-secondary);
+      text-decoration: none;
+      font-size: 0.875rem;
+      font-weight: 500;
+      padding: 6px 12px;
+      border-radius: var(--radius-sm);
+      transition: all 0.2s;
+    }
+
+    .nav-links a:hover {
+      color: var(--text);
+      background: var(--surface-hover);
+    }
+
+    /* Layout */
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 96px 24px 64px;
+    }
+
+    section {
+      margin-bottom: 80px;
+    }
+
+    /* Hero */
+    .hero {
+      text-align: center;
+      padding: 48px 0 64px;
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      background: var(--accent-soft);
+      border: 1px solid var(--accent-glow);
+      border-radius: 100px;
+      font-size: 0.875rem;
+      color: var(--accent);
+      font-weight: 500;
+      margin-bottom: 24px;
+    }
+
+    .hero-badge .dot {
+      width: 8px; height: 8px;
+      background: var(--accent);
+      border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    .hero h1 {
+      font-size: clamp(2.5rem, 6vw, 4rem);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      line-height: 1.1;
+      margin-bottom: 20px;
+    }
+
+    .hero h1 span {
+      background: linear-gradient(135deg, var(--accent), #a78bfa);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero p {
+      font-size: 1.25rem;
+      color: var(--text-secondary);
+      max-width: 600px;
+      margin: 0 auto 32px;
+    }
+
+    .hero-meta {
+      display: flex;
+      justify-content: center;
+      gap: 24px;
+      flex-wrap: wrap;
+    }
+
+    .hero-meta-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.875rem;
+      color: var(--text-muted);
+    }
+
+    .hero-meta-item svg {
+      width: 16px; height: 16px;
+      color: var(--text-secondary);
+    }
+
+    /* Section headers */
+    .section-header {
+      margin-bottom: 32px;
+    }
+
+    .section-header h2 {
+      font-size: 1.75rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin-bottom: 8px;
+    }
+
+    .section-header p {
+      color: var(--text-secondary);
+      font-size: 1rem;
+    }
+
+    /* Cards */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      transition: border-color 0.2s, transform 0.2s;
+    }
+
+    .card:hover {
+      border-color: var(--accent-glow);
+      transform: translateY(-2px);
+    }
+
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 16px;
+    }
+
+    .card-grid-2 {
+      grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+    }
+
+    /* Feature cards */
+    .feature-icon {
+      width: 40px; height: 40px;
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 16px;
+      font-size: 1.25rem;
+    }
+
+    .feature-icon.blue { background: var(--accent-soft); }
+    .feature-icon.green { background: var(--green-soft); }
+    .feature-icon.amber { background: var(--amber-soft); }
+    .feature-icon.rose { background: var(--rose-soft); }
+    .feature-icon.cyan { background: var(--cyan-soft); }
+
+    .feature-title {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+
+    .feature-desc {
+      font-size: 0.875rem;
+      color: var(--text-secondary);
+      line-height: 1.5;
+    }
+
+    /* Tech Stack */
+    .stack-section {
+      margin-bottom: 24px;
+    }
+
+    .stack-section h3 {
+      font-size: 0.875rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .stack-section h3 .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 100px;
+      font-size: 0.75rem;
+      text-transform: none;
+      letter-spacing: 0;
+      font-weight: 500;
+    }
+
+    .badge-blue { background: var(--accent-soft); color: var(--accent); }
+    .badge-green { background: var(--green-soft); color: var(--green); }
+    .badge-amber { background: var(--amber-soft); color: var(--amber); }
+    .badge-cyan { background: var(--cyan-soft); color: var(--cyan); }
+
+    .stack-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .stack-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 14px;
+      background: var(--surface-hover);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      font-size: 0.875rem;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+
+    .stack-item:hover {
+      border-color: var(--accent-glow);
+      background: var(--surface);
+    }
+
+    /* Architecture */
+    .arch-flow {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .arch-layer {
+      display: flex;
+      align-items: stretch;
+      gap: 12px;
+    }
+
+    .arch-box {
+      flex: 1;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 16px;
+      min-height: 80px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .arch-box h4 {
+      font-size: 0.875rem;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .arch-box p {
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+    }
+
+    .arch-arrow {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      padding: 4px 0;
+    }
+
+    /* Data Flow Diagram */
+    .flow-diagram {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 32px;
+      overflow-x: auto;
+    }
+
+    .flow-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    .flow-node {
+      padding: 12px 20px;
+      background: var(--surface-hover);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      font-size: 0.875rem;
+      font-weight: 500;
+      white-space: nowrap;
+      min-width: 140px;
+      text-align: center;
+    }
+
+    .flow-node.accent {
+      background: var(--accent-soft);
+      border-color: var(--accent-glow);
+      color: var(--accent);
+    }
+
+    .flow-arrow {
+      color: var(--text-muted);
+      font-size: 1.25rem;
+    }
+
+    .flow-label {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      text-align: center;
+      margin-top: -12px;
+      margin-bottom: 16px;
+    }
+
+    /* Tables */
+    .table-wrap {
+      overflow-x: auto;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.875rem;
+    }
+
+    th, td {
+      padding: 12px 16px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+
+    th {
+      background: var(--surface-hover);
+      font-weight: 600;
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      color: var(--text-muted);
+    }
+
+    tr:last-child td { border-bottom: none; }
+
+    tr:hover td { background: var(--surface-hover); }
+
+    code {
+      font-family: "JetBrains Mono", "Fira Code", "SF Mono", Consolas, monospace;
+      font-size: 0.85em;
+      padding: 2px 6px;
+      background: var(--surface-hover);
+      border-radius: 4px;
+      color: var(--accent);
+    }
+
+    /* Directory tree */
+    .tree {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      font-family: "JetBrains Mono", "Fira Code", "SF Mono", Consolas, monospace;
+      font-size: 0.875rem;
+      line-height: 1.8;
+      overflow-x: auto;
+    }
+
+    .tree-line {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .tree-indent { color: var(--text-muted); user-select: none; }
+    .tree-dir { color: var(--accent); font-weight: 600; }
+    .tree-file { color: var(--text-secondary); }
+    .tree-comment { color: var(--text-muted); margin-left: 16px; }
+
+    /* Timeline / Roadmap */
+    .timeline {
+      position: relative;
+      padding-left: 24px;
+    }
+
+    .timeline::before {
+      content: "";
+      position: absolute;
+      left: 6px;
+      top: 8px;
+      bottom: 8px;
+      width: 2px;
+      background: var(--border);
+      border-radius: 2px;
+    }
+
+    .timeline-item {
+      position: relative;
+      margin-bottom: 24px;
+    }
+
+    .timeline-item::before {
+      content: "";
+      position: absolute;
+      left: -22px;
+      top: 6px;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--surface);
+      border: 2px solid var(--border);
+    }
+
+    .timeline-item.active::before {
+      background: var(--accent);
+      border-color: var(--accent);
+      box-shadow: 0 0 0 4px var(--accent-glow);
+    }
+
+    .timeline-item.planned::before {
+      background: var(--surface);
+      border-color: var(--amber);
+    }
+
+    .timeline-title {
+      font-weight: 600;
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .timeline-tag {
+      font-size: 0.75rem;
+      padding: 2px 8px;
+      border-radius: 100px;
+      font-weight: 500;
+    }
+
+    .timeline-list {
+      list-style: none;
+      font-size: 0.875rem;
+      color: var(--text-secondary);
+    }
+
+    .timeline-list li {
+      padding: 3px 0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .timeline-list li::before {
+      content: "—";
+      color: var(--text-muted);
+    }
+
+    /* Footer */
+    .footer {
+      border-top: 1px solid var(--border);
+      padding: 40px 0;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 0.875rem;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .nav-links { display: none; }
+      .hero-meta { flex-direction: column; gap: 8px; }
+      .card-grid-2 { grid-template-columns: 1fr; }
+      .arch-layer { flex-direction: column; }
+      .flow-row { flex-direction: column; }
+      .flow-arrow { transform: rotate(90deg); }
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+  </style>
+</head>
+<body>
+
+  <!-- Navigation -->
+  <nav class="nav">
+    <div class="nav-inner">
+      <div class="nav-logo">Keepel</div>
+      <ul class="nav-links">
+        <li><a href="#overview">Overview</a></li>
+        <li><a href="#features">Features</a></li>
+        <li><a href="#tech">Tech Stack</a></li>
+        <li><a href="#architecture">Architecture</a></li>
+        <li><a href="#schema">Schema</a></li>
+        <li><a href="#structure">Structure</a></li>
+        <li><a href="#roadmap">Roadmap</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <div class="container">
+
+    <!-- Hero -->
+    <div class="hero">
+      <div class="hero-badge">
+        <span class="dot"></span>
+        CarCare / Keepel Project
+      </div>
+      <h1>Automotive Maintenance<br><span>Management System</span></h1>
+      <p>A modern, responsive web application to register vehicles, track maintenance history, schedule services, and monitor costs from any device.</p>
+      <div class="hero-meta">
+        <div class="hero-meta-item">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+          v1.1 In Development
+        </div>
+        <div class="hero-meta-item">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+          MIT License
+        </div>
+        <div class="hero-meta-item">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path></svg>
+          Next.js 16 + Supabase
+        </div>
+      </div>
+    </div>
+
+    <!-- Overview -->
+    <section id="overview">
+      <div class="section-header">
+        <h2>Project Overview</h2>
+        <p>What Keepel is and what problem it solves.</p>
+      </div>
+      <div class="card-grid">
+        <div class="card">
+          <div class="feature-icon blue">🚗</div>
+          <div class="feature-title">Vehicle Management</div>
+          <div class="feature-desc">Register and manage multiple vehicles with detailed profiles, specifications, and service histories in one place.</div>
+        </div>
+        <div class="card">
+          <div class="feature-icon green">🔧</div>
+          <div class="feature-title">Maintenance Tracking</div>
+          <div class="feature-desc">Log every service, repair, and inspection with dates, costs, notes, and receipts for complete historical records.</div>
+        </div>
+        <div class="card">
+          <div class="feature-icon amber">📅</div>
+          <div class="feature-title">Service Scheduling</div>
+          <div class="feature-desc">Schedule future maintenance tasks and get reminders so you never miss an oil change, tire rotation, or inspection.</div>
+        </div>
+        <div class="card">
+          <div class="feature-icon rose">📊</div>
+          <div class="feature-title">Cost Analytics</div>
+          <div class="feature-desc">Monitor maintenance spending over time with charts and reports. Compare costs across vehicles and categories.</div>
+        </div>
+        <div class="card">
+          <div class="feature-icon cyan">📱</div>
+          <div class="feature-title">Responsive & Fast</div>
+          <div class="feature-desc">Built with Next.js App Router and TailwindCSS. Works seamlessly on desktop, tablet, and mobile devices.</div>
+        </div>
+        <div class="card">
+          <div class="feature-icon blue">🔐</div>
+          <div class="feature-title">Secure by Default</div>
+          <div class="feature-desc">Row Level Security, JWT auth with Supabase, rate limiting, and input validation keep your data safe.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Tech Stack -->
+    <section id="tech">
+      <div class="section-header">
+        <h2>Technology Stack</h2>
+        <p>The tools, frameworks, and services that power Keepel.</p>
+      </div>
+
+      <div class="card" style="margin-bottom: 16px;">
+        <div class="stack-section">
+          <h3>
+            Frontend
+            <span class="badge badge-blue">Client</span>
+          </h3>
+          <div class="stack-grid">
+            <div class="stack-item">Next.js 16 <span style="color:var(--text-muted);font-size:0.8em">App Router</span></div>
+            <div class="stack-item">React 19</div>
+            <div class="stack-item">TypeScript 5</div>
+            <div class="stack-item">TailwindCSS 4</div>
+            <div class="stack-item">shadcn/ui <span style="color:var(--text-muted);font-size:0.8em">Radix UI</span></div>
+            <div class="stack-item">lucide-react</div>
+            <div class="stack-item">react-hook-form</div>
+            <div class="stack-item">Zod</div>
+            <div class="stack-item">recharts</div>
+            <div class="stack-item">sonner <span style="color:var(--text-muted);font-size:0.8em">Toasts</span></div>
+            <div class="stack-item">next-themes</div>
+            <div class="stack-item">date-fns</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom: 16px;">
+        <div class="stack-section">
+          <h3>
+            Backend & Database
+            <span class="badge badge-green">Server</span>
+          </h3>
+          <div class="stack-grid">
+            <div class="stack-item">Supabase <span style="color:var(--text-muted);font-size:0.8em">BaaS</span></div>
+            <div class="stack-item">PostgreSQL</div>
+            <div class="stack-item">Supabase Auth <span style="color:var(--text-muted);font-size:0.8em">JWT + Google OAuth</span></div>
+            <div class="stack-item">Supabase Storage</div>
+            <div class="stack-item">RLS <span style="color:var(--text-muted);font-size:0.8em">Row Level Security</span></div>
+            <div class="stack-item">@upstash/ratelimit</div>
+            <div class="stack-item">@upstash/redis</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="stack-section">
+          <h3>
+            Build & Tools
+            <span class="badge badge-amber">DevOps</span>
+          </h3>
+          <div class="stack-grid">
+            <div class="stack-item">bun <span style="color:var(--text-muted);font-size:0.8em">Package Manager</span></div>
+            <div class="stack-item">Turbopack</div>
+            <div class="stack-item">Oxlint</div>
+            <div class="stack-item">Oxfmt</div>
+            <div class="stack-item">@vercel/analytics</div>
+            <div class="stack-item">@openpanel/nextjs</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Architecture -->
+    <section id="architecture">
+      <div class="section-header">
+        <h2>Architecture</h2>
+        <p>How the application is structured and how data flows.</p>
+      </div>
+
+      <div class="card" style="margin-bottom: 24px;">
+        <h3 style="font-size:1rem;margin-bottom:20px;">Application Layers</h3>
+        <div class="arch-flow">
+          <div class="arch-layer">
+            <div class="arch-box">
+              <h4>App Router</h4>
+              <p>Pages, layouts, Server Actions, API routes</p>
+            </div>
+            <div class="arch-box">
+              <h4>Components</h4>
+              <p>UI and feature-specific React components</p>
+            </div>
+          </div>
+          <div class="arch-arrow">▼</div>
+          <div class="arch-layer">
+            <div class="arch-box">
+              <h4>Contexts</h4>
+              <p>Auth state, data state, Supabase client</p>
+            </div>
+            <div class="arch-box">
+              <h4>Hooks</h4>
+              <p>Custom React hooks for reusable logic</p>
+            </div>
+          </div>
+          <div class="arch-arrow">▼</div>
+          <div class="arch-layer">
+            <div class="arch-box">
+              <h4>Lib / Utils</h4>
+              <p>AuthManager, Supabase clients, formatters, rate limiting</p>
+            </div>
+            <div class="arch-box">
+              <h4>Supabase</h4>
+              <p>PostgreSQL database with RLS policies</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom: 24px;">
+        <h3 style="font-size:1rem;margin-bottom:20px;">Authentication Flow</h3>
+        <div class="flow-diagram">
+          <div class="flow-row">
+            <div class="flow-node">AuthManager</div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-node">BroadcastChannel</div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-node">AuthProvider</div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-node">DataProvider</div>
+          </div>
+          <div class="flow-label">Singleton manages Supabase client and broadcasts state changes to React context layers</div>
+
+          <div class="flow-row">
+            <div class="flow-node accent">User Action</div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-node">Server Action</div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-node">RLS Policy</div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-node accent">Database</div>
+          </div>
+          <div class="flow-label">Every server action authenticates the user; RLS validates auth.uid() on every query</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3 style="font-size:1rem;margin-bottom:20px;">Data Flow</h3>
+        <div class="flow-diagram">
+          <div class="flow-row">
+            <div class="flow-node">Server Component</div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-node accent">createClient()</div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-node">Supabase</div>
+          </div>
+          <div class="flow-label">Server Components use the server-side Supabase client directly</div>
+
+          <div class="flow-row">
+            <div class="flow-node">Client Component</div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-node accent">useSupabase()</div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-node">Supabase</div>
+          </div>
+          <div class="flow-label">Client Components access Supabase via the React context hook</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Route Protection -->
+    <section>
+      <div class="section-header">
+        <h2>Route Protection</h2>
+        <p>Middleware and access rules for application routes.</p>
+      </div>
+      <div class="card-grid card-grid-2">
+        <div class="card">
+          <div class="feature-icon blue">🔓</div>
+          <div class="feature-title">Guest Routes <code>/auth/*</code></div>
+          <div class="feature-desc">Only accessible to unauthenticated users. Authenticated visitors are redirected to <code>/</code> (dashboard).</div>
+        </div>
+        <div class="card">
+          <div class="feature-icon green">🔒</div>
+          <div class="feature-title">Protected Routes <code>/vehicles/*</code></div>
+          <div class="feature-desc">Require authentication. Unauthenticated users are redirected to <code>/auth/login</code>.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Database Schema -->
+    <section id="schema">
+      <div class="section-header">
+        <h2>Database Schema</h2>
+        <p>PostgreSQL tables with Row Level Security enabled.</p>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Table</th>
+              <th>Purpose</th>
+              <th>Relationships</th>
+              <th>Security</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>profiles</code></td>
+              <td>User profiles (1:1 with auth.users)</td>
+              <td>Linked to <code>auth.users</code></td>
+              <td>RLS enforced</td>
+            </tr>
+            <tr>
+              <td><code>vehicles</code></td>
+              <td>User vehicles and specifications</td>
+              <td>1:N with <code>profiles</code></td>
+              <td>RLS enforced</td>
+            </tr>
+            <tr>
+              <td><code>maintenance_records</code></td>
+              <td>Service and repair history</td>
+              <td>1:N with <code>vehicles</code></td>
+              <td>RLS enforced</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Directory Structure -->
+    <section id="structure">
+      <div class="section-header">
+        <h2>Directory Structure</h2>
+        <p>How the codebase is organized.</p>
+      </div>
+      <div class="tree">
+        <div class="tree-line"><span class="tree-dir">CarCare/</span></div>
+        <div class="tree-line"><span class="tree-indent">├── </span><span class="tree-dir">app/</span><span class="tree-comment"># Next.js App Router</span></div>
+        <div class="tree-line"><span class="tree-indent">│   ├── </span><span class="tree-dir">api/</span><span class="tree-comment"># API routes</span></div>
+        <div class="tree-line"><span class="tree-indent">│   ├── </span><span class="tree-dir">auth/</span><span class="tree-comment"># Auth pages + Server Actions</span></div>
+        <div class="tree-line"><span class="tree-indent">│   ├── </span><span class="tree-dir">vehicles/</span><span class="tree-comment"># Vehicle pages</span></div>
+        <div class="tree-line"><span class="tree-indent">│   ├── </span><span class="tree-file">globals.css</span><span class="tree-comment"># Global styles + Tailwind theme</span></div>
+        <div class="tree-line"><span class="tree-indent">│   ├── </span><span class="tree-file">layout.tsx</span><span class="tree-comment"># Root layout</span></div>
+        <div class="tree-line"><span class="tree-indent">│   └── </span><span class="tree-file">page.tsx</span><span class="tree-comment"># Landing / Dashboard</span></div>
+        <div class="tree-line"><span class="tree-indent">│</span></div>
+        <div class="tree-line"><span class="tree-indent">├── </span><span class="tree-dir">components/</span><span class="tree-comment"># React components</span></div>
+        <div class="tree-line"><span class="tree-indent">│   ├── </span><span class="tree-dir">analytics/</span><span class="tree-comment"># Analytics barrel export</span></div>
+        <div class="tree-line"><span class="tree-indent">│   ├── </span><span class="tree-dir">auth/</span><span class="tree-comment"># Auth components</span></div>
+        <div class="tree-line"><span class="tree-indent">│   ├── </span><span class="tree-dir">dashboard/</span><span class="tree-comment"># Dashboard components</span></div>
+        <div class="tree-line"><span class="tree-indent">│   ├── </span><span class="tree-dir">home/</span><span class="tree-comment"># Landing page sections</span></div>
+        <div class="tree-line"><span class="tree-indent">│   ├── </span><span class="tree-dir">layout/</span><span class="tree-comment"># Header, Layout</span></div>
+        <div class="tree-line"><span class="tree-indent">│   ├── </span><span class="tree-dir">maintenance/</span><span class="tree-comment"># Maintenance CRUD</span></div>
+        <div class="tree-line"><span class="tree-indent">│   ├── </span><span class="tree-dir">skeletons/</span><span class="tree-comment"># Loading skeletons</span></div>
+        <div class="tree-line"><span class="tree-indent">│   ├── </span><span class="tree-dir">ui/</span><span class="tree-comment"># shadcn/ui components</span></div>
+        <div class="tree-line"><span class="tree-indent">│   └── </span><span class="tree-dir">vehicles/</span><span class="tree-comment"># Vehicle CRUD</span></div>
+        <div class="tree-line"><span class="tree-indent">│</span></div>
+        <div class="tree-line"><span class="tree-indent">├── </span><span class="tree-dir">contexts/</span><span class="tree-comment"># React Contexts</span></div>
+        <div class="tree-line"><span class="tree-indent">│   ├── </span><span class="tree-file">AppProviders.tsx</span><span class="tree-comment"># Root provider tree</span></div>
+        <div class="tree-line"><span class="tree-indent">│   ├── </span><span class="tree-file">AuthContext.tsx</span><span class="tree-comment"># Auth state</span></div>
+        <div class="tree-line"><span class="tree-indent">│   ├── </span><span class="tree-file">DataContext.tsx</span><span class="tree-comment"># App data + optimistic updates</span></div>
+        <div class="tree-line"><span class="tree-indent">│   └── </span><span class="tree-file">SupabaseContext.tsx</span><span class="tree-comment"># Supabase client</span></div>
+        <div class="tree-line"><span class="tree-indent">│</span></div>
+        <div class="tree-line"><span class="tree-indent">├── </span><span class="tree-dir">hooks/</span><span class="tree-comment"># Custom React hooks</span></div>
+        <div class="tree-line"><span class="tree-indent">│</span></div>
+        <div class="tree-line"><span class="tree-indent">├── </span><span class="tree-dir">lib/</span><span class="tree-comment"># Utilities & config</span></div>
+        <div class="tree-line"><span class="tree-indent">│   ├── </span><span class="tree-dir">auth/</span><span class="tree-comment"># AuthManager singleton</span></div>
+        <div class="tree-line"><span class="tree-indent">│   ├── </span><span class="tree-dir">supabase/</span><span class="tree-comment"># Client, server, middleware</span></div>
+        <div class="tree-line"><span class="tree-indent">│   ├── </span><span class="tree-file">formatters.ts</span><span class="tree-comment"># Data formatters</span></div>
+        <div class="tree-line"><span class="tree-indent">│   ├── </span><span class="tree-file">ratelimit.ts</span><span class="tree-comment"># Rate limiting config</span></div>
+        <div class="tree-line"><span class="tree-indent">│   └── </span><span class="tree-file">utils.ts</span><span class="tree-comment"># General utilities</span></div>
+        <div class="tree-line"><span class="tree-indent">│</span></div>
+        <div class="tree-line"><span class="tree-indent">├── </span><span class="tree-dir">scripts/</span><span class="tree-comment"># SQL migrations</span></div>
+        <div class="tree-line"><span class="tree-indent">├── </span><span class="tree-dir">styles/</span><span class="tree-comment"># Additional styles</span></div>
+        <div class="tree-line"><span class="tree-indent">├── </span><span class="tree-dir">public/</span><span class="tree-comment"># Static assets</span></div>
+        <div class="tree-line"><span class="tree-indent">├── </span><span class="tree-file">middleware.ts</span><span class="tree-comment"># Session refresh + route protection</span></div>
+        <div class="tree-line"><span class="tree-indent">├── </span><span class="tree-file">next.config.mjs</span><span class="tree-comment"># Next.js config</span></div>
+        <div class="tree-line"><span class="tree-indent">└── </span><span class="tree-file">package.json</span></div>
+      </div>
+    </section>
+
+    <!-- Key Files & Hooks -->
+    <section>
+      <div class="section-header">
+        <h2>Key Files & Hooks</h2>
+        <p>Quick reference for the most important files and hooks.</p>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Item</th>
+              <th>Path</th>
+              <th>Exposes</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>useAuth()</code></td>
+              <td><code>@/contexts</code></td>
+              <td>user, profile, isAuthenticated, signOut</td>
+            </tr>
+            <tr>
+              <td><code>useData()</code></td>
+              <td><code>@/contexts</code></td>
+              <td>vehicles, maintenance, CRUD methods</td>
+            </tr>
+            <tr>
+              <td><code>useSupabase()</code></td>
+              <td><code>@/contexts</code></td>
+              <td>Raw Supabase client</td>
+            </tr>
+            <tr>
+              <td><code>useProtectedRoute()</code></td>
+              <td><code>@/hooks</code></td>
+              <td>Redirect to login if unauthenticated</td>
+            </tr>
+            <tr>
+              <td><code>useGuestRoute()</code></td>
+              <td><code>@/hooks</code></td>
+              <td>Redirect to <code>/</code> if authenticated</td>
+            </tr>
+            <tr>
+              <td><code>useDashboardData()</code></td>
+              <td><code>@/hooks</code></td>
+              <td>Dashboard data fetching</td>
+            </tr>
+            <tr>
+              <td><code>useAnalytics()</code></td>
+              <td><code>@/hooks</code></td>
+              <td>@openpanel/nextjs integration</td>
+            </tr>
+            <tr>
+              <td><code>useMediaQuery()</code></td>
+              <td><code>@/hooks</code></td>
+              <td>Responsive breakpoint detection</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Code Conventions -->
+    <section>
+      <div class="section-header">
+        <h2>Code Conventions</h2>
+        <p>Naming and import standards used across the codebase.</p>
+      </div>
+      <div class="card-grid card-grid-2">
+        <div class="card">
+          <div class="feature-icon blue">🏷️</div>
+          <div class="feature-title">Naming</div>
+          <div class="feature-desc" style="font-family:monospace;font-size:0.85em;line-height:2;">
+            Files: kebab-case.tsx<br>
+            Components: PascalCase<br>
+            Functions: camelCase<br>
+            Constants: UPPER_SNAKE_CASE<br>
+            Types/Interfaces: PascalCase
+          </div>
+        </div>
+        <div class="card">
+          <div class="feature-icon green">📦</div>
+          <div class="feature-title">Import Order</div>
+          <div class="feature-desc" style="font-size:0.85em;line-height:2;">
+            1. React & Next.js<br>
+            2. External libraries<br>
+            3. Contexts & hooks<br>
+            4. UI components<br>
+            5. Lib utilities<br>
+            6. Types
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Commands -->
+    <section>
+      <div class="section-header">
+        <h2>Development Commands</h2>
+        <p>Common scripts for building and testing.</p>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Command</th>
+              <th>Purpose</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td><code>bun dev</code></td><td>Start development server</td></tr>
+            <tr><td><code>bun build</code></td><td>Production build</td></tr>
+            <tr><td><code>bun start</code></td><td>Start production build</td></tr>
+            <tr><td><code>bun lint</code></td><td>Run oxlint</td></tr>
+            <tr><td><code>bun type-check</code></td><td>TypeScript check (no emit)</td></tr>
+            <tr><td><code>bun format</code></td><td>Format with oxfmt</td></tr>
+            <tr><td><code>bun format:check</code></td><td>Check formatting</td></tr>
+            <tr><td><code>bun clean</code></td><td>Remove .next cache</td></tr>
+            <tr><td><code>bun clean:install</code></td><td>Clean + reinstall dependencies</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Environment -->
+    <section>
+      <div class="section-header">
+        <h2>Environment Variables</h2>
+        <p>Required configuration for local and production environments.</p>
+      </div>
+      <div class="card" style="font-family:monospace;font-size:0.875rem;line-height:2;">
+        <div style="color:var(--text-muted);margin-bottom:8px;"># Supabase (required)</div>
+        <div>NEXT_PUBLIC_SUPABASE_URL=</div>
+        <div>NEXT_PUBLIC_SUPABASE_ANON_KEY=</div>
+        <div style="margin-top:16px;color:var(--text-muted);"># Upstash Redis (required in production)</div>
+        <div>UPSTASH_REDIS_REST_URL=</div>
+        <div>UPSTASH_REDIS_REST_TOKEN=</div>
+        <div style="margin-top:16px;color:var(--text-muted);"># Email redirect URLs</div>
+        <div>NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL=http://localhost:3000/</div>
+        <div>NEXT_PUBLIC_SUPABASE_REDIRECT_URL=https://keepel.chemicaldev.com/</div>
+      </div>
+    </section>
+
+    <!-- Roadmap -->
+    <section id="roadmap">
+      <div class="section-header">
+        <h2>Roadmap</h2>
+        <p>What is planned for future releases.</p>
+      </div>
+      <div class="timeline">
+        <div class="timeline-item active">
+          <div class="timeline-title">
+            v1.1 — In Development
+            <span class="timeline-tag" style="background:var(--accent-soft);color:var(--accent);">Current</span>
+          </div>
+          <ul class="timeline-list">
+            <li>Testing setup with Vitest (unit/integration) and Playwright (e2e)</li>
+            <li>Full REST API for integrations</li>
+            <li>Advanced reports with improved charts</li>
+            <li>Internationalization (i18n) Spanish/English</li>
+            <li>Advanced search with multiple filters</li>
+          </ul>
+        </div>
+        <div class="timeline-item planned">
+          <div class="timeline-title">
+            v1.2 — Planned
+            <span class="timeline-tag" style="background:var(--amber-soft);color:var(--amber);">Planned</span>
+          </div>
+          <ul class="timeline-list">
+            <li>Native mobile app (React Native)</li>
+            <li>OCR for automatic invoice scanning</li>
+            <li>Integration with repair shops</li>
+            <li>Budget management</li>
+            <li>Cost comparison between vehicles</li>
+          </ul>
+        </div>
+        <div class="timeline-item planned">
+          <div class="timeline-title">
+            v2.0 — Future
+            <span class="timeline-tag" style="background:var(--rose-soft);color:var(--rose);">Future</span>
+          </div>
+          <ul class="timeline-list">
+            <li>AI-based maintenance prediction</li>
+            <li>Advanced performance analytics</li>
+            <li>Manufacturer API integrations</li>
+            <li>Services marketplace</li>
+            <li>Recommendation engine</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <div class="footer">
+      <p>Keepel (CarCare) — MIT License — Last updated April 2026</p>
+      <p style="margin-top:8px;font-size:0.8rem;">Repository: github.com/devchemical/CarCare &nbsp;|&nbsp; Demo: keepel.chemicaldev.com</p>
+    </div>
+
+  </div>
+
+</body>
+</html>
