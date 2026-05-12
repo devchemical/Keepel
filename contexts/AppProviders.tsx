@@ -1,6 +1,7 @@
 "use client"
 
 import React from "react"
+import { Toaster } from "sonner"
 import { ContextErrorBoundary } from "@/components/ui/context-error-boundary"
 import { SupabaseProvider } from "./SupabaseContext"
 import { AuthProvider } from "./AuthContext"
@@ -15,7 +16,10 @@ export function AppProviders({ children }: AppProvidersProps) {
     <ContextErrorBoundary>
       <SupabaseProvider>
         <AuthProvider>
-          <DataProvider>{children}</DataProvider>
+          <DataProvider>
+            {children}
+            <Toaster />
+          </DataProvider>
         </AuthProvider>
       </SupabaseProvider>
     </ContextErrorBoundary>

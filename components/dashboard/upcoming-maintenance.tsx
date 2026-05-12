@@ -4,15 +4,20 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Calendar, AlertTriangle, CheckCircle, Car } from "lucide-react"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { Calendar, AlertTriangle, CheckCircle, Car, MoreVertical, Edit } from "lucide-react"
 import Link from "next/link"
+import { useState } from "react"
+import { EditScheduledServiceDialog } from "@/components/maintenance/edit-scheduled-service-dialog"
 
 interface UpcomingMaintenanceRecord {
   id: string
   type: string
+  description?: string
   scheduled_date?: string
   scheduled_mileage?: number
   status: string
+  notes?: string
   vehicles?: {
     make: string
     model: string
@@ -43,6 +48,8 @@ const maintenanceTypes = {
 }
 
 export function UpcomingMaintenance({ upcomingMaintenance, isLoading }: UpcomingMaintenanceProps) {
+  const [editingService, setEditingService] = useState<UpcomingMaintenanceRecord | null>(null)
+
   if (isLoading) {
     return (
       <Card>
@@ -178,6 +185,20 @@ export function UpcomingMaintenance({ upcomingMaintenance, isLoading }: Upcoming
                       )}
                     </div>
                 </div>
+
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                      <MoreVertical className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => setEditingService(maintenance)}>
+                      <Edit className="mr-2 h-4 w-4" />
+                      Editar
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             )
           })}
@@ -191,6 +212,14 @@ export function UpcomingMaintenance({ upcomingMaintenance, isLoading }: Upcoming
           )}
         </div>
       </CardContent>
+
+      {editingService && (
+        <EditScheduledServiceDialog
+          service={editingService}
+          open={!!editingService}
+          onOpenChange={(open) => !open && setEditingService(null)}
+        />
+      )}
     </Card>
   )
 }
