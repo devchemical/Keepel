@@ -65,9 +65,12 @@ export function AddMaintenanceDialog({ children, vehicleId, open: controlledOpen
   const router = useRouter()
   const { trackMaintenanceAction } = useAnalytics()
 
+  // Helper para generar IDs temporales compatibles con todos los navegadores
+  const generateTempId = () => `${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 11)}`
+
   // Lista de servicios múltiples
   const [services, setServices] = useState<ServiceItem[]>([
-    { id: crypto.randomUUID(), type: "", description: "", cost: "" },
+    { id: generateTempId(), type: "", description: "", cost: "" },
   ])
 
   const [formData, setFormData] = useState({
@@ -78,7 +81,7 @@ export function AddMaintenanceDialog({ children, vehicleId, open: controlledOpen
 
   // Funciones para manejar múltiples servicios
   const addService = () => {
-    setServices([...services, { id: crypto.randomUUID(), type: "", description: "", cost: "" }])
+    setServices([...services, { id: generateTempId(), type: "", description: "", cost: "" }])
   }
 
   const removeService = (id: string) => {
@@ -163,7 +166,7 @@ export function AddMaintenanceDialog({ children, vehicleId, open: controlledOpen
       }
 
       // Reset form and close dialog
-      setServices([{ id: crypto.randomUUID(), type: "", description: "", cost: "" }])
+      setServices([{ id: generateTempId(), type: "", description: "", cost: "" }])
       setFormData({
         mileage: "",
         service_date: new Date().toISOString().split("T")[0],
