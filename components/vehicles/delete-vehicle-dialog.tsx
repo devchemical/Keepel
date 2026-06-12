@@ -1,5 +1,7 @@
 "use client"
 
+/* eslint-disable no-console, eslint/no-shadow -- Refresh failures are diagnostic only and dialog error state uses conventional naming. */
+
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { useAnalytics } from "@/hooks/use-analytics"

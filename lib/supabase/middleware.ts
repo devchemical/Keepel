@@ -1,3 +1,5 @@
+/* eslint-disable typescript/no-non-null-assertion -- Supabase env vars are required for middleware session refresh. */
+
 import { createServerClient } from "@supabase/ssr"
 import { NextResponse, type NextRequest } from "next/server"
 

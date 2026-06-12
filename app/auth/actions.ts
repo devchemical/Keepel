@@ -1,5 +1,7 @@
 "use server"
 
+/* eslint-disable no-console -- Server actions log unexpected auth failures until centralized observability is added. */
+
 import { createClient } from "@/lib/supabase/server"
 import { loginRateLimiter, signupRateLimiter } from "@/lib/ratelimit"
 import { headers } from "next/headers"

@@ -3,6 +3,8 @@
 
 "use client"
 
+/* eslint-disable eslint/no-shadow -- Form error state is intentionally named `error` for UI clarity. */
+
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import {

@@ -1,3 +1,5 @@
+/* eslint-disable no-console, typescript/no-non-null-assertion -- OAuth failures are logged locally and production app URL is required when window is unavailable. */
+
 import { useState } from "react"
 import { useAnalytics } from "@/hooks/use-analytics"
 import type { createClient } from "@/lib/supabase/client"

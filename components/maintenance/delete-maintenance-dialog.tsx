@@ -1,5 +1,7 @@
 "use client"
 
+/* eslint-disable no-console, eslint/no-shadow, typescript/no-explicit-any, unicorn/consistent-function-scoping -- Refresh errors are diagnostic only; Supabase timeout race typing and local formatter are intentionally kept here. */
+
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { useAnalytics } from "@/hooks/use-analytics"

@@ -1,5 +1,7 @@
 "use client"
 
+/* eslint-disable eslint/no-shadow -- Local form error state is intentionally named `error` for UI clarity. */
+
 import type React from "react"
 import { Layout } from "../../../components/layout/Layout"
 import { Button } from "@/components/ui/button"

@@ -1,5 +1,7 @@
 "use client"
 
+/* eslint-disable typescript/no-explicit-any -- Dashboard receives Supabase-shaped records until generated database types are introduced. */
+
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { Car, CheckCircle } from "lucide-react"
@@ -71,7 +73,12 @@ export function Dashboard({ vehicles, maintenanceRecords, upcomingMaintenance, i
       </div>
 
       {/* Dashboard Stats */}
-      <DashboardStats vehicles={vehicles} maintenanceRecords={maintenanceRecords} scheduledServices={upcomingMaintenance} isLoading={isLoading} />
+      <DashboardStats
+        vehicles={vehicles}
+        maintenanceRecords={maintenanceRecords}
+        scheduledServices={upcomingMaintenance}
+        isLoading={isLoading}
+      />
 
       {/* Main Content Grid */}
       <div className="mt-10 grid gap-8 lg:grid-cols-3">

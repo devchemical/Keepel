@@ -1,5 +1,7 @@
 "use client"
 
+/* eslint-disable react/jsx-no-constructed-context-values -- Responsive dialog context is tiny and local to dialog composition. */
+
 import * as React from "react"
 import { useMediaQuery } from "@/hooks/use-media-query"
 import {

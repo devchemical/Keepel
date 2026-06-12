@@ -1,5 +1,7 @@
 "use client"
 
+/* eslint-disable react/no-array-index-key -- Static skeleton placeholders are not data-backed and have no stable ids. */
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"

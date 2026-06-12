@@ -1,3 +1,5 @@
+/* eslint-disable no-console -- Callback failures need server-side diagnostics until centralized observability is added. */
+
 import type { NextRequest } from "next/server"
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"

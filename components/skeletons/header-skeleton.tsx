@@ -4,7 +4,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 
 export function HeaderSkeleton() {
   return (
-    <header 
+    <header
       className="border-border/50 fixed top-0 right-0 left-0 z-50 border-b bg-white/80 backdrop-blur-md"
       aria-busy="true"
       role="status"

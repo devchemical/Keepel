@@ -1,5 +1,7 @@
 "use client"
 
+/* eslint-disable react/no-array-index-key, unicorn/consistent-function-scoping -- Static skeleton placeholders have no ids; date helpers stay near usage for readability. */
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -179,11 +181,11 @@ export function UpcomingMaintenance({ upcomingMaintenance, isLoading }: Upcoming
                   </div>
 
                   <div className="mt-1.5 text-xs text-slate-500">
-                      {scheduledDate && formatDate(scheduledDate)}
-                      {maintenance.scheduled_mileage && (
-                        <span> &middot; {maintenance.scheduled_mileage.toLocaleString("es-ES")} km</span>
-                      )}
-                    </div>
+                    {scheduledDate && formatDate(scheduledDate)}
+                    {maintenance.scheduled_mileage && (
+                      <span> &middot; {maintenance.scheduled_mileage.toLocaleString("es-ES")} km</span>
+                    )}
+                  </div>
                 </div>
 
                 <DropdownMenu>

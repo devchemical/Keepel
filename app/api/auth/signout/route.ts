@@ -1,3 +1,5 @@
+/* eslint-disable typescript/no-non-null-assertion -- Supabase env vars are required at startup for auth routes. */
+
 import { createServerClient } from "@supabase/ssr"
 import { cookies } from "next/headers"
 import { NextResponse } from "next/server"

@@ -125,7 +125,7 @@ Keepel cuenta con un **sistema de autenticación de clase empresarial**:
 
 |                                               Frontend                                               |                                        Backend & Database                                         |                                       Tools & Utilities                                       |
 | :--------------------------------------------------------------------------------------------------: | :-----------------------------------------------------------------------------------------------: | :-------------------------------------------------------------------------------------------: |
-|     ![Next.js](https://img.shields.io/badge/Next.js-16.1.1-black?logo=next.js&logoColor=white)      | ![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL-green?logo=supabase&logoColor=white) | ![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?logo=typescript&logoColor=white) |
+|      ![Next.js](https://img.shields.io/badge/Next.js-16.1.1-black?logo=next.js&logoColor=white)      | ![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL-green?logo=supabase&logoColor=white) | ![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?logo=typescript&logoColor=white) |
 |           ![React](https://img.shields.io/badge/React-19-blue?logo=react&logoColor=white)            | ![Supabase Auth](https://img.shields.io/badge/Auth-Supabase-green?logo=supabase&logoColor=white)  |                    ![Zod](https://img.shields.io/badge/Zod-Validation-red)                    |
 | ![TailwindCSS](https://img.shields.io/badge/TailwindCSS-4.1.9-blue?logo=tailwindcss&logoColor=white) |               ![Row Level Security](https://img.shields.io/badge/RLS-Enabled-green)               |         ![React Hook Form](https://img.shields.io/badge/React_Hook_Form-7.60.0-pink)          |
 |                ![shadcn/ui](https://img.shields.io/badge/shadcn/ui-Components-black)                 |              ![Realtime](https://img.shields.io/badge/Realtime-Subscriptions-green)               |                ![Lucide React](https://img.shields.io/badge/Lucide-Icons-blue)                |
@@ -1187,7 +1187,7 @@ Ver el archivo [`LICENSE`](LICENSE) para más detalles.
 
 <div align="center">
 
-**Keepel** - *Mantén tus vehículos en perfecto estado* 🚗✨
+**Keepel** - _Mantén tus vehículos en perfecto estado_ 🚗✨
 
 Desarrollado con ❤️ por [DevChemical](https://github.com/devchemical)
 

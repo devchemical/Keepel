@@ -1,3 +1,5 @@
+/* eslint-disable typescript/no-explicit-any, typescript/no-non-null-assertion -- Supabase cookie adapter exposes loose option objects and env vars are required. */
+
 import { createBrowserClient } from "@supabase/ssr"
 import type { SupabaseClient } from "@supabase/supabase-js"
 

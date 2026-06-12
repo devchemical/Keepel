@@ -1,5 +1,7 @@
 "use client"
 
+/* eslint-disable unicorn/consistent-function-scoping -- Formatters stay inside the component to keep display logic local. */
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"

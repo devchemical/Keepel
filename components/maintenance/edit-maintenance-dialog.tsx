@@ -1,5 +1,7 @@
 "use client"
 
+/* eslint-disable no-console, eslint/no-shadow, typescript/no-explicit-any, typescript/no-non-null-assertion -- Refresh errors are diagnostic only; Supabase timeout race typing and numeric guards are intentionally local. */
+
 import type React from "react"
 
 import { useState, useEffect } from "react"

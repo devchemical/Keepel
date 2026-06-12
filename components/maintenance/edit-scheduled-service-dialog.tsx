@@ -1,17 +1,13 @@
 "use client"
 
+/* eslint-disable typescript/no-non-null-assertion -- Numeric guards validate parsed scheduled mileage before use. */
+
 import type React from "react"
 
 import { useState, useEffect } from "react"
 import { useData } from "@/contexts"
 import { Button } from "@/components/ui/button"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
@@ -127,9 +123,7 @@ export function EditScheduledServiceDialog({ service, open, onOpenChange }: Edit
             <Calendar className="text-primary h-5 w-5" />
             <span>Editar Servicio Programado</span>
           </DialogTitle>
-          <DialogDescription className="text-sm">
-            Modifica los detalles del mantenimiento programado.
-          </DialogDescription>
+          <DialogDescription className="text-sm">Modifica los detalles del mantenimiento programado.</DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -192,7 +186,7 @@ export function EditScheduledServiceDialog({ service, open, onOpenChange }: Edit
             </div>
           </div>
 
-          <div className="border-border bg-muted/30 rounded-md p-2 text-xs text-muted-foreground">
+          <div className="border-border bg-muted/30 text-muted-foreground rounded-md p-2 text-xs">
             Indica al menos una fecha o un kilometraje para programar el servicio.
           </div>
 

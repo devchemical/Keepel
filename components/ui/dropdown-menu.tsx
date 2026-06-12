@@ -1,5 +1,7 @@
 "use client"
 
+/* eslint-disable react/jsx-no-constructed-context-values -- Dropdown item indicator context is tiny and scoped to one menu item subtree. */
+
 import * as React from "react"
 import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu"
 import { CheckIcon, CircleIcon } from "lucide-react"

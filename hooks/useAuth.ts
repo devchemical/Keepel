@@ -1,5 +1,7 @@
 "use client"
 
+/* eslint-disable no-console -- Auth hook logs failures until centralized observability is added. */
+
 import { useState, useEffect, useCallback } from "react"
 import { useSupabase } from "@/hooks/useSupabase"
 
