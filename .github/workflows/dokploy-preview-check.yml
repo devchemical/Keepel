@@ -28,13 +28,12 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           REPOSITORY: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
-          EXPECTED_DOMAIN: ".pr.chemicaldev.com"
+          EXPECTED_HOST_SUFFIX: ".pr.chemicaldev.com"
         shell: bash
         run: |
           set -Eeuo pipefail
 
-          # Se admite un margen porque el webhook de Dokploy puede actualizar
-          # el comentario unos segundos antes de que arranque este workflow.
+          # Margen para evitar aceptar el estado Done de un despliegue anterior.
           WORKFLOW_STARTED_EPOCH=$(date -u +%s)
           MIN_VALID_UPDATE_EPOCH=$((WORKFLOW_STARTED_EPOCH - 120))
 
@@ -43,7 +42,7 @@ jobs:
 
           echo "Esperando la preview de Dokploy para la PR #${PR_NUMBER}..."
 
-          # 48 intentos × 15 segundos = 12 minutos como máximo.
+          # 48 intentos × 15 segundos = 12 minutos.
           for attempt in $(seq 1 48); do
             echo "Intento ${attempt}/48: consultando comentarios de la PR..."
 
@@ -115,17 +114,17 @@ jobs:
               continue
             fi
 
+            # Dokploy puede publicar http:// o https://.
             PREVIEW_URL=$(
               printf '%s\n' "$COMMENT_BODY" |
-                sed -nE 's#.*\[Preview URL\]\((https://[^)]+)\).*#\1#p' |
+                sed -nE 's#.*\[Preview URL\]\((https?://[^)]+)\).*#\1#p' |
                 head -n 1
             )
 
             if [[ -z "$PREVIEW_URL" ]]; then
-              # Fallback por si Dokploy cambia ligeramente el texto del enlace.
               PREVIEW_URL=$(
                 printf '%s\n' "$COMMENT_BODY" |
-                  grep -oE 'https://[a-zA-Z0-9.-]+\.pr\.chemicaldev\.com[^[:space:]<>()]*' |
+                  grep -oE 'https?://[a-zA-Z0-9.-]+\.pr\.chemicaldev\.com[^[:space:]<>()]*' |
                   sed -E 's/[),.;]+$//' |
                   head -n 1 ||
                 true
@@ -139,7 +138,12 @@ jobs:
               continue
             fi
 
-            if [[ "$PREVIEW_URL" != https://*"$EXPECTED_DOMAIN"* ]]; then
+            PREVIEW_HOST=$(
+              printf '%s' "$PREVIEW_URL" |
+                sed -E 's#^https?://([^/:]+).*#\1#'
+            )
+
+            if [[ "$PREVIEW_HOST" != *"$EXPECTED_HOST_SUFFIX" ]]; then
               echo "::error::La URL encontrada no pertenece al dominio esperado."
               echo "URL encontrada: ${PREVIEW_URL}"
               exit 1
@@ -156,7 +160,7 @@ jobs:
 
           echo "Comprobando que la aplicación responde realmente..."
 
-          # 18 intentos × 10 segundos = 3 minutos adicionales.
+          # 18 intentos × 10 segundos = 3 minutos.
           for attempt in $(seq 1 18); do
             HTTP_STATUS=$(
               curl \
@@ -178,6 +182,9 @@ jobs:
                 echo "La preview está disponible correctamente."
                 echo "PREVIEW_URL=${PREVIEW_URL}" >> "$GITHUB_ENV"
                 exit 0
+                ;;
+              301|302|307|308)
+                echo "La preview responde con redirección."
                 ;;
               401|403)
                 echo "La preview responde, pero está protegida o bloqueada."
