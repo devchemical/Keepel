@@ -1,11 +1,13 @@
 "use client"
 
+/* eslint-disable react/no-array-index-key -- Static skeleton placeholders are not data-backed and have no stable ids. */
+
 import { Skeleton } from "@/components/ui/skeleton"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 
 export function VehicleDetailSkeleton() {
   return (
-    <div 
+    <div
       className="container mx-auto px-4 py-8"
       aria-busy="true"
       role="status"
@@ -67,7 +69,7 @@ export function VehicleDetailSkeleton() {
             <CardContent className="space-y-4">
               {/* Description */}
               <Skeleton className="h-4 w-full" />
-              
+
               {/* Cost and Mileage row */}
               <div className="flex flex-wrap gap-4">
                 <div className="flex items-center gap-2">

@@ -19,7 +19,7 @@ export default async function VehiclesPage() {
   }
 
   // Fetch user's vehicles
-  const { data: vehicles, error: vehiclesError } = await supabase
+  const { data: vehicles } = await supabase
     .from("vehicles")
     .select("*")
     .eq("user_id", data.user.id)

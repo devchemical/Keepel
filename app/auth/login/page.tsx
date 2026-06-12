@@ -1,5 +1,7 @@
 "use client"
 
+/* eslint-disable no-console, eslint/no-shadow -- Auth cleanup errors are intentionally logged and local error state is named for UI clarity. */
+
 import type React from "react"
 
 import { useAnalytics } from "@/hooks/use-analytics"

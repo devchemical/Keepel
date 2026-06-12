@@ -1,5 +1,7 @@
 "use client"
 
+/* eslint-disable no-console, typescript/no-explicit-any, react/exhaustive-deps -- Dashboard data uses Supabase-shaped records and logs load failures pending typed data hooks. */
+
 import { useState, useEffect, useCallback } from "react"
 import { useSupabase } from "@/hooks/useSupabase"
 import { useAuth } from "@/hooks/useAuth"

@@ -1,5 +1,7 @@
 "use client"
 
+/* eslint-disable no-console, eslint/no-shadow -- Refresh failures are diagnostic only and form error state uses conventional naming. */
+
 import type React from "react"
 
 import { useState } from "react"

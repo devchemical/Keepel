@@ -1,5 +1,7 @@
 "use client"
 
+/* eslint-disable eslint/no-shadow, typescript/no-non-null-assertion -- Form error state uses conventional naming and numeric guards validate parsed values. */
+
 import type React from "react"
 
 import { useState } from "react"
@@ -42,7 +44,12 @@ const maintenanceTypes = [
   { value: "other", label: "Otro" },
 ]
 
-export function ScheduleServiceDialog({ children, vehicleId, open: controlledOpen, onOpenChange }: ScheduleServiceDialogProps) {
+export function ScheduleServiceDialog({
+  children,
+  vehicleId,
+  open: controlledOpen,
+  onOpenChange,
+}: ScheduleServiceDialogProps) {
   const [internalOpen, setInternalOpen] = useState(false)
   const open = controlledOpen !== undefined ? controlledOpen : internalOpen
   const setOpen = onOpenChange ?? setInternalOpen
@@ -133,9 +140,7 @@ export function ScheduleServiceDialog({ children, vehicleId, open: controlledOpe
             <Calendar className="text-primary h-5 w-5" />
             <span>Programar Servicio</span>
           </DialogTitle>
-          <DialogDescription className="text-sm">
-            Programa un mantenimiento futuro para tu vehículo.
-          </DialogDescription>
+          <DialogDescription className="text-sm">Programa un mantenimiento futuro para tu vehículo.</DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -198,7 +203,7 @@ export function ScheduleServiceDialog({ children, vehicleId, open: controlledOpe
             </div>
           </div>
 
-          <div className="border-border bg-muted/30 rounded-md p-2 text-xs text-muted-foreground">
+          <div className="border-border bg-muted/30 text-muted-foreground rounded-md p-2 text-xs">
             Indica al menos una fecha o un kilometraje para programar el servicio.
           </div>
 

@@ -1,5 +1,7 @@
 "use client"
 
+/* eslint-disable react/no-array-index-key, unicorn/consistent-function-scoping -- Static skeleton placeholders have no ids; formatter stays near usage for readability. */
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Car, Wrench, DollarSign, Calendar } from "lucide-react"

@@ -1,16 +1,13 @@
 "use client"
 
+/* eslint-disable react/no-array-index-key -- Skeleton placeholders are static and do not have data-backed ids. */
+
 import { Skeleton } from "@/components/ui/skeleton"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 
 export function MaintenanceSkeleton() {
   return (
-    <div 
-      className="space-y-4"
-      aria-busy="true"
-      role="status"
-      aria-label="Cargando mantenimientos"
-    >
+    <div className="space-y-4" aria-busy="true" role="status" aria-label="Cargando mantenimientos">
       {Array.from({ length: 4 }).map((_, i) => (
         <Card key={i}>
           <CardHeader className="pb-3">
@@ -28,7 +25,7 @@ export function MaintenanceSkeleton() {
           <CardContent className="space-y-4">
             {/* Description */}
             <Skeleton className="h-4 w-full" />
-            
+
             {/* Cost and Mileage row */}
             <div className="flex flex-wrap gap-4">
               <div className="flex items-center gap-2">

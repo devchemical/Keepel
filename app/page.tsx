@@ -7,8 +7,8 @@ import { LoadingScreen } from "@/components/ui/loading-screen"
 import { useAuth, useData } from "@/contexts"
 
 export default function HomePage() {
-  const { user, profile, isLoading: authLoading, signOut } = useAuth()
-  const { vehicles, maintenanceRecords, scheduledServices, isLoading: dataLoading, refreshAll } = useData()
+  const { user, profile, isLoading: authLoading } = useAuth()
+  const { vehicles, maintenanceRecords, scheduledServices, isLoading: dataLoading } = useData()
 
   // Show loading screen only during initial auth check to prevent flash
   const showLoadingScreen = authLoading

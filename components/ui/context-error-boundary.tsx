@@ -1,5 +1,7 @@
 "use client"
 
+/* eslint-disable no-console -- Error boundaries intentionally log render failures until centralized observability is added. */
+
 import React from "react"
 import { AlertCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"

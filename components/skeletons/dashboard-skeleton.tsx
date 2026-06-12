@@ -1,16 +1,13 @@
 "use client"
 
+/* eslint-disable react/no-array-index-key -- Static skeleton placeholders are not data-backed and have no stable ids. */
+
 import { Skeleton } from "@/components/ui/skeleton"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 
 export function DashboardSkeleton() {
   return (
-    <div 
-      className="container mx-auto px-4 py-8"
-      aria-busy="true"
-      role="status"
-      aria-label="Cargando panel de control"
-    >
+    <div className="container mx-auto px-4 py-8" aria-busy="true" role="status" aria-label="Cargando panel de control">
       {/* Welcome Section Skeleton */}
       <div className="mb-10 space-y-2">
         <Skeleton className="h-9 w-64" />

@@ -1,5 +1,7 @@
 "use client"
 
+/* eslint-disable no-console -- Development-only analytics warnings help catch instrumentation failures. */
+
 import { useOpenPanel } from "@openpanel/nextjs"
 import { useCallback, useRef } from "react"
 

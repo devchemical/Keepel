@@ -1,7 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
-import { Car, Mail } from "lucide-react"
+import { Mail } from "lucide-react"
 import { Layout } from "@/components/layout/Layout"
 
 export default function SignUpSuccessPage() {

@@ -3,6 +3,8 @@
 
 "use client"
 
+/* eslint-disable eslint/no-shadow -- Form error state is intentionally named `error` for UI clarity. */
+
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import {
@@ -16,7 +18,6 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useAuth, useData } from "@/contexts"
-import type { Vehicle } from "@/contexts"
 
 interface AddVehicleDialogContextProps {
   children: React.ReactNode

@@ -1,9 +1,10 @@
 "use client"
 
+/* eslint-disable no-console, react/jsx-no-constructed-context-values -- Auth failures are logged for diagnostics; context value memoization is deferred to avoid changing auth behavior. */
+
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from "react"
 import { useAnalytics } from "@/hooks/use-analytics"
 import { authManager } from "@/lib/auth/authManager"
-import type { User } from "@supabase/supabase-js"
 
 export interface AuthUser {
   id: string

@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
-import { Car, AlertCircle } from "lucide-react"
+import { AlertCircle } from "lucide-react"
 import { Layout } from "../../../components/layout/Layout"
 
 export default async function AuthErrorPage({ searchParams }: { searchParams: Promise<{ error: string }> }) {

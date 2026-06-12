@@ -1,5 +1,7 @@
 "use client"
 
+/* eslint-disable react/jsx-no-constructed-context-values -- Supabase client singleton keeps provider value stable in practice. */
+
 import React, { createContext, useContext } from "react"
 import { createClient } from "@/lib/supabase/client"
 import type { SupabaseClient } from "@supabase/supabase-js"

@@ -1,3 +1,5 @@
+/* eslint-disable typescript/no-non-null-assertion -- Supabase env vars are required for all server-side database access. */
+
 import { createServerClient } from "@supabase/ssr"
 import { cookies } from "next/headers"
 

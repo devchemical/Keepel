@@ -36,31 +36,31 @@ This project uses the following technologies. Agents should understand these reg
 
 ### Frontend
 
-| Category   | Technology                               |
-| ---------- | ---------------------------------------- |
-| Framework  | Next.js 16.x (App Router)                |
-| UI Library | React 19.x                               |
-| Language   | TypeScript 5.x                           |
-| Styling    | TailwindCSS 4.x                          |
-| Components | shadcn/ui (Radix UI primitives)          |
-| Icons      | lucide-react                             |
-| Forms      | react-hook-form + zod                    |
-| Charts     | recharts                                 |
+| Category   | Technology                                      |
+| ---------- | ----------------------------------------------- |
+| Framework  | Next.js 16.x (App Router)                       |
+| UI Library | React 19.x                                      |
+| Language   | TypeScript 5.x                                  |
+| Styling    | TailwindCSS 4.x                                 |
+| Components | shadcn/ui (Radix UI primitives)                 |
+| Icons      | lucide-react                                    |
+| Forms      | react-hook-form + zod                           |
+| Charts     | recharts                                        |
 | Fonts      | next/font/google (Inter, JetBrains Mono), Geist |
-| Toasts     | sonner                                   |
-| Themes     | next-themes                              |
-| Dates      | date-fns                                 |
+| Toasts     | sonner                                          |
+| Themes     | next-themes                                     |
+| Dates      | date-fns                                        |
 
 ### Backend & Database
 
-| Category      | Technology                          |
-| ------------- | ----------------------------------- |
-| Backend       | Supabase (BaaS)                     |
-| Database      | PostgreSQL (via Supabase)           |
-| Auth          | Supabase Auth (JWT + OAuth Google)  |
-| Storage       | Supabase Storage                    |
-| Security      | Row Level Security (RLS)            |
-| Rate Limiting | @upstash/ratelimit + @upstash/redis |
+| Category      | Technology                           |
+| ------------- | ------------------------------------ |
+| Backend       | Supabase (BaaS)                      |
+| Database      | PostgreSQL (via Supabase)            |
+| Auth          | Supabase Auth (JWT + OAuth Google)   |
+| Storage       | Supabase Storage                     |
+| Security      | Row Level Security (RLS)             |
+| Rate Limiting | @upstash/ratelimit + @upstash/redis  |
 | Analytics     | @vercel/analytics, @openpanel/nextjs |
 
 ### Build & Tools
@@ -364,17 +364,17 @@ CarCare/
 
 ### Key Files
 
-| File                       | Purpose                            |
-| -------------------------- | ---------------------------------- |
-| `middleware.ts`            | Session refresh + route protection |
-| `lib/auth/authManager.ts`  | Auth singleton                     |
-| `lib/supabase/client.ts`   | Browser client                     |
-| `lib/supabase/server.ts`   | Server client                      |
-| `lib/ratelimit.ts`         | Rate limiting configuration        |
-| `contexts/AuthContext.tsx` | Auth state                         |
-| `contexts/DataContext.tsx` | Data + optimistic mutations        |
-| `app/auth/actions.ts`      | Login/signup Server Actions        |
-| `app/api/auth/signout/route.ts` | Sign-out API route            |
+| File                            | Purpose                            |
+| ------------------------------- | ---------------------------------- |
+| `middleware.ts`                 | Session refresh + route protection |
+| `lib/auth/authManager.ts`       | Auth singleton                     |
+| `lib/supabase/client.ts`        | Browser client                     |
+| `lib/supabase/server.ts`        | Server client                      |
+| `lib/ratelimit.ts`              | Rate limiting configuration        |
+| `contexts/AuthContext.tsx`      | Auth state                         |
+| `contexts/DataContext.tsx`      | Data + optimistic mutations        |
+| `app/auth/actions.ts`           | Login/signup Server Actions        |
+| `app/api/auth/signout/route.ts` | Sign-out API route                 |
 
 ### Contexts & Hooks
 

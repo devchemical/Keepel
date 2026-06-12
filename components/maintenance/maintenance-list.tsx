@@ -1,9 +1,9 @@
 "use client"
 
+/* eslint-disable unicorn/consistent-function-scoping -- Formatters stay inside the component to keep display logic local. */
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Skeleton } from "@/components/ui/skeleton"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Calendar, DollarSign, Gauge, MoreVertical, Edit, Trash2 } from "lucide-react"
 import { EditMaintenanceDialog } from "./edit-maintenance-dialog"

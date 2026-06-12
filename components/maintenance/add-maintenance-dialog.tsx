@@ -1,5 +1,7 @@
 "use client"
 
+/* eslint-disable eslint/no-shadow, typescript/no-non-null-assertion, unicorn/consistent-function-scoping -- Form error state uses conventional naming; numeric validations guard non-null assertions; temp id helper stays local. */
+
 import type React from "react"
 
 import { useState } from "react"
@@ -51,7 +53,12 @@ const maintenanceTypes = [
   { value: "other", label: "Otro" },
 ]
 
-export function AddMaintenanceDialog({ children, vehicleId, open: controlledOpen, onOpenChange }: AddMaintenanceDialogProps) {
+export function AddMaintenanceDialog({
+  children,
+  vehicleId,
+  open: controlledOpen,
+  onOpenChange,
+}: AddMaintenanceDialogProps) {
   const [internalOpen, setInternalOpen] = useState(false)
   const open = controlledOpen !== undefined ? controlledOpen : internalOpen
   const setOpen = onOpenChange ?? setInternalOpen
@@ -149,21 +156,17 @@ export function AddMaintenanceDialog({ children, vehicleId, open: controlledOpen
         }
       })
 
-      try {
-        const { error, data } = await supabase.from("maintenance_records").insert(maintenanceRecords).select()
+      const { error } = await supabase.from("maintenance_records").insert(maintenanceRecords).select()
 
-        if (error) {
-          throw new Error(`Error al insertar: ${error.message}`)
-        }
-
-        // Track successful maintenance add
-        trackMaintenanceAction("add", vehicleId)
-
-        await refreshMaintenance()
-        router.refresh()
-      } catch (error) {
-        throw error
+      if (error) {
+        throw new Error(`Error al insertar: ${error.message}`)
       }
+
+      // Track successful maintenance add
+      trackMaintenanceAction("add", vehicleId)
+
+      await refreshMaintenance()
+      router.refresh()
 
       // Reset form and close dialog
       setServices([{ id: generateTempId(), type: "", description: "", cost: "" }])

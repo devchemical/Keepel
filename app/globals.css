@@ -122,7 +122,9 @@
 /* ── Modern CSS Reset 2026 ────────────────────────────────────────────── */
 @layer base {
   /* 1. Box model & inheritance (Tailwind preflight covers box-sizing, we enhance) */
-  *, *::before, *::after {
+  *,
+  *::before,
+  *::after {
     @apply border-border outline-ring/50;
   }
 
@@ -142,7 +144,12 @@
   }
 
   /* 4. Heading typography */
-  h1, h2, h3, h4, h5, h6 {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     text-wrap: balance;
   }
 
@@ -150,7 +157,13 @@
     text-wrap: pretty;
   }
 
-  p, h1, h2, h3, h4, h5, h6 {
+  p,
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     overflow-wrap: break-word;
   }
 
@@ -230,10 +243,10 @@
   }
 
   @media (prefers-reduced-motion: no-preference) {
-  html {
-    interpolate-size: allow-keywords;
+    html {
+      interpolate-size: allow-keywords;
+    }
   }
-}
 
   /* 13. High contrast mode support */
   @media (prefers-contrast: more) {

@@ -1,3 +1,5 @@
+/* eslint-disable no-console, typescript/no-explicit-any, typescript/no-non-null-assertion, unicorn/prefer-add-event-listener, unicorn/require-post-message-target-origin -- AuthManager centralizes diagnostics, Supabase cookie options are loose, and BroadcastChannel intentionally targets same-origin tabs. */
+
 /**
  * AuthManager - Singleton centralizado para gestión de autenticación
  *
