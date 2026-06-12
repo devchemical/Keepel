@@ -2,126 +2,200 @@ name: Dokploy Preview Check
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened]
+    types:
+      - opened
+      - synchronize
+      - reopened
 
 permissions:
+  contents: read
   issues: read
   pull-requests: read
 
+concurrency:
+  group: dokploy-preview-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 jobs:
   check-preview-ready:
-    name: Validate Preview URL
+    name: Dokploy Preview Ready
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 15
 
     steps:
-      - name: Wait for Dokploy preview and verify URL
+      - name: Wait for Dokploy preview and verify availability
         env:
           GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
-          REPO: ${{ github.repository }}
+          EXPECTED_DOMAIN: ".pr.chemicaldev.com"
         shell: bash
         run: |
-          set -euo pipefail
+          set -Eeuo pipefail
 
-          echo "Esperando el despliegue preview de la PR #$PR_NUMBER..."
+          # Se admite un margen porque el webhook de Dokploy puede actualizar
+          # el comentario unos segundos antes de que arranque este workflow.
+          WORKFLOW_STARTED_EPOCH=$(date -u +%s)
+          MIN_VALID_UPDATE_EPOCH=$((WORKFLOW_STARTED_EPOCH - 120))
 
           PREVIEW_URL=""
           COMMENT_BODY=""
 
-          # Dokploy y GitHub Actions se disparan prácticamente a la vez.
-          # Esta espera reduce el riesgo de leer un comentario antiguo.
-          sleep 10
+          echo "Esperando la preview de Dokploy para la PR #${PR_NUMBER}..."
 
-          for i in {1..30}; do
-            echo "Intento $i/30: consultando comentarios..."
+          # 48 intentos × 15 segundos = 12 minutos como máximo.
+          for attempt in $(seq 1 48); do
+            echo "Intento ${attempt}/48: consultando comentarios de la PR..."
 
-            RESPONSE=$(curl --fail-with-body --silent --show-error \
-              -H "Authorization: Bearer $GH_TOKEN" \
-              -H "Accept: application/vnd.github+json" \
-              -H "X-GitHub-Api-Version: 2022-11-28" \
-              "https://api.github.com/repos/$REPO/issues/$PR_NUMBER/comments")
+            COMMENTS=$(
+              curl \
+                --fail-with-body \
+                --silent \
+                --show-error \
+                -H "Authorization: Bearer ${GH_TOKEN}" \
+                -H "Accept: application/vnd.github+json" \
+                -H "X-GitHub-Api-Version: 2022-11-28" \
+                "https://api.github.com/repos/${REPOSITORY}/issues/${PR_NUMBER}/comments?per_page=100"
+            )
 
-            COMMENT_BODY=$(echo "$RESPONSE" | jq -r '
-              [
-                .[]
-                | select(
-                    (.body // "")
-                    | test("https://[^[:space:]>)]+\\.pr\\.chemicaldev\\.com"; "i")
-                  )
-              ]
-              | sort_by(.updated_at)
-              | last
-              | .body // empty
-            ')
+            COMMENT_BODY=$(
+              printf '%s' "$COMMENTS" |
+                jq -r '
+                  [
+                    .[]
+                    | select(
+                        (.body // "")
+                        | contains("Dokploy Preview Deployment")
+                      )
+                  ]
+                  | sort_by(.updated_at)
+                  | last
+                  | .body // empty
+                '
+            )
 
-            if [ -z "$COMMENT_BODY" ]; then
-              echo "Todavía no hay comentario de Dokploy."
+            if [[ -z "$COMMENT_BODY" ]]; then
+              echo "Dokploy todavía no ha publicado el comentario."
               sleep 15
               continue
             fi
 
-            echo "Comentario de Dokploy encontrado."
-
-            if echo "$COMMENT_BODY" | grep -iqE 'failed|failure|error'; then
+            if printf '%s\n' "$COMMENT_BODY" |
+              grep -qiE '❌|failed|failure|deployment failed|error'; then
               echo "::error::Dokploy indica que el despliegue ha fallado."
-              echo "$COMMENT_BODY"
+              printf '%s\n' "$COMMENT_BODY"
               exit 1
             fi
 
-            if echo "$COMMENT_BODY" | grep -iqE 'building|pending|deploying|queued|progress'; then
-              echo "La preview sigue construyéndose..."
+            UPDATED_AT=$(
+              printf '%s\n' "$COMMENT_BODY" |
+                grep -oE '20[0-9]{2}-[0-9]{2}-[0-9]{2}T[0-9:.]+Z' |
+                tail -n 1 ||
+              true
+            )
+
+            if [[ -z "$UPDATED_AT" ]]; then
+              echo "Comentario encontrado, pero no se pudo leer Updated (UTC)."
               sleep 15
               continue
             fi
 
-            PREVIEW_URL=$(echo "$COMMENT_BODY" \
-              | grep -oE 'https://[a-zA-Z0-9.-]+\.pr\.chemicaldev\.com[^[:space:]<>()]*' \
-              | sed -E 's/[),.;]+$//' \
-              | head -n 1)
+            UPDATED_EPOCH=$(date -u -d "$UPDATED_AT" +%s)
 
-            if [ -n "$PREVIEW_URL" ] &&
-               echo "$COMMENT_BODY" | grep -iqE 'done|success|deployed|ready|running'; then
-              echo "Dokploy ha terminado el despliegue."
-              break
+            if (( UPDATED_EPOCH < MIN_VALID_UPDATE_EPOCH )); then
+              echo "El comentario todavía corresponde a un despliegue anterior: ${UPDATED_AT}"
+              sleep 15
+              continue
             fi
 
-            echo "La URL existe, pero el estado final aún no está confirmado."
-            sleep 15
+            if ! printf '%s\n' "$COMMENT_BODY" |
+              grep -qiE '✅[[:space:]]*Done|[|][[:space:]]*Done[[:space:]]*[|]'; then
+              echo "La preview todavía no figura como Done. Última actualización: ${UPDATED_AT}"
+              sleep 15
+              continue
+            fi
+
+            PREVIEW_URL=$(
+              printf '%s\n' "$COMMENT_BODY" |
+                sed -nE 's#.*\[Preview URL\]\((https://[^)]+)\).*#\1#p' |
+                head -n 1
+            )
+
+            if [[ -z "$PREVIEW_URL" ]]; then
+              # Fallback por si Dokploy cambia ligeramente el texto del enlace.
+              PREVIEW_URL=$(
+                printf '%s\n' "$COMMENT_BODY" |
+                  grep -oE 'https://[a-zA-Z0-9.-]+\.pr\.chemicaldev\.com[^[:space:]<>()]*' |
+                  sed -E 's/[),.;]+$//' |
+                  head -n 1 ||
+                true
+              )
+            fi
+
+            if [[ -z "$PREVIEW_URL" ]]; then
+              echo "El estado es Done, pero no se pudo extraer la Preview URL."
+              printf '%s\n' "$COMMENT_BODY"
+              sleep 15
+              continue
+            fi
+
+            if [[ "$PREVIEW_URL" != https://*"$EXPECTED_DOMAIN"* ]]; then
+              echo "::error::La URL encontrada no pertenece al dominio esperado."
+              echo "URL encontrada: ${PREVIEW_URL}"
+              exit 1
+            fi
+
+            echo "Preview marcada como Done: ${PREVIEW_URL}"
+            break
           done
 
-          if [ -z "$PREVIEW_URL" ]; then
-            echo "::error::No se encontró una URL de preview válida."
-            echo "Último comentario encontrado:"
-            echo "$COMMENT_BODY"
+          if [[ -z "$PREVIEW_URL" ]]; then
+            echo "::error::Dokploy no completó la preview dentro del tiempo máximo."
             exit 1
           fi
 
-          echo "Preview detectada: $PREVIEW_URL"
+          echo "Comprobando que la aplicación responde realmente..."
 
-          for i in {1..12}; do
-            STATUS=$(curl \
-              --silent \
-              --show-error \
-              --insecure \
-              --location \
-              --output /dev/null \
-              --write-out '%{http_code}' \
-              --connect-timeout 10 \
-              --max-time 30 \
-              "$PREVIEW_URL" || true)
+          # 18 intentos × 10 segundos = 3 minutos adicionales.
+          for attempt in $(seq 1 18); do
+            HTTP_STATUS=$(
+              curl \
+                --silent \
+                --show-error \
+                --location \
+                --output /dev/null \
+                --write-out '%{http_code}' \
+                --connect-timeout 10 \
+                --max-time 30 \
+                "$PREVIEW_URL" ||
+              true
+            )
 
-            echo "Intento HTTP $i/12: $STATUS"
+            echo "Comprobación HTTP ${attempt}/18: ${HTTP_STATUS}"
 
-            case "$STATUS" in
-              200|204|301|302|307|308)
-                echo "La preview responde correctamente."
+            case "$HTTP_STATUS" in
+              200|204)
+                echo "La preview está disponible correctamente."
+                echo "PREVIEW_URL=${PREVIEW_URL}" >> "$GITHUB_ENV"
                 exit 0
+                ;;
+              401|403)
+                echo "La preview responde, pero está protegida o bloqueada."
+                ;;
+              500|502|503|504)
+                echo "El dominio responde, pero la aplicación aún no está preparada."
+                ;;
+              000)
+                echo "Todavía no se puede establecer conexión."
+                ;;
+              *)
+                echo "Estado HTTP todavía no válido: ${HTTP_STATUS}"
                 ;;
             esac
 
             sleep 10
           done
 
-          echo "::error::La preview no devolvió un estado HTTP válido."
+          echo "::error::Dokploy marcó la preview como Done, pero la aplicación no respondió con HTTP 200/204."
+          echo "URL comprobada: ${PREVIEW_URL}"
           exit 1
