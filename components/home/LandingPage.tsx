@@ -165,7 +165,7 @@ export function LandingPage() {
             <Image src="/logo_keepel_grueso.svg" alt="Keepel" width={20} height={20} />
             <span className="text-foreground text-lg font-semibold">Keepel</span>
           </div>
-          <p className="text-muted-foreground text-sm">© 2026 Keepel. Todos los derechos reservados.</p>
+          <p className="text-muted-foreground text-sm">© 2026 Keepel</p>
         </div>
       </footer>
     </>
