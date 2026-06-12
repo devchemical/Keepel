@@ -41,7 +41,7 @@ interface DashboardProps {
   isLoading?: boolean
 }
 
-export function Dashboard({ user, profile, vehicles, maintenanceRecords, upcomingMaintenance, isLoading }: DashboardProps) {
+export function Dashboard({ vehicles, maintenanceRecords, upcomingMaintenance, isLoading }: DashboardProps) {
   if (isLoading) {
     return <DashboardSkeleton />
   }

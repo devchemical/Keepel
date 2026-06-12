@@ -49,7 +49,6 @@ const maintenanceTypes = [
 export function EditMaintenanceDialog({ record, vehicleId, open, onOpenChange }: EditMaintenanceDialogProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [loadingStep, setLoadingStep] = useState<string>("")
 
   const supabase = useSupabase()
   const { refreshMaintenance } = useData()
@@ -79,7 +78,6 @@ export function EditMaintenanceDialog({ record, vehicleId, open, onOpenChange }:
     e.preventDefault()
     setIsLoading(true)
     setError(null)
-    setLoadingStep("Iniciando...")
 
     try {
       // Validaciones básicas
@@ -96,7 +94,6 @@ export function EditMaintenanceDialog({ record, vehicleId, open, onOpenChange }:
       }
 
       // RLS se encarga de verificar permisos automáticamente
-      setLoadingStep("Preparando actualización...")
 
       // Preparar datos para actualización con validación de números
       const cost = formData.cost ? parseFloat(formData.cost) : null
@@ -122,7 +119,6 @@ export function EditMaintenanceDialog({ record, vehicleId, open, onOpenChange }:
       }
 
       // Actualizar el registro con timeout
-      setLoadingStep("Actualizando registro de mantenimiento...")
       const updatePromise = supabase.from("maintenance_records").update(updateData).eq("id", record.id)
 
       const timeoutPromise = new Promise((_, reject) => {
@@ -135,14 +131,12 @@ export function EditMaintenanceDialog({ record, vehicleId, open, onOpenChange }:
         throw new Error(`Error al actualizar: ${updateError.message}`)
       }
 
-      setLoadingStep("Finalizando...")
       onOpenChange(false)
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : "Error desconocido al actualizar mantenimiento"
       setError(errorMessage)
     } finally {
       setIsLoading(false)
-      setLoadingStep("")
 
       // Recargar datos tanto del contexto como de la ruta actual
       refreshMaintenance().catch((err) => {

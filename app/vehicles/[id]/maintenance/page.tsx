@@ -36,7 +36,7 @@ export default async function VehicleMaintenancePage({ params }: PageProps) {
   }
 
   // Fetch maintenance records
-  const { data: maintenanceRecords, error: maintenanceError } = await supabase
+  const { data: maintenanceRecords } = await supabase
     .from("maintenance_records")
     .select("*")
     .eq("vehicle_id", id)

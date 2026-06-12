@@ -149,21 +149,17 @@ export function AddMaintenanceDialog({ children, vehicleId, open: controlledOpen
         }
       })
 
-      try {
-        const { error, data } = await supabase.from("maintenance_records").insert(maintenanceRecords).select()
+      const { error } = await supabase.from("maintenance_records").insert(maintenanceRecords).select()
 
-        if (error) {
-          throw new Error(`Error al insertar: ${error.message}`)
-        }
-
-        // Track successful maintenance add
-        trackMaintenanceAction("add", vehicleId)
-
-        await refreshMaintenance()
-        router.refresh()
-      } catch (error) {
-        throw error
+      if (error) {
+        throw new Error(`Error al insertar: ${error.message}`)
       }
+
+      // Track successful maintenance add
+      trackMaintenanceAction("add", vehicleId)
+
+      await refreshMaintenance()
+      router.refresh()
 
       // Reset form and close dialog
       setServices([{ id: generateTempId(), type: "", description: "", cost: "" }])

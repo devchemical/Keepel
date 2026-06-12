@@ -39,7 +39,6 @@ const maintenanceTypes = {
 export function DeleteMaintenanceDialog({ record, open, onOpenChange }: DeleteMaintenanceDialogProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [loadingStep, setLoadingStep] = useState<string>("")
 
   const supabase = useSupabase()
   const { refreshMaintenance } = useData()
@@ -49,7 +48,6 @@ export function DeleteMaintenanceDialog({ record, open, onOpenChange }: DeleteMa
   const handleDelete = async () => {
     setIsLoading(true)
     setError(null)
-    setLoadingStep("Iniciando...")
 
     try {
       // Validaciones básicas
@@ -61,7 +59,6 @@ export function DeleteMaintenanceDialog({ record, open, onOpenChange }: DeleteMa
       trackMaintenanceAction("delete", record.id)
 
       // RLS se encarga de verificar permisos automáticamente
-      setLoadingStep("Eliminando registro...")
       const deletePromise = supabase.from("maintenance_records").delete().eq("id", record.id)
 
       const timeoutPromise = new Promise((_, reject) => {
@@ -77,7 +74,6 @@ export function DeleteMaintenanceDialog({ record, open, onOpenChange }: DeleteMa
       // Track successful delete
       trackMaintenanceAction("delete", record.id)
 
-      setLoadingStep("Finalizando...")
       onOpenChange(false)
     } catch (error: unknown) {
       // Track error
@@ -86,7 +82,6 @@ export function DeleteMaintenanceDialog({ record, open, onOpenChange }: DeleteMa
       setError(errorMessage)
     } finally {
       setIsLoading(false)
-      setLoadingStep("")
 
       // Recargar datos tanto del contexto como de la ruta actual
       refreshMaintenance().catch((err) => {

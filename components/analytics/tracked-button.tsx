@@ -5,7 +5,6 @@ import type { buttonVariants } from "@/components/ui/button"
 import { Button } from "@/components/ui/button"
 import { useAnalytics } from "@/hooks/use-analytics"
 import { type VariantProps } from "class-variance-authority"
-import { cn } from "@/lib/utils"
 
 interface TrackedButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement>, VariantProps<typeof buttonVariants> {

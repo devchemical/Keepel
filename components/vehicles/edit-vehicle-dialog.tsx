@@ -4,7 +4,7 @@ import type React from "react"
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { useSupabase, useData, useAuth } from "@/contexts"
+import { useSupabase, useData } from "@/contexts"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
@@ -51,7 +51,6 @@ export function EditVehicleDialog({ vehicle, open, onOpenChange }: EditVehicleDi
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const { user } = useAuth()
   const supabase = useSupabase()
   const { refreshVehicles } = useData()
   const router = useRouter()
