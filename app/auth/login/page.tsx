@@ -17,6 +17,7 @@ import { useState, useEffect } from "react"
 import { useSupabase } from "@/hooks/useSupabase"
 import { loginAction } from "../actions"
 import { authManager } from "@/lib/auth/authManager"
+import { sanitizeInternalRedirect } from "@/lib/auth/redirects"
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
@@ -132,7 +133,7 @@ export default function LoginPage() {
 
       // Obtener URL de redirección si existe
       const urlParams = new URLSearchParams(window.location.search)
-      const redirectTo = urlParams.get("redirect") || result.redirectTo || "/"
+      const redirectTo = sanitizeInternalRedirect(urlParams.get("redirect") ?? result.redirectTo)
 
       // Hacer refresh para actualizar estado del servidor
       router.refresh()

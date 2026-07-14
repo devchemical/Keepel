@@ -14,6 +14,7 @@ import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { useSupabase } from "@/hooks/useSupabase"
 import { signupAction } from "../actions"
+import { sanitizeInternalRedirect } from "@/lib/auth/redirects"
 
 export default function SignUpPage() {
   const [email, setEmail] = useState("")
@@ -72,7 +73,7 @@ export default function SignUpPage() {
       }
 
       // Redirigir a la página de éxito
-      router.push(result.redirectTo || "/auth/signup-success")
+      router.push(sanitizeInternalRedirect(result.redirectTo ?? "/auth/signup-success"))
     } catch (error: unknown) {
       if (error instanceof Error) {
         setError(error.message)

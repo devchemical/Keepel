@@ -6,6 +6,10 @@
     "build": "next build",
     "dev": "next dev",
     "start": "next start",
+    "test": "vitest run",
+    "test:unit": "vitest run tests/unit",
+    "test:integration": "vitest run tests/integration",
+    "test:watch": "vitest",
     "type-check": "tsc --noEmit",
     "clean": "bun dlx rimraf .next out node_modules/.cache",
     "clean:install": "bun clean && bun install",
@@ -88,7 +92,9 @@
     "prettier-plugin-tailwindcss": "^0.6.14",
     "tailwindcss": "^4.3.0",
     "tw-animate-css": "1.3.3",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vite": "6.4.3",
+    "vitest": "4.1.9"
   },
   "overrides": {
     "glob": "^11.0.0",

@@ -2,6 +2,7 @@
 
 import { createServerClient } from "@supabase/ssr"
 import { NextResponse, type NextRequest } from "next/server"
+import { sanitizeInternalRedirect } from "@/lib/auth/redirects"
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
@@ -56,10 +57,15 @@ export async function updateSession(request: NextRequest) {
 
   // Si usuario NO autenticado intenta acceder a rutas protegidas
   if (!user && !isAuthRoute && !isPublicRoute) {
+    const returnDestination = sanitizeInternalRedirect(
+      `${request.nextUrl.pathname}${request.nextUrl.search}${request.nextUrl.hash}`
+    )
     const url = request.nextUrl.clone()
     url.pathname = "/auth/login"
+    url.search = ""
+    url.hash = ""
     // Preservar URL original para redirección después de login
-    url.searchParams.set("redirect", request.nextUrl.pathname)
+    url.searchParams.set("redirect", returnDestination)
     return NextResponse.redirect(url)
   }
 

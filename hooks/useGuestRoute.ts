@@ -8,6 +8,7 @@
 import { useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/contexts"
+import { sanitizeInternalRedirect } from "@/lib/auth/redirects"
 
 interface UseGuestRouteOptions {
   redirectTo?: string
@@ -18,6 +19,7 @@ export function useGuestRoute(options: UseGuestRouteOptions = {}) {
   const { redirectTo = "/", onAuthenticated } = options
   const { user, isLoading } = useAuth()
   const router = useRouter()
+  const safeRedirectTo = sanitizeInternalRedirect(redirectTo)
 
   useEffect(() => {
     // Esperar a que termine de cargar
@@ -28,9 +30,9 @@ export function useGuestRoute(options: UseGuestRouteOptions = {}) {
       if (onAuthenticated) {
         onAuthenticated()
       }
-      router.push(redirectTo)
+      router.push(safeRedirectTo)
     }
-  }, [user, isLoading, router, redirectTo, onAuthenticated])
+  }, [user, isLoading, router, safeRedirectTo, onAuthenticated])
 
   return {
     isLoading,
