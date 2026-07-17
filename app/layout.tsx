@@ -2,7 +2,8 @@ import type React from "react"
 import type { Metadata } from "next"
 import { Inter, JetBrains_Mono } from "next/font/google"
 import { OpenPanelComponent } from "@openpanel/nextjs"
-import { AppProviders } from "@/contexts"
+import { AppProviders } from "@/contexts/AppProviders"
+import { getAuthState } from "@/lib/auth/server"
 import "./globals.css"
 
 const inter = Inter({
@@ -59,11 +60,13 @@ export const metadata: Metadata = {
   },
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode
 }>) {
+  const initialAuthState = await getAuthState()
+
   return (
     <html lang="es" className={`${inter.variable} ${jetbrainsMono.variable} antialiased`}>
       <head>
@@ -80,7 +83,7 @@ export default function RootLayout({
           trackOutgoingLinks={false}
           trackAttributes={false}
         />
-        <AppProviders>{children}</AppProviders>
+        <AppProviders initialAuthState={initialAuthState}>{children}</AppProviders>
       </body>
     </html>
   )

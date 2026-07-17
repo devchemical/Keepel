@@ -1,6 +1,7 @@
 // Context exports
 export { AppProviders } from "./AppProviders"
 export { AuthProvider, useAuth } from "./AuthContext"
+export { AuthProjectionProvider, useAuthProjection } from "./AuthProjectionContext"
 export { DataProvider, useData } from "./DataContext"
 export { SupabaseProvider, useSupabase } from "./SupabaseContext"
 
