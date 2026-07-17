@@ -1,4 +1,4 @@
-/* eslint-disable no-console, typescript/no-non-null-assertion -- OAuth failures are logged locally and production app URL is required when window is unavailable. */
+/* eslint-disable no-console -- OAuth failures are logged locally until centralized observability is added. */
 
 import { useState } from "react"
 import { useAnalytics } from "@/hooks/use-analytics"
@@ -6,6 +6,7 @@ import type { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Icons } from "@/components/ui/icons"
 import { useSupabase } from "@/hooks/useSupabase"
+import { sanitizeInternalRedirect } from "@/lib/auth/redirects"
 
 interface GoogleSignInButtonProps {
   redirectTo?: string
@@ -33,18 +34,14 @@ export function GoogleSignInButton({
       // Track Google sign in attempt
       trackAuthAction("sign_in", "google")
 
-      // Usar la URL actual del navegador para garantizar la redirección correcta
-      const baseUrl =
-        typeof window !== "undefined"
-          ? `${window.location.protocol}//${window.location.host}`
-          : process.env.NEXT_PUBLIC_APP_URL_PROD!
-
-      const redirectUrl = `${baseUrl}/auth/callback?next=${redirectTo}`
+      // Usar el origen actual y codificar el destino completo dentro del callback.
+      const redirectUrl = new URL("/auth/callback", window.location.origin)
+      redirectUrl.searchParams.set("next", sanitizeInternalRedirect(redirectTo))
 
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: redirectUrl,
+          redirectTo: redirectUrl.toString(),
           queryParams: {
             access_type: "offline",
             prompt: "consent",

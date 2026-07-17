@@ -8,6 +8,7 @@
 import { useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/contexts"
+import { sanitizeInternalRedirect } from "@/lib/auth/redirects"
 
 interface UseProtectedRouteOptions {
   redirectTo?: string
@@ -18,6 +19,7 @@ export function useProtectedRoute(options: UseProtectedRouteOptions = {}) {
   const { redirectTo = "/auth/login", onUnauthorized } = options
   const { user, isLoading } = useAuth()
   const router = useRouter()
+  const safeRedirectTo = sanitizeInternalRedirect(redirectTo)
 
   useEffect(() => {
     // Esperar a que termine de cargar
@@ -28,9 +30,9 @@ export function useProtectedRoute(options: UseProtectedRouteOptions = {}) {
       if (onUnauthorized) {
         onUnauthorized()
       }
-      router.push(redirectTo)
+      router.push(safeRedirectTo)
     }
-  }, [user, isLoading, router, redirectTo, onUnauthorized])
+  }, [user, isLoading, router, safeRedirectTo, onUnauthorized])
 
   return {
     user,
