@@ -68,7 +68,7 @@ function parseAdapterUser(value: unknown): AuthServerAdapterUser | null {
   }
 }
 
-function projectCurrentUser(user: AuthServerAdapterUser): CurrentUser {
+export function projectCurrentUser(user: AuthServerAdapterUser): CurrentUser {
   const email = user.email ?? null
 
   return {

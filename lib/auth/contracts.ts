@@ -24,6 +24,11 @@ export const SIGN_UP_STATUS = {
   ERROR: "error",
 } as const
 
+export const SIGN_UP_RATE_LIMIT_SCOPE = {
+  IP: "ip",
+  EMAIL: "email",
+} as const
+
 type ValueOf<T> = T[keyof T]
 
 declare const userIdBrand: unique symbol
@@ -31,6 +36,8 @@ declare const userIdBrand: unique symbol
 export type UserId = string & { readonly [userIdBrand]: "UserId" }
 
 export type AuthErrorCode = ValueOf<typeof AUTH_ERROR_CODE>
+
+export type SignUpRateLimitScope = ValueOf<typeof SIGN_UP_RATE_LIMIT_SCOPE>
 
 export type AuthError = {
   [Code in AuthErrorCode]: { code: Code }
@@ -62,6 +69,16 @@ export type AuthCommandResult<SuccessData = undefined> =
       error: AuthError
     }
 
+export type SignUpError =
+  | Exclude<AuthError, { code: typeof AUTH_ERROR_CODE.RATE_LIMITED }>
+  | {
+      code: typeof AUTH_ERROR_CODE.RATE_LIMITED
+      scope: SignUpRateLimitScope
+      remaining: number
+      limit: number
+      reset: number
+    }
+
 export type SignUpResult =
   | {
       status: typeof SIGN_UP_STATUS.AUTHENTICATED
@@ -72,5 +89,5 @@ export type SignUpResult =
     }
   | {
       status: typeof SIGN_UP_STATUS.ERROR
-      error: AuthError
+      error: SignUpError
     }
