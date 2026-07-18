@@ -1,75 +1,42 @@
 "use client"
 
-/* eslint-disable no-console -- OAuth failures are logged locally until centralized observability is added. */
-
 import { useState } from "react"
 import { useAnalytics } from "@/hooks/use-analytics"
-import type { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Icons } from "@/components/ui/icons"
-import { useSupabase } from "@/hooks/useSupabase"
 import { sanitizeInternalRedirect } from "@/lib/auth/redirects"
 
 interface GoogleSignInButtonProps {
   redirectTo?: string
   className?: string
   children?: React.ReactNode
-  supabaseClient?: ReturnType<typeof createClient>
 }
 
 export function GoogleSignInButton({
   redirectTo = "/",
   className,
   children = "Continuar con Google",
-  supabaseClient,
 }: GoogleSignInButtonProps) {
   const [isLoading, setIsLoading] = useState(false)
-  const defaultSupabase = useSupabase()
-  // Usar el cliente pasado como prop o el hook por defecto
-  const supabase = supabaseClient || defaultSupabase
   const { trackAuthAction } = useAnalytics()
+  const searchParams = new URLSearchParams({ redirectTo: sanitizeInternalRedirect(redirectTo) })
+  const initiationUrl = `/auth/google?${searchParams.toString()}`
 
-  const handleGoogleSignIn = async () => {
-    try {
-      setIsLoading(true)
-
-      // Track Google sign in attempt
-      trackAuthAction("sign_in", "google")
-
-      // Usar el origen actual y codificar el destino completo dentro del callback.
-      const redirectUrl = new URL("/auth/callback", window.location.origin)
-      redirectUrl.searchParams.set("next", sanitizeInternalRedirect(redirectTo))
-
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          redirectTo: redirectUrl.toString(),
-          queryParams: {
-            access_type: "offline",
-            prompt: "consent",
-          },
-        },
-      })
-
-      if (error) {
-        console.error("Google OAuth error:", error)
-        // Track error
-        trackAuthAction("error", "google")
-        setIsLoading(false)
-      }
-      // No quitamos el loading state si no hay error porque seremos redirigidos
-    } catch (error) {
-      console.error("Unexpected error during Google sign-in:", error)
-      // Track error
-      trackAuthAction("error", "google")
-      setIsLoading(false)
-    }
+  const handleGoogleSignIn = () => {
+    setIsLoading(true)
+    trackAuthAction("sign_in", "google")
   }
 
   return (
-    <Button type="button" variant="outline" onClick={handleGoogleSignIn} disabled={isLoading} className={className}>
-      {isLoading ? <Icons.spinner className="mr-2 h-4 w-4 animate-spin" /> : <Icons.google className="mr-2 h-4 w-4" />}
-      {children}
+    <Button asChild variant="outline" className={className}>
+      <a href={initiationUrl} onClick={handleGoogleSignIn} aria-busy={isLoading}>
+        {isLoading ? (
+          <Icons.spinner className="mr-2 h-4 w-4 animate-spin" />
+        ) : (
+          <Icons.google className="mr-2 h-4 w-4" />
+        )}
+        {children}
+      </a>
     </Button>
   )
 }

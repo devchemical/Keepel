@@ -1,3 +1,5 @@
+import type { OAuthErrorCode } from "./contracts"
+
 const INTERNAL_REDIRECT_BASE = "https://keepel.invalid"
 const INVALID_PERCENT_ENCODING_PATTERN = /%(?![\da-f]{2})/i
 
@@ -33,4 +35,10 @@ export function sanitizeInternalRedirect(destination: unknown): string {
   } catch {
     return "/"
   }
+}
+
+export function createOAuthErrorRedirect(origin: string, errorCode: OAuthErrorCode): URL {
+  const errorUrl = new URL("/auth/error", origin)
+  errorUrl.searchParams.set("error", errorCode)
+  return errorUrl
 }

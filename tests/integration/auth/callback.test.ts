@@ -34,4 +34,32 @@ describe("auth callback", () => {
 
     expect(response.headers.get("location")).toBe("https://keepel.example/")
   })
+
+  it("maps provider cancellation to a stable browser-visible error", async () => {
+    const handleCallback = createAuthCallbackHandler(async () => {
+      throw new Error("the callback exchange must not run after provider cancellation")
+    })
+    const request = new NextRequest(
+      "https://keepel.example/auth/callback?error=access_denied&error_description=Sensitive+provider+details"
+    )
+
+    const response = await handleCallback(request)
+
+    expect(response.headers.get("location")).toBe("https://keepel.example/auth/error?error=oauth_cancelled")
+    expect(response.headers.get("location")).not.toMatch(/access_denied|Sensitive|provider.details/i)
+  })
+
+  it("maps callback exchange failures to a stable browser-visible error", async () => {
+    const adapter = createControlledAuthCallbackAdapter({
+      data: null,
+      error: { message: "Sensitive provider exchange details" },
+    })
+    const handleCallback = createAuthCallbackHandler(async () => adapter)
+    const request = new NextRequest("https://keepel.example/auth/callback?code=invalid-code")
+
+    const response = await handleCallback(request)
+
+    expect(response.headers.get("location")).toBe("https://keepel.example/auth/error?error=provider_error")
+    expect(response.headers.get("location")).not.toMatch(/Sensitive|exchange.details/i)
+  })
 })
