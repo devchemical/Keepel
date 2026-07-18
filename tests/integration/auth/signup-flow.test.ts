@@ -60,7 +60,7 @@ describe("signup flow", () => {
       authAdapter: createSupabaseSignupAuthAdapter(async () => supabase),
       rateLimitAdapter: {
         async isAllowed() {
-          return true
+          return { allowed: true }
         },
       },
     })
@@ -148,7 +148,7 @@ describe("signup flow", () => {
       authAdapter: createSupabaseSignupAuthAdapter(async () => supabase),
       rateLimitAdapter: {
         async isAllowed() {
-          return true
+          return { allowed: true }
         },
       },
     })

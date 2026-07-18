@@ -1,4 +1,4 @@
-import { AUTH_ERROR_CODE, SIGN_UP_STATUS, type SignUpResult } from "./contracts"
+import { AUTH_ERROR_CODE, SIGN_UP_STATUS, type SignUpRateLimitScope, type SignUpResult } from "./contracts"
 import { parseSignupInput } from "./signup-validation"
 
 export interface SignupInput {
@@ -15,7 +15,16 @@ export interface SignupAuthAdapter {
 }
 
 export interface SignupRateLimitAdapter {
-  isAllowed(input: { email: string; clientIp: string }): Promise<boolean>
+  isAllowed(input: { email: string; clientIp: string }): Promise<
+    | { allowed: true }
+    | {
+        allowed: false
+        scope: SignUpRateLimitScope
+        remaining: number
+        limit: number
+        reset: number
+      }
+  >
 }
 
 interface SignupDependencies {
@@ -37,10 +46,18 @@ export function createSignupCommand({ authAdapter, rateLimitAdapter }: SignupDep
     const { email, password, fullName } = signupInput.data
 
     try {
-      if (!(await rateLimitAdapter.isAllowed({ email, clientIp: input.clientIp }))) {
+      const rateLimit = await rateLimitAdapter.isAllowed({ email, clientIp: input.clientIp })
+
+      if (!rateLimit.allowed) {
         return {
           status: SIGN_UP_STATUS.ERROR,
-          error: { code: AUTH_ERROR_CODE.RATE_LIMITED },
+          error: {
+            code: AUTH_ERROR_CODE.RATE_LIMITED,
+            scope: rateLimit.scope,
+            remaining: rateLimit.remaining,
+            limit: rateLimit.limit,
+            reset: rateLimit.reset,
+          },
         }
       }
 

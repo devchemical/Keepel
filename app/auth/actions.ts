@@ -3,8 +3,15 @@
 /* eslint-disable no-console -- Server actions log unexpected auth failures until centralized observability is added. */
 
 import { headers } from "next/headers"
-import { AUTH_COMMAND_STATUS, AUTH_ERROR_CODE, SIGN_UP_STATUS, type SignUpResult } from "@/lib/auth/contracts"
+import {
+  AUTH_COMMAND_STATUS,
+  AUTH_ERROR_CODE,
+  SIGN_UP_RATE_LIMIT_SCOPE,
+  SIGN_UP_STATUS,
+  type SignUpResult,
+} from "@/lib/auth/contracts"
 import { createPasswordLoginCommand, type PasswordLoginResult } from "@/lib/auth/password-login"
+import { getCurrentUser } from "@/lib/auth/server"
 import { createSignupCommand } from "@/lib/auth/signup"
 import { createSupabasePasswordLoginAuthAdapter } from "@/lib/auth/supabase-password-login-adapter"
 import { createSupabaseSignupAuthAdapter } from "@/lib/auth/supabase-signup-adapter"
@@ -32,10 +39,26 @@ const signup = createSignupCommand({
       const ipLimit = await signupRateLimiter.limit(`signup_ip_${clientIp}`)
 
       if (!ipLimit.success) {
-        return false
+        return {
+          allowed: false,
+          scope: SIGN_UP_RATE_LIMIT_SCOPE.IP,
+          remaining: ipLimit.remaining,
+          limit: ipLimit.limit,
+          reset: ipLimit.reset,
+        }
       }
 
-      return (await signupRateLimiter.limit(`signup_email_${email}`)).success
+      const emailLimit = await signupRateLimiter.limit(`signup_email_${email}`)
+
+      return emailLimit.success
+        ? { allowed: true }
+        : {
+            allowed: false,
+            scope: SIGN_UP_RATE_LIMIT_SCOPE.EMAIL,
+            remaining: emailLimit.remaining,
+            limit: emailLimit.limit,
+            reset: emailLimit.reset,
+          }
     },
   },
 })
@@ -71,6 +94,12 @@ export async function loginAction(
 
 export async function signupAction(_previousResult: SignUpResult | null, formData: FormData): Promise<SignUpResult> {
   try {
+    const currentUser = await getCurrentUser()
+
+    if (currentUser) {
+      return { status: SIGN_UP_STATUS.AUTHENTICATED, user: currentUser }
+    }
+
     const headersList = await headers()
 
     return await signup({

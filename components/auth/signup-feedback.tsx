@@ -1,9 +1,16 @@
-import { AUTH_ERROR_CODE, type AuthError } from "@/lib/auth/contracts"
+import { AUTH_ERROR_CODE, SIGN_UP_RATE_LIMIT_SCOPE, type SignUpError } from "@/lib/auth/contracts"
 
-function getSignupErrorMessage(error: AuthError) {
+function getSignupErrorMessage(error: SignUpError) {
   switch (error.code) {
-    case AUTH_ERROR_CODE.RATE_LIMITED:
-      return "Demasiados intentos de registro. Espera un momento antes de volver a intentarlo."
+    case AUTH_ERROR_CODE.RATE_LIMITED: {
+      const reason =
+        error.scope === SIGN_UP_RATE_LIMIT_SCOPE.IP
+          ? "Demasiados intentos de registro desde esta IP. Intenta más tarde."
+          : "Demasiados intentos de registro para este email. Por seguridad, espera un momento."
+      const hoursLeft = Math.max(1, Math.ceil((error.reset - Date.now()) / 1_000 / 60 / 60))
+
+      return `${reason} Podrás intentar de nuevo en ${hoursLeft} hora(s).`
+    }
     case AUTH_ERROR_CODE.VALIDATION_FAILED:
       return "Revisa el nombre, el email y las contraseñas e inténtalo de nuevo."
     case AUTH_ERROR_CODE.INVALID_CREDENTIALS:
@@ -18,7 +25,7 @@ function getSignupErrorMessage(error: AuthError) {
 }
 
 interface SignupFeedbackProps {
-  error: AuthError | null
+  error: SignUpError | null
 }
 
 export function SignupFeedback({ error }: SignupFeedbackProps) {

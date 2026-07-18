@@ -1,3 +1,5 @@
+"use client"
+
 /* eslint-disable no-console -- OAuth failures are logged locally until centralized observability is added. */
 
 import { useState } from "react"

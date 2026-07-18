@@ -1,5 +1,3 @@
-"use client"
-
 import Link from "next/link"
 import { GoogleSignInButton } from "@/components/auth/google-signin-button"
 import { SignupForm } from "@/components/auth/signup-form"

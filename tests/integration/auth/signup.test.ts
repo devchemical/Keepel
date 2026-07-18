@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest"
-import { AUTH_ERROR_CODE, SIGN_UP_STATUS, type CurrentUser, type UserId } from "@/lib/auth/contracts"
+import {
+  AUTH_ERROR_CODE,
+  SIGN_UP_RATE_LIMIT_SCOPE,
+  SIGN_UP_STATUS,
+  type CurrentUser,
+  type UserId,
+} from "@/lib/auth/contracts"
 import { createSignupCommand, type SignupAuthAdapter, type SignupRateLimitAdapter } from "@/lib/auth/signup"
 
 describe("signup", () => {
@@ -16,7 +22,7 @@ describe("signup", () => {
     }
     const rateLimitAdapter: SignupRateLimitAdapter = {
       async isAllowed() {
-        return true
+        return { allowed: true }
       },
     }
     const signup = createSignupCommand({ authAdapter, rateLimitAdapter })
@@ -101,7 +107,15 @@ describe("signup", () => {
     }
     const rateLimitAdapter: SignupRateLimitAdapter = {
       async isAllowed({ email }) {
-        return email !== "driver@example.com"
+        return email === "driver@example.com"
+          ? {
+              allowed: false,
+              scope: SIGN_UP_RATE_LIMIT_SCOPE.EMAIL,
+              remaining: 0,
+              limit: 3,
+              reset: 4_102_444_800_000,
+            }
+          : { allowed: true }
       },
     }
     const signup = createSignupCommand({ authAdapter, rateLimitAdapter })
@@ -117,7 +131,13 @@ describe("signup", () => {
 
     expect(result).toEqual({
       status: SIGN_UP_STATUS.ERROR,
-      error: { code: AUTH_ERROR_CODE.RATE_LIMITED },
+      error: {
+        code: AUTH_ERROR_CODE.RATE_LIMITED,
+        scope: SIGN_UP_RATE_LIMIT_SCOPE.EMAIL,
+        remaining: 0,
+        limit: 3,
+        reset: 4_102_444_800_000,
+      },
     })
   })
 
@@ -129,7 +149,7 @@ describe("signup", () => {
     }
     const rateLimitAdapter: SignupRateLimitAdapter = {
       async isAllowed() {
-        return true
+        return { allowed: true }
       },
     }
     const signup = createSignupCommand({ authAdapter, rateLimitAdapter })

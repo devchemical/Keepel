@@ -6,8 +6,8 @@ import { signupAction } from "@/app/auth/actions"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { SIGN_UP_STATUS, type SignUpResult } from "@/lib/auth/contracts"
 import { SignupFeedback } from "./signup-feedback"
+import { SIGN_UP_STATUS, type SignUpResult } from "@/lib/auth/contracts"
 import { runSignupFormAction } from "./signup-form-action"
 
 export function SignupForm() {
@@ -29,7 +29,7 @@ export function SignupForm() {
   const error = result?.status === SIGN_UP_STATUS.ERROR ? result.error : null
 
   return (
-    <form action={formAction} aria-busy={isPending}>
+    <form action={formAction} aria-busy={isPending} noValidate>
       <div className="flex flex-col gap-4">
         <div className="grid gap-2">
           <Label htmlFor="fullName" className="text-foreground">
@@ -71,7 +71,6 @@ export function SignupForm() {
             type="password"
             autoComplete="new-password"
             placeholder="Mínimo 6 caracteres"
-            minLength={6}
             required
             disabled={isPending}
             className="bg-input border-border"
@@ -87,7 +86,6 @@ export function SignupForm() {
             type="password"
             autoComplete="new-password"
             placeholder="Repite tu contraseña"
-            minLength={6}
             required
             disabled={isPending}
             className="bg-input border-border"
