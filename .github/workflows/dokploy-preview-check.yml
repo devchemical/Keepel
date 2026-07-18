@@ -5,71 +5,28 @@ on:
     types: [opened, synchronize, reopened]
 
 permissions:
+  contents: read
   pull-requests: read
+
+concurrency:
+  group: dokploy-preview-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
 
 jobs:
   check-preview-ready:
     name: Validate Preview URL
     runs-on: ubuntu-latest
+    timeout-minutes: 12
     steps:
-      - name: Wait for Build Status and Verify URL
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Wait for Dokploy preview and verify availability
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           REPO: ${{ github.repository }}
-        run: |
-          echo "Verificando el estado del despliegue en los comentarios de la PR #$PR_NUMBER..."
-
-          PREVIEW_URL=""
-          IS_DONE=false
-
-          # Paso 1: Esperar a que el comentario diga "Done" o "Success" (máximo 7.5 minutos)
-          for i in {1..30}; do
-            # Obtenemos el cuerpo del último comentario que contenga nuestro dominio
-            COMMENT_BODY=$(curl -s -H "Authorization: Bearer $GH_TOKEN" \
-              "https://api.github.com/repos/$REPO/issues/$PR_NUMBER/comments" | \
-              jq -r '[.[] | select(.body | contains("dev-env.chemicaldev.com"))] | last | .body')
-            
-            if [ -z "$COMMENT_BODY" ] || [ "$COMMENT_BODY" == "null" ]; then
-              echo "Comentario de Dokploy no encontrado aún. Intento $i..."
-            else
-              # Comprobamos las palabras clave del estado en el texto (ignorando mayúsculas/minúsculas)
-              if echo "$COMMENT_BODY" | grep -iq "Building"; then
-                echo "Dokploy sigue construyendo el nuevo commit (Status: Building). Esperando..."
-              
-              elif echo "$COMMENT_BODY" | grep -iqE "Done|Success|Deployed|Ready"; then
-                echo "¡La build ha terminado! (Status: Done)"
-                IS_DONE=true
-                
-                # Extraemos la URL del texto
-                PREVIEW_URL=$(echo "$COMMENT_BODY" | grep -oE 'https://preview-[a-zA-Z0-9-]+\.dev-env\.chemicaldev\.com' | head -n 1)
-                break
-              
-              else
-                echo "Estado desconocido o preparándose. Esperando a que cambie a Done..."
-              fi
-            fi
-            sleep 15
-          done
-
-          if [ "$IS_DONE" = false ]; then
-            echo "Error: La build no alcanzó el estado 'Done' en el tiempo esperado."
-            exit 1
-          fi
-
-          echo "Comprobando disponibilidad real de la web: $PREVIEW_URL"
-
-          # Paso 2: Ahora que sabemos que la build terminó, aseguramos que el contenedor responde 200
-          for i in {1..10}; do
-            STATUS=$(curl -sk -o /dev/null -w "%{http_code}" "$PREVIEW_URL")
-            echo "Intento de conexión $i: HTTP $STATUS"
-            
-            if [[ "$STATUS" =~ ^(200|301|302)$ ]]; then
-              echo "¡La nueva preview está desplegada y respondiendo correctamente!"
-              exit 0
-            fi
-            sleep 10
-          done
-
-          echo "Error: La URL no devolvió 200 OK a pesar de que Dokploy marcó la build como Done."
-          exit 1
+          PR_UPDATED_AT: ${{ github.event.pull_request.updated_at }}
+        run: node .github/scripts/dokploy-preview-check.mjs
