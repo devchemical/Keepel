@@ -2,11 +2,14 @@
 
 /* eslint-disable no-console -- Server actions log unexpected auth failures until centralized observability is added. */
 
-import { createClient } from "@/lib/supabase/server"
-import { loginRateLimiter, signupRateLimiter } from "@/lib/ratelimit"
 import { headers } from "next/headers"
+import { AUTH_COMMAND_STATUS, AUTH_ERROR_CODE } from "@/lib/auth/contracts"
+import { createPasswordLoginCommand, type PasswordLoginResult } from "@/lib/auth/password-login"
+import { createSupabasePasswordLoginAuthAdapter } from "@/lib/auth/supabase-password-login-adapter"
+import { loginRateLimiter, signupRateLimiter } from "@/lib/ratelimit"
+import { createClient } from "@/lib/supabase/server"
 
-interface AuthResult {
+interface SignupResult {
   success: boolean
   error?: string
   rateLimit?: {
@@ -15,112 +18,52 @@ interface AuthResult {
     reset: number
   }
   redirectTo?: string
-  session?: {
-    accessToken: string
-    refreshToken: string
-  }
 }
 
-export async function loginAction(email: string, password: string): Promise<AuthResult> {
+const passwordLogin = createPasswordLoginCommand({
+  authAdapter: createSupabasePasswordLoginAuthAdapter(createClient),
+  rateLimitAdapter: {
+    async isAllowed({ email, clientIp }) {
+      const [emailLimit, ipLimit] = await Promise.all([
+        loginRateLimiter.limit(`login_email_${email}`),
+        loginRateLimiter.limit(`login_ip_${clientIp}`),
+      ])
+
+      return emailLimit.success && ipLimit.success
+    },
+  },
+})
+
+function readClientIp(headersList: Headers) {
+  return (
+    headersList.get("x-forwarded-for")?.split(",")[0]?.trim() || headersList.get("x-real-ip")?.trim() || "127.0.0.1"
+  )
+}
+
+export async function loginAction(
+  _previousResult: PasswordLoginResult | null,
+  formData: FormData
+): Promise<PasswordLoginResult> {
   try {
-    // Obtener IP del usuario
     const headersList = await headers()
-    const ip = headersList.get("x-forwarded-for")?.split(",")[0] ?? headersList.get("x-real-ip") ?? "127.0.0.1"
 
-    const sanitizedEmail = email.toLowerCase().trim()
-
-    // Verificar rate limit primero por email por si la ip es compartida
-    const emailLimit = await loginRateLimiter.limit(`login_email_${sanitizedEmail}`)
-    const ipLimit = await loginRateLimiter.limit(`login_ip_${ip}`)
-
-    if (!emailLimit.success) {
-      return {
-        success: false,
-        error: "Demasiados intentos para este email. Por seguridad, espera un momento.",
-        rateLimit: {
-          remaining: 0,
-          limit: emailLimit.limit,
-          reset: emailLimit.reset,
-        },
-      }
-    }
-
-    if (!ipLimit.success) {
-      return {
-        success: false,
-        error: "Demasiados intentos desde esta IP. Intenta más tarde.",
-        rateLimit: {
-          remaining: 0,
-          limit: ipLimit.limit,
-          reset: ipLimit.reset,
-        },
-      }
-    }
-
-    // Intentar login con Supabase
-    const supabase = await createClient()
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
+    return await passwordLogin({
+      email: formData.get("email"),
+      password: formData.get("password"),
+      clientIp: readClientIp(headersList),
+      redirectTo: formData.get("redirectTo"),
     })
-
-    if (error) {
-      // Si las credenciales son inválidas, devolver info de rate limit
-      if (error.message.includes("Invalid login credentials") || error.message.includes("invalid")) {
-        return {
-          success: false,
-          error: "Credenciales inválidas",
-          rateLimit: {
-            remaining: emailLimit.remaining,
-            limit: emailLimit.limit,
-            reset: emailLimit.reset,
-          },
-        }
-      }
-
-      return {
-        success: false,
-        error: error.message,
-        rateLimit: {
-          remaining: emailLimit.remaining,
-          limit: emailLimit.limit,
-          reset: emailLimit.reset,
-        },
-      }
-    }
-
-    if (!data?.user || !data?.session) {
-      return {
-        success: false,
-        error: "No se pudo crear la sesión",
-      }
-    }
-
-    if (!data.session.access_token || !data.session.refresh_token) {
-      return {
-        success: false,
-        error: "No se pudo crear la sesión",
-      }
-    }
-
-    return {
-      success: true,
-      redirectTo: "/",
-      session: {
-        accessToken: data.session.access_token,
-        refreshToken: data.session.refresh_token,
-      },
-    }
   } catch (error) {
-    console.error("Error en loginAction:", error)
+    console.error("Unexpected password login action failure:", error)
+
     return {
-      success: false,
-      error: error instanceof Error ? error.message : "Error desconocido",
+      status: AUTH_COMMAND_STATUS.ERROR,
+      error: { code: AUTH_ERROR_CODE.UNEXPECTED },
     }
   }
 }
 
-export async function signupAction(email: string, password: string, fullName: string): Promise<AuthResult> {
+export async function signupAction(email: string, password: string, fullName: string): Promise<SignupResult> {
   try {
     // Obtener IP del usuario
     const headersList = await headers()
