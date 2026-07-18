@@ -3,22 +3,13 @@
 /* eslint-disable no-console -- Server actions log unexpected auth failures until centralized observability is added. */
 
 import { headers } from "next/headers"
-import { AUTH_COMMAND_STATUS, AUTH_ERROR_CODE } from "@/lib/auth/contracts"
+import { AUTH_COMMAND_STATUS, AUTH_ERROR_CODE, SIGN_UP_STATUS, type SignUpResult } from "@/lib/auth/contracts"
 import { createPasswordLoginCommand, type PasswordLoginResult } from "@/lib/auth/password-login"
+import { createSignupCommand } from "@/lib/auth/signup"
 import { createSupabasePasswordLoginAuthAdapter } from "@/lib/auth/supabase-password-login-adapter"
+import { createSupabaseSignupAuthAdapter } from "@/lib/auth/supabase-signup-adapter"
 import { loginRateLimiter, signupRateLimiter } from "@/lib/ratelimit"
 import { createClient } from "@/lib/supabase/server"
-
-interface SignupResult {
-  success: boolean
-  error?: string
-  rateLimit?: {
-    remaining: number
-    limit: number
-    reset: number
-  }
-  redirectTo?: string
-}
 
 const passwordLogin = createPasswordLoginCommand({
   authAdapter: createSupabasePasswordLoginAuthAdapter(createClient),
@@ -30,6 +21,21 @@ const passwordLogin = createPasswordLoginCommand({
       ])
 
       return emailLimit.success && ipLimit.success
+    },
+  },
+})
+
+const signup = createSignupCommand({
+  authAdapter: createSupabaseSignupAuthAdapter(createClient),
+  rateLimitAdapter: {
+    async isAllowed({ email, clientIp }) {
+      const ipLimit = await signupRateLimiter.limit(`signup_ip_${clientIp}`)
+
+      if (!ipLimit.success) {
+        return false
+      }
+
+      return (await signupRateLimiter.limit(`signup_email_${email}`)).success
     },
   },
 })
@@ -63,83 +69,27 @@ export async function loginAction(
   }
 }
 
-export async function signupAction(email: string, password: string, fullName: string): Promise<SignupResult> {
+export async function signupAction(_previousResult: SignUpResult | null, formData: FormData): Promise<SignUpResult> {
   try {
-    // Obtener IP del usuario
     const headersList = await headers()
-    const ip = headersList.get("x-forwarded-for")?.split(",")[0] ?? headersList.get("x-real-ip") ?? "127.0.0.1"
 
-    const sanitizedEmail = email.toLowerCase().trim()
-
-    // Verificar rate limit por IP
-    const ipLimit = await signupRateLimiter.limit(`signup_ip_${ip}`)
-
-    if (!ipLimit.success) {
-      return {
-        success: false,
-        error: "Demasiados intentos de registro desde esta IP. Intenta más tarde.",
-        rateLimit: {
-          remaining: 0,
-          limit: ipLimit.limit,
-          reset: ipLimit.reset,
-        },
-      }
-    }
-
-    // Verificar rate limit por email
-    const emailLimit = await signupRateLimiter.limit(`signup_email_${sanitizedEmail}`)
-
-    if (!emailLimit.success) {
-      return {
-        success: false,
-        error: "Demasiados intentos de registro para este email. Por seguridad, espera un momento.",
-        rateLimit: {
-          remaining: 0,
-          limit: emailLimit.limit,
-          reset: emailLimit.reset,
-        },
-      }
-    }
-
-    // Intentar registro con Supabase
-    const supabase = await createClient()
-    const redirectUrl =
-      process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL ||
-      process.env.NEXT_PUBLIC_SUPABASE_REDIRECT_URL ||
-      "http://localhost:3000/"
-
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: redirectUrl,
-        data: {
-          full_name: fullName,
-        },
-      },
+    return await signup({
+      email: formData.get("email"),
+      password: formData.get("password"),
+      confirmPassword: formData.get("confirmPassword"),
+      fullName: formData.get("fullName"),
+      clientIp: readClientIp(headersList),
+      emailRedirectTo:
+        process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL ||
+        process.env.NEXT_PUBLIC_SUPABASE_REDIRECT_URL ||
+        "http://localhost:3000/",
     })
-
-    if (error) {
-      return {
-        success: false,
-        error: error.message,
-        rateLimit: {
-          remaining: emailLimit.remaining,
-          limit: emailLimit.limit,
-          reset: emailLimit.reset,
-        },
-      }
-    }
-
-    return {
-      success: true,
-      redirectTo: "/auth/signup-success",
-    }
   } catch (error) {
-    console.error("Error en signupAction:", error)
+    console.error("Unexpected signup action failure:", error)
+
     return {
-      success: false,
-      error: error instanceof Error ? error.message : "Error desconocido",
+      status: SIGN_UP_STATUS.ERROR,
+      error: { code: AUTH_ERROR_CODE.UNEXPECTED },
     }
   }
 }
