@@ -6,6 +6,7 @@
 /* eslint-disable eslint/no-shadow -- Form error state is intentionally named `error` for UI clarity. */
 
 import { useState } from "react"
+import { useAuthProjection, useData } from "@/contexts"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -17,7 +18,6 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { useAuthProjection, useData } from "@/contexts"
 import { AUTH_STATE_STATUS } from "@/lib/auth/contracts"
 
 interface AddVehicleDialogContextProps {

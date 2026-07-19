@@ -3,10 +3,11 @@
 /* eslint-disable no-console, typescript/no-explicit-any, react/exhaustive-deps, react/jsx-no-constructed-context-values -- Data load failures are diagnostic; Promise.race typing and one-shot auth-load behavior are intentional pending data-layer refactor. */
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from "react"
-import { AUTH_STATE_STATUS, type CurrentUser } from "@/lib/auth/contracts"
 import { resolveDataAuthTransition } from "./data-auth-transition"
+import { prependOptimistic, removeOptimistic, replaceOptimistic } from "./optimistic-list"
 import { useAuthProjection } from "./AuthProjectionContext"
 import { useSupabase } from "./SupabaseContext"
+import { AUTH_STATE_STATUS, type CurrentUser } from "@/lib/auth/contracts"
 
 export interface Vehicle {
   id: string
@@ -292,7 +293,7 @@ export function DataProvider({ children }: DataProviderProps) {
       }
 
       // Add optimistically
-      setVehicles((prev) => [optimisticVehicle, ...prev])
+      setVehicles((prev) => prependOptimistic(prev, optimisticVehicle))
 
       try {
         const { data, error } = await supabase
@@ -304,10 +305,10 @@ export function DataProvider({ children }: DataProviderProps) {
         if (error) throw error
 
         // Replace optimistic with real data
-        setVehicles((prev) => prev.map((v) => (v.id === optimisticVehicle.id ? data : v)))
+        setVehicles((prev) => replaceOptimistic(prev, optimisticVehicle.id, data))
       } catch (error) {
         // Revert optimistic update
-        setVehicles((prev) => prev.filter((v) => v.id !== optimisticVehicle.id))
+        setVehicles((prev) => removeOptimistic(prev, optimisticVehicle.id))
         throw error
       }
     },
@@ -342,7 +343,7 @@ export function DataProvider({ children }: DataProviderProps) {
       const vehicleToDelete = vehicles.find((v) => v.id === id)
 
       // Remove optimistically
-      setVehicles((prev) => prev.filter((v) => v.id !== id))
+      setVehicles((prev) => removeOptimistic(prev, id))
 
       try {
         const { error } = await supabase.from("vehicles").delete().eq("id", id)
@@ -351,7 +352,7 @@ export function DataProvider({ children }: DataProviderProps) {
       } catch (error) {
         // Revert optimistic update
         if (vehicleToDelete) {
-          setVehicles((prev) => [vehicleToDelete, ...prev])
+          setVehicles((prev) => prependOptimistic(prev, vehicleToDelete))
         }
         throw error
       }
@@ -370,7 +371,7 @@ export function DataProvider({ children }: DataProviderProps) {
         updated_at: new Date().toISOString(),
       }
 
-      setMaintenanceRecords((prev) => [optimisticRecord, ...prev])
+      setMaintenanceRecords((prev) => prependOptimistic(prev, optimisticRecord))
 
       try {
         const { data, error } = await supabase
@@ -381,9 +382,9 @@ export function DataProvider({ children }: DataProviderProps) {
 
         if (error) throw error
 
-        setMaintenanceRecords((prev) => prev.map((r) => (r.id === optimisticRecord.id ? data : r)))
+        setMaintenanceRecords((prev) => replaceOptimistic(prev, optimisticRecord.id, data))
       } catch (error) {
-        setMaintenanceRecords((prev) => prev.filter((r) => r.id !== optimisticRecord.id))
+        setMaintenanceRecords((prev) => removeOptimistic(prev, optimisticRecord.id))
         throw error
       }
     },
@@ -414,7 +415,7 @@ export function DataProvider({ children }: DataProviderProps) {
     async (id: string) => {
       const recordToDelete = maintenanceRecords.find((r) => r.id === id)
 
-      setMaintenanceRecords((prev) => prev.filter((r) => r.id !== id))
+      setMaintenanceRecords((prev) => removeOptimistic(prev, id))
 
       try {
         const { error } = await supabase.from("maintenance_records").delete().eq("id", id)
@@ -422,7 +423,7 @@ export function DataProvider({ children }: DataProviderProps) {
         if (error) throw error
       } catch (error) {
         if (recordToDelete) {
-          setMaintenanceRecords((prev) => [recordToDelete, ...prev])
+          setMaintenanceRecords((prev) => prependOptimistic(prev, recordToDelete))
         }
         throw error
       }
@@ -441,7 +442,7 @@ export function DataProvider({ children }: DataProviderProps) {
         updated_at: new Date().toISOString(),
       }
 
-      setScheduledServices((prev) => [optimisticService, ...prev])
+      setScheduledServices((prev) => prependOptimistic(prev, optimisticService))
 
       try {
         const { data, error } = await supabase
@@ -462,11 +463,9 @@ export function DataProvider({ children }: DataProviderProps) {
 
         if (error) throw error
 
-        setScheduledServices((prev) =>
-          prev.map((s) => (s.id === optimisticService.id ? (data as ScheduledService) : s))
-        )
+        setScheduledServices((prev) => replaceOptimistic(prev, optimisticService.id, data as ScheduledService))
       } catch (error) {
-        setScheduledServices((prev) => prev.filter((s) => s.id !== optimisticService.id))
+        setScheduledServices((prev) => removeOptimistic(prev, optimisticService.id))
         throw error
       }
     },
@@ -497,7 +496,7 @@ export function DataProvider({ children }: DataProviderProps) {
     async (id: string) => {
       const serviceToDelete = scheduledServices.find((s) => s.id === id)
 
-      setScheduledServices((prev) => prev.filter((s) => s.id !== id))
+      setScheduledServices((prev) => removeOptimistic(prev, id))
 
       try {
         const { error } = await supabase.from("scheduled_services").delete().eq("id", id)
@@ -505,7 +504,7 @@ export function DataProvider({ children }: DataProviderProps) {
         if (error) throw error
       } catch (error) {
         if (serviceToDelete) {
-          setScheduledServices((prev) => [serviceToDelete, ...prev])
+          setScheduledServices((prev) => prependOptimistic(prev, serviceToDelete))
         }
         throw error
       }

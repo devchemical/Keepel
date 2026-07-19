@@ -6,7 +6,6 @@ import type React from "react"
 
 import { useState } from "react"
 import { useAuthProjection, useSupabase, useData } from "@/contexts"
-import { AUTH_STATE_STATUS } from "@/lib/auth/contracts"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -21,6 +20,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Calendar, Loader2 } from "lucide-react"
+import { AUTH_STATE_STATUS } from "@/lib/auth/contracts"
 
 interface ScheduleServiceDialogProps {
   children?: React.ReactNode

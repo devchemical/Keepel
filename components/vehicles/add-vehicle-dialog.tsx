@@ -8,7 +8,6 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { useAnalytics } from "@/hooks/use-analytics"
 import { useSupabase, useData, useAuthProjection } from "@/contexts"
-import { AUTH_STATE_STATUS } from "@/lib/auth/contracts"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -22,6 +21,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Car, Loader2 } from "lucide-react"
+import { AUTH_STATE_STATUS } from "@/lib/auth/contracts"
 
 interface AddVehicleDialogProps {
   children: React.ReactNode

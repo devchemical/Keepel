@@ -1,7 +1,7 @@
 import { describe, expect, expectTypeOf, it } from "vitest"
 import { resolveDataAuthTransition } from "@/contexts/data-auth-transition"
-import type { useData } from "@/contexts/DataContext"
 import { AUTH_STATE_STATUS, type AuthState, type CurrentUser, type UserId } from "@/lib/auth/contracts"
+import type { useData } from "@/contexts/DataContext"
 
 const user: CurrentUser = {
   id: "user-48" as UserId,

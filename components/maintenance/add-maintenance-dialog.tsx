@@ -8,7 +8,6 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { useAnalytics } from "@/hooks/use-analytics"
 import { useAuthProjection, useSupabase, useData } from "@/contexts"
-import { AUTH_STATE_STATUS } from "@/lib/auth/contracts"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -23,6 +22,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Wrench, Loader2, Plus, X } from "lucide-react"
+import { AUTH_STATE_STATUS } from "@/lib/auth/contracts"
 
 interface AddMaintenanceDialogProps {
   children?: React.ReactNode

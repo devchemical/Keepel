@@ -1,6 +1,19 @@
 import { AUTH_STATE_STATUS, type AuthState, type CurrentUser } from "@/lib/auth/contracts"
 
-export type DataAuthTransition = { type: "load"; userId: CurrentUser["id"] } | { type: "idle" } | { type: "clear" }
+interface LoadDataAuthTransition {
+  type: "load"
+  userId: CurrentUser["id"]
+}
+
+interface IdleDataAuthTransition {
+  type: "idle"
+}
+
+interface ClearDataAuthTransition {
+  type: "clear"
+}
+
+export type DataAuthTransition = LoadDataAuthTransition | IdleDataAuthTransition | ClearDataAuthTransition
 
 export function resolveDataAuthTransition(authState: AuthState, hasLoaded: boolean): DataAuthTransition {
   if (authState.status === AUTH_STATE_STATUS.ANONYMOUS) {
