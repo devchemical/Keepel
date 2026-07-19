@@ -3,8 +3,11 @@
 /* eslint-disable no-console, typescript/no-explicit-any, react/exhaustive-deps, react/jsx-no-constructed-context-values -- Data load failures are diagnostic; Promise.race typing and one-shot auth-load behavior are intentional pending data-layer refactor. */
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from "react"
+import { resolveDataAuthTransition } from "./data-auth-transition"
+import { useAuthProjection } from "./AuthProjectionContext"
 import { useSupabase } from "./SupabaseContext"
-import { useAuth } from "./AuthContext"
+import { AUTH_STATE_STATUS, type CurrentUser } from "@/lib/auth/contracts"
+import { prependOptimistic, removeOptimistic, replaceOptimistic } from "@/lib/data/optimistic-list"
 
 export interface Vehicle {
   id: string
@@ -105,7 +108,8 @@ interface DataProviderProps {
 }
 
 export function DataProvider({ children }: DataProviderProps) {
-  const { user, isAuthenticated } = useAuth()
+  const authState = useAuthProjection()
+  const userId = authState.status === AUTH_STATE_STATUS.AUTHENTICATED ? authState.user.id : null
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
   const [maintenanceRecords, setMaintenanceRecords] = useState<MaintenanceRecord[]>([])
   const [scheduledServices, setScheduledServices] = useState<ScheduledService[]>([])
@@ -117,8 +121,8 @@ export function DataProvider({ children }: DataProviderProps) {
   const supabase = useSupabase()
 
   const loadVehicles = useCallback(
-    async (userId: string) => {
-      if (!userId) return
+    async (currentUserId: CurrentUser["id"]) => {
+      if (!currentUserId) return
 
       setIsVehiclesLoading(true)
       try {
@@ -126,7 +130,7 @@ export function DataProvider({ children }: DataProviderProps) {
         const queryPromise = supabase
           .from("vehicles")
           .select("*")
-          .eq("user_id", userId)
+          .eq("user_id", currentUserId)
           .order("created_at", { ascending: false })
 
         const timeoutPromise = new Promise((_, reject) =>
@@ -154,8 +158,8 @@ export function DataProvider({ children }: DataProviderProps) {
   )
 
   const loadMaintenanceRecords = useCallback(
-    async (userId: string) => {
-      if (!userId) return
+    async (currentUserId: CurrentUser["id"]) => {
+      if (!currentUserId) return
 
       setIsMaintenanceLoading(true)
 
@@ -172,7 +176,7 @@ export function DataProvider({ children }: DataProviderProps) {
           )
         `
           )
-          .eq("user_id", userId)
+          .eq("user_id", currentUserId)
           .order("service_date", { ascending: false })
 
         const timeoutPromise = new Promise((_, reject) =>
@@ -200,8 +204,8 @@ export function DataProvider({ children }: DataProviderProps) {
   )
 
   const loadScheduledServices = useCallback(
-    async (userId: string) => {
-      if (!userId) return
+    async (currentUserId: CurrentUser["id"]) => {
+      if (!currentUserId) return
 
       setIsScheduledServicesLoading(true)
       try {
@@ -218,7 +222,7 @@ export function DataProvider({ children }: DataProviderProps) {
             )
           `
           )
-          .eq("user_id", userId)
+          .eq("user_id", currentUserId)
           .eq("status", "pending")
           .order("scheduled_date", { ascending: true, nullsFirst: true })
 
@@ -240,34 +244,45 @@ export function DataProvider({ children }: DataProviderProps) {
     [supabase]
   )
 
+  const loadAllForUser = useCallback(
+    async (currentUserId: CurrentUser["id"]) => {
+      await Promise.all([
+        loadVehicles(currentUserId),
+        loadMaintenanceRecords(currentUserId),
+        loadScheduledServices(currentUserId),
+      ])
+    },
+    [loadVehicles, loadMaintenanceRecords, loadScheduledServices]
+  )
+
   const refreshVehicles = useCallback(async () => {
-    if (user?.id) {
-      await loadVehicles(user.id)
+    if (userId) {
+      await loadVehicles(userId)
     }
-  }, [user?.id, loadVehicles])
+  }, [userId, loadVehicles])
 
   const refreshMaintenance = useCallback(async () => {
-    if (user?.id) {
-      await loadMaintenanceRecords(user.id)
+    if (userId) {
+      await loadMaintenanceRecords(userId)
     }
-  }, [user?.id, loadMaintenanceRecords])
+  }, [userId, loadMaintenanceRecords])
 
   const refreshScheduledServices = useCallback(async () => {
-    if (user?.id) {
-      await loadScheduledServices(user.id)
+    if (userId) {
+      await loadScheduledServices(userId)
     }
-  }, [user?.id, loadScheduledServices])
+  }, [userId, loadScheduledServices])
 
   const refreshAll = useCallback(async () => {
-    if (user?.id) {
-      await Promise.all([loadVehicles(user.id), loadMaintenanceRecords(user.id), loadScheduledServices(user.id)])
+    if (userId) {
+      await loadAllForUser(userId)
     }
-  }, [user?.id, loadVehicles, loadMaintenanceRecords, loadScheduledServices])
+  }, [userId, loadAllForUser])
 
   // Optimistic update functions
   const addVehicleOptimistic = useCallback(
     async (vehicleData: Omit<Vehicle, "id" | "created_at" | "updated_at">) => {
-      if (!user?.id) return
+      if (!userId) return
 
       // Create optimistic vehicle
       const optimisticVehicle: Vehicle = {
@@ -278,26 +293,26 @@ export function DataProvider({ children }: DataProviderProps) {
       }
 
       // Add optimistically
-      setVehicles((prev) => [optimisticVehicle, ...prev])
+      setVehicles((prev) => prependOptimistic(prev, optimisticVehicle))
 
       try {
         const { data, error } = await supabase
           .from("vehicles")
-          .insert({ ...vehicleData, user_id: user.id })
+          .insert({ ...vehicleData, user_id: userId })
           .select()
           .single()
 
         if (error) throw error
 
         // Replace optimistic with real data
-        setVehicles((prev) => prev.map((v) => (v.id === optimisticVehicle.id ? data : v)))
+        setVehicles((prev) => replaceOptimistic(prev, optimisticVehicle.id, data))
       } catch (error) {
         // Revert optimistic update
-        setVehicles((prev) => prev.filter((v) => v.id !== optimisticVehicle.id))
+        setVehicles((prev) => removeOptimistic(prev, optimisticVehicle.id))
         throw error
       }
     },
-    [user?.id, supabase]
+    [userId, supabase]
   )
 
   const updateVehicleOptimistic = useCallback(
@@ -328,7 +343,7 @@ export function DataProvider({ children }: DataProviderProps) {
       const vehicleToDelete = vehicles.find((v) => v.id === id)
 
       // Remove optimistically
-      setVehicles((prev) => prev.filter((v) => v.id !== id))
+      setVehicles((prev) => removeOptimistic(prev, id))
 
       try {
         const { error } = await supabase.from("vehicles").delete().eq("id", id)
@@ -337,7 +352,7 @@ export function DataProvider({ children }: DataProviderProps) {
       } catch (error) {
         // Revert optimistic update
         if (vehicleToDelete) {
-          setVehicles((prev) => [vehicleToDelete, ...prev])
+          setVehicles((prev) => prependOptimistic(prev, vehicleToDelete))
         }
         throw error
       }
@@ -347,7 +362,7 @@ export function DataProvider({ children }: DataProviderProps) {
 
   const addMaintenanceOptimistic = useCallback(
     async (recordData: Omit<MaintenanceRecord, "id" | "created_at" | "updated_at">) => {
-      if (!user?.id) return
+      if (!userId) return
 
       const optimisticRecord: MaintenanceRecord = {
         id: `temp-${Date.now()}`,
@@ -356,24 +371,24 @@ export function DataProvider({ children }: DataProviderProps) {
         updated_at: new Date().toISOString(),
       }
 
-      setMaintenanceRecords((prev) => [optimisticRecord, ...prev])
+      setMaintenanceRecords((prev) => prependOptimistic(prev, optimisticRecord))
 
       try {
         const { data, error } = await supabase
           .from("maintenance_records")
-          .insert({ ...recordData, user_id: user.id })
+          .insert({ ...recordData, user_id: userId })
           .select()
           .single()
 
         if (error) throw error
 
-        setMaintenanceRecords((prev) => prev.map((r) => (r.id === optimisticRecord.id ? data : r)))
+        setMaintenanceRecords((prev) => replaceOptimistic(prev, optimisticRecord.id, data))
       } catch (error) {
-        setMaintenanceRecords((prev) => prev.filter((r) => r.id !== optimisticRecord.id))
+        setMaintenanceRecords((prev) => removeOptimistic(prev, optimisticRecord.id))
         throw error
       }
     },
-    [user?.id, supabase]
+    [userId, supabase]
   )
 
   const updateMaintenanceOptimistic = useCallback(
@@ -400,7 +415,7 @@ export function DataProvider({ children }: DataProviderProps) {
     async (id: string) => {
       const recordToDelete = maintenanceRecords.find((r) => r.id === id)
 
-      setMaintenanceRecords((prev) => prev.filter((r) => r.id !== id))
+      setMaintenanceRecords((prev) => removeOptimistic(prev, id))
 
       try {
         const { error } = await supabase.from("maintenance_records").delete().eq("id", id)
@@ -408,7 +423,7 @@ export function DataProvider({ children }: DataProviderProps) {
         if (error) throw error
       } catch (error) {
         if (recordToDelete) {
-          setMaintenanceRecords((prev) => [recordToDelete, ...prev])
+          setMaintenanceRecords((prev) => prependOptimistic(prev, recordToDelete))
         }
         throw error
       }
@@ -418,7 +433,7 @@ export function DataProvider({ children }: DataProviderProps) {
 
   const addScheduledServiceOptimistic = useCallback(
     async (serviceData: Omit<ScheduledService, "id" | "created_at" | "updated_at" | "vehicles">) => {
-      if (!user?.id) return
+      if (!userId) return
 
       const optimisticService: ScheduledService = {
         id: `temp-${Date.now()}`,
@@ -427,12 +442,12 @@ export function DataProvider({ children }: DataProviderProps) {
         updated_at: new Date().toISOString(),
       }
 
-      setScheduledServices((prev) => [optimisticService, ...prev])
+      setScheduledServices((prev) => prependOptimistic(prev, optimisticService))
 
       try {
         const { data, error } = await supabase
           .from("scheduled_services")
-          .insert({ ...serviceData, user_id: user.id })
+          .insert({ ...serviceData, user_id: userId })
           .select(
             `
             *,
@@ -448,15 +463,13 @@ export function DataProvider({ children }: DataProviderProps) {
 
         if (error) throw error
 
-        setScheduledServices((prev) =>
-          prev.map((s) => (s.id === optimisticService.id ? (data as ScheduledService) : s))
-        )
+        setScheduledServices((prev) => replaceOptimistic(prev, optimisticService.id, data as ScheduledService))
       } catch (error) {
-        setScheduledServices((prev) => prev.filter((s) => s.id !== optimisticService.id))
+        setScheduledServices((prev) => removeOptimistic(prev, optimisticService.id))
         throw error
       }
     },
-    [user?.id, supabase]
+    [userId, supabase]
   )
 
   const updateScheduledServiceOptimistic = useCallback(
@@ -483,7 +496,7 @@ export function DataProvider({ children }: DataProviderProps) {
     async (id: string) => {
       const serviceToDelete = scheduledServices.find((s) => s.id === id)
 
-      setScheduledServices((prev) => prev.filter((s) => s.id !== id))
+      setScheduledServices((prev) => removeOptimistic(prev, id))
 
       try {
         const { error } = await supabase.from("scheduled_services").delete().eq("id", id)
@@ -491,7 +504,7 @@ export function DataProvider({ children }: DataProviderProps) {
         if (error) throw error
       } catch (error) {
         if (serviceToDelete) {
-          setScheduledServices((prev) => [serviceToDelete, ...prev])
+          setScheduledServices((prev) => prependOptimistic(prev, serviceToDelete))
         }
         throw error
       }
@@ -535,10 +548,12 @@ export function DataProvider({ children }: DataProviderProps) {
   const hasLoadedRef = React.useRef(false)
 
   useEffect(() => {
-    if (isAuthenticated && user?.id && !hasLoadedRef.current) {
+    const transition = resolveDataAuthTransition(authState, hasLoadedRef.current)
+
+    if (transition.type === "load") {
       hasLoadedRef.current = true
-      refreshAll()
-    } else if (!isAuthenticated) {
+      void loadAllForUser(transition.userId)
+    } else if (transition.type === "clear") {
       // Clear data when user logs out
       hasLoadedRef.current = false
       setVehicles([])
@@ -549,7 +564,7 @@ export function DataProvider({ children }: DataProviderProps) {
       setIsMaintenanceLoading(false)
       setIsScheduledServicesLoading(false)
     }
-  }, [isAuthenticated, user?.id])
+  }, [authState.status, userId])
 
   const value: DataContextType = {
     // Data

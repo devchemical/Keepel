@@ -7,7 +7,7 @@ import type React from "react"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { useAnalytics } from "@/hooks/use-analytics"
-import { useSupabase, useData, useAuth } from "@/contexts"
+import { useSupabase, useData, useAuthProjection } from "@/contexts"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -21,6 +21,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Car, Loader2 } from "lucide-react"
+import { AUTH_STATE_STATUS } from "@/lib/auth/contracts"
 
 interface AddVehicleDialogProps {
   children: React.ReactNode
@@ -49,7 +50,7 @@ export function AddVehicleDialog({ children }: AddVehicleDialogProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const { user } = useAuth()
+  const authState = useAuthProjection()
   const supabase = useSupabase()
   const { refreshVehicles } = useData()
   const router = useRouter()
@@ -71,7 +72,9 @@ export function AddVehicleDialog({ children }: AddVehicleDialogProps) {
     setError(null)
 
     try {
-      if (!user) throw new Error("Usuario no autenticado")
+      if (authState.status !== AUTH_STATE_STATUS.AUTHENTICATED) throw new Error("Usuario no autenticado")
+
+      const userId = authState.user.id
 
       // Track vehicle add attempt
       trackVehicleAction("add")
@@ -79,7 +82,7 @@ export function AddVehicleDialog({ children }: AddVehicleDialogProps) {
       const { error, data } = await supabase
         .from("vehicles")
         .insert({
-          user_id: user.id,
+          user_id: userId,
           make: formData.make,
           model: formData.model,
           year: Number.parseInt(formData.year),

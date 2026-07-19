@@ -6,6 +6,7 @@
 /* eslint-disable eslint/no-shadow -- Form error state is intentionally named `error` for UI clarity. */
 
 import { useState } from "react"
+import { useAuthProjection, useData } from "@/contexts"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -17,7 +18,7 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { useAuth, useData } from "@/contexts"
+import { AUTH_STATE_STATUS } from "@/lib/auth/contracts"
 
 interface AddVehicleDialogContextProps {
   children: React.ReactNode
@@ -29,7 +30,7 @@ export function AddVehicleDialogContext({ children }: AddVehicleDialogContextPro
   const [error, setError] = useState<string | null>(null)
 
   // Use contexts instead of direct hooks
-  const { user } = useAuth()
+  const authState = useAuthProjection()
   const { addVehicleOptimistic } = useData()
 
   const [formData, setFormData] = useState({
@@ -44,7 +45,7 @@ export function AddVehicleDialogContext({ children }: AddVehicleDialogContextPro
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!user?.id) return
+    if (authState.status !== AUTH_STATE_STATUS.AUTHENTICATED) return
 
     setIsLoading(true)
     setError(null)
