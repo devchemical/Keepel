@@ -4,10 +4,10 @@
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from "react"
 import { resolveDataAuthTransition } from "./data-auth-transition"
-import { prependOptimistic, removeOptimistic, replaceOptimistic } from "./optimistic-list"
 import { useAuthProjection } from "./AuthProjectionContext"
 import { useSupabase } from "./SupabaseContext"
 import { AUTH_STATE_STATUS, type CurrentUser } from "@/lib/auth/contracts"
+import { prependOptimistic, removeOptimistic, replaceOptimistic } from "@/lib/data/optimistic-list"
 
 export interface Vehicle {
   id: string

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { prependOptimistic, removeOptimistic, replaceOptimistic } from "@/contexts/optimistic-list"
+import { prependOptimistic, removeOptimistic, replaceOptimistic } from "@/lib/data/optimistic-list"
 
 describe("optimistic data updates", () => {
   it.each(["vehicle", "maintenance", "scheduled-service"])(
