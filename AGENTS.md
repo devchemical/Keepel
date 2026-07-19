@@ -131,11 +131,12 @@ The app follows a clean architecture with these layers:
 
 #### Authentication Flow
 
-The auth system is event-driven with three layers:
+The auth system is migrating incrementally to a server-authoritative projection:
 
 1. **AuthManager** — Singleton that manages Supabase client and broadcasts state changes via BroadcastChannel
-2. **AuthProvider** — React context that exposes user, profile, signOut
-3. **DataProvider** — Loads vehicles and maintenance with optimistic updates
+2. **AuthProjectionProvider** — React projection seeded by the server with typed `CurrentUser` identity
+3. **AuthProvider** — Compatibility context for data/form consumers until the legacy migration is complete
+4. **DataProvider** — Loads vehicles and maintenance with optimistic updates
 
 #### Data Flow
 
@@ -378,14 +379,15 @@ CarCare/
 
 ### Contexts & Hooks
 
-| Item                 | Import       | Exposes                                 |
-| -------------------- | ------------ | --------------------------------------- |
-| `useAuth()`          | `@/contexts` | user, profile, isAuthenticated, signOut |
-| `useData()`          | `@/contexts` | vehicles, maintenance, CRUD methods     |
-| `useSupabase()`      | `@/contexts` | Raw Supabase client                     |
-| `useDashboardData()` | `@/hooks`    | Dashboard data fetching                 |
-| `useAnalytics()`     | `@/hooks`    | @openpanel/nextjs analytics integration |
-| `useMediaQuery()`    | `@/hooks`    | Responsive breakpoint detection         |
+| Item                  | Import       | Exposes                                     |
+| --------------------- | ------------ | ------------------------------------------- |
+| `useAuthProjection()` | `@/contexts` | Typed `AuthState` and server-projected user |
+| `useAuth()`           | `@/contexts` | Legacy user, isAuthenticated, signOut       |
+| `useData()`           | `@/contexts` | vehicles, maintenance, CRUD methods         |
+| `useSupabase()`       | `@/contexts` | Raw Supabase client                         |
+| `useDashboardData()`  | `@/hooks`    | Dashboard data fetching                     |
+| `useAnalytics()`      | `@/hooks`    | @openpanel/nextjs analytics integration     |
+| `useMediaQuery()`     | `@/hooks`    | Responsive breakpoint detection             |
 
 ---
 

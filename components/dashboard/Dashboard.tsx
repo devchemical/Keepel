@@ -25,18 +25,7 @@ interface Vehicle {
   updated_at: string
 }
 
-interface Profile {
-  id: string
-  full_name?: string
-  email: string
-}
-
 interface DashboardProps {
-  user: {
-    id: string
-    email?: string
-  }
-  profile: Profile | null
   vehicles: Vehicle[]
   maintenanceRecords: any[]
   upcomingMaintenance: ScheduledService[]
