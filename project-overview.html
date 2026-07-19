@@ -946,7 +946,7 @@
       <section>
         <div class="section-header">
           <h2>Route Protection</h2>
-          <p>Middleware and access rules for application routes.</p>
+          <p>Proxy and access rules for application routes.</p>
         </div>
         <div class="card-grid card-grid-2">
           <div class="card">
@@ -1121,7 +1121,7 @@
           </div>
           <div class="tree-line">
             <span class="tree-indent">│ ├── </span><span class="tree-dir">supabase/</span
-            ><span class="tree-comment"># Client, server, middleware</span>
+            ><span class="tree-comment"># Client, server, proxy</span>
           </div>
           <div class="tree-line">
             <span class="tree-indent">│ ├── </span><span class="tree-file">formatters.ts</span
@@ -1149,7 +1149,7 @@
             ><span class="tree-comment"># Static assets</span>
           </div>
           <div class="tree-line">
-            <span class="tree-indent">├── </span><span class="tree-file">middleware.ts</span
+            <span class="tree-indent">├── </span><span class="tree-file">proxy.ts</span
             ><span class="tree-comment"># Session refresh + route protection</span>
           </div>
           <div class="tree-line">
@@ -1190,16 +1190,6 @@
                 <td><code>useSupabase()</code></td>
                 <td><code>@/contexts</code></td>
                 <td>Raw Supabase client</td>
-              </tr>
-              <tr>
-                <td><code>useProtectedRoute()</code></td>
-                <td><code>@/hooks</code></td>
-                <td>Redirect to login if unauthenticated</td>
-              </tr>
-              <tr>
-                <td><code>useGuestRoute()</code></td>
-                <td><code>@/hooks</code></td>
-                <td>Redirect to <code>/</code> if authenticated</td>
               </tr>
               <tr>
                 <td><code>useDashboardData()</code></td>

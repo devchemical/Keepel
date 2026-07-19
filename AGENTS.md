@@ -346,14 +346,14 @@ CarCare/
 ├── hooks/                            # Custom hooks
 ├── lib/                              # Utilities
 │   ├── auth/                        # AuthManager singleton
-│   ├── supabase/                    # Client, server, middleware
+│   ├── supabase/                    # Client, server, proxy
 │   ├── formatters.ts                # Data formatters
 │   ├── ratelimit.ts                 # Rate limiting config
 │   └── utils.ts                     # General utilities
 ├── scripts/                          # SQL migrations
 ├── styles/                           # Additional styles
 ├── public/                           # Static assets
-├── middleware.ts                     # Next.js middleware
+├── proxy.ts                          # Session refresh + route protection
 ├── next.config.mjs                   # Next.js config
 └── package.json
 ```
@@ -366,7 +366,7 @@ CarCare/
 
 | File                            | Purpose                            |
 | ------------------------------- | ---------------------------------- |
-| `middleware.ts`                 | Session refresh + route protection |
+| `proxy.ts`                      | Session refresh + route protection |
 | `lib/auth/authManager.ts`       | Auth singleton                     |
 | `lib/supabase/client.ts`        | Browser client                     |
 | `lib/supabase/server.ts`        | Server client                      |
@@ -378,16 +378,14 @@ CarCare/
 
 ### Contexts & Hooks
 
-| Item                  | Import       | Exposes                                 |
-| --------------------- | ------------ | --------------------------------------- |
-| `useAuth()`           | `@/contexts` | user, profile, isAuthenticated, signOut |
-| `useData()`           | `@/contexts` | vehicles, maintenance, CRUD methods     |
-| `useSupabase()`       | `@/contexts` | Raw Supabase client                     |
-| `useProtectedRoute()` | `@/hooks`    | Redirect to login if unauthenticated    |
-| `useGuestRoute()`     | `@/hooks`    | Redirect to `/` if authenticated        |
-| `useDashboardData()`  | `@/hooks`    | Dashboard data fetching                 |
-| `useAnalytics()`      | `@/hooks`    | @openpanel/nextjs analytics integration |
-| `useMediaQuery()`     | `@/hooks`    | Responsive breakpoint detection         |
+| Item                 | Import       | Exposes                                 |
+| -------------------- | ------------ | --------------------------------------- |
+| `useAuth()`          | `@/contexts` | user, profile, isAuthenticated, signOut |
+| `useData()`          | `@/contexts` | vehicles, maintenance, CRUD methods     |
+| `useSupabase()`      | `@/contexts` | Raw Supabase client                     |
+| `useDashboardData()` | `@/hooks`    | Dashboard data fetching                 |
+| `useAnalytics()`     | `@/hooks`    | @openpanel/nextjs analytics integration |
+| `useMediaQuery()`    | `@/hooks`    | Responsive breakpoint detection         |
 
 ---
 
