@@ -5,7 +5,8 @@
 import type React from "react"
 
 import { useState } from "react"
-import { useAuth, useSupabase, useData } from "@/contexts"
+import { useAuthProjection, useSupabase, useData } from "@/contexts"
+import { AUTH_STATE_STATUS } from "@/lib/auth/contracts"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -56,7 +57,7 @@ export function ScheduleServiceDialog({
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const { user } = useAuth()
+  const authState = useAuthProjection()
   const { refreshScheduledServices } = useData()
   const supabase = useSupabase()
 
@@ -86,10 +87,11 @@ export function ScheduleServiceDialog({
         throw new Error("Debe indicar al menos una fecha o un kilometraje programado")
       }
 
-      if (!user) {
+      if (authState.status !== AUTH_STATE_STATUS.AUTHENTICATED) {
         throw new Error("No hay sesión activa. Por favor, inicia sesión.")
       }
 
+      const userId = authState.user.id
       const scheduledMileage = formData.scheduled_mileage ? parseInt(formData.scheduled_mileage, 10) : null
 
       if (formData.scheduled_mileage && (isNaN(scheduledMileage!) || scheduledMileage! < 0)) {
@@ -98,7 +100,7 @@ export function ScheduleServiceDialog({
 
       const insertData = {
         vehicle_id: vehicleId,
-        user_id: user.id,
+        user_id: userId,
         type: formData.type,
         description: formData.description?.trim() || null,
         scheduled_date: formData.scheduled_date || null,

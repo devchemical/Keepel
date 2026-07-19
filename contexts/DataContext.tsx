@@ -3,8 +3,10 @@
 /* eslint-disable no-console, typescript/no-explicit-any, react/exhaustive-deps, react/jsx-no-constructed-context-values -- Data load failures are diagnostic; Promise.race typing and one-shot auth-load behavior are intentional pending data-layer refactor. */
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from "react"
+import { AUTH_STATE_STATUS, type CurrentUser } from "@/lib/auth/contracts"
+import { resolveDataAuthTransition } from "./data-auth-transition"
+import { useAuthProjection } from "./AuthProjectionContext"
 import { useSupabase } from "./SupabaseContext"
-import { useAuth } from "./AuthContext"
 
 export interface Vehicle {
   id: string
@@ -105,7 +107,8 @@ interface DataProviderProps {
 }
 
 export function DataProvider({ children }: DataProviderProps) {
-  const { user, isAuthenticated } = useAuth()
+  const authState = useAuthProjection()
+  const userId = authState.status === AUTH_STATE_STATUS.AUTHENTICATED ? authState.user.id : null
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
   const [maintenanceRecords, setMaintenanceRecords] = useState<MaintenanceRecord[]>([])
   const [scheduledServices, setScheduledServices] = useState<ScheduledService[]>([])
@@ -117,8 +120,8 @@ export function DataProvider({ children }: DataProviderProps) {
   const supabase = useSupabase()
 
   const loadVehicles = useCallback(
-    async (userId: string) => {
-      if (!userId) return
+    async (currentUserId: CurrentUser["id"]) => {
+      if (!currentUserId) return
 
       setIsVehiclesLoading(true)
       try {
@@ -126,7 +129,7 @@ export function DataProvider({ children }: DataProviderProps) {
         const queryPromise = supabase
           .from("vehicles")
           .select("*")
-          .eq("user_id", userId)
+          .eq("user_id", currentUserId)
           .order("created_at", { ascending: false })
 
         const timeoutPromise = new Promise((_, reject) =>
@@ -154,8 +157,8 @@ export function DataProvider({ children }: DataProviderProps) {
   )
 
   const loadMaintenanceRecords = useCallback(
-    async (userId: string) => {
-      if (!userId) return
+    async (currentUserId: CurrentUser["id"]) => {
+      if (!currentUserId) return
 
       setIsMaintenanceLoading(true)
 
@@ -172,7 +175,7 @@ export function DataProvider({ children }: DataProviderProps) {
           )
         `
           )
-          .eq("user_id", userId)
+          .eq("user_id", currentUserId)
           .order("service_date", { ascending: false })
 
         const timeoutPromise = new Promise((_, reject) =>
@@ -200,8 +203,8 @@ export function DataProvider({ children }: DataProviderProps) {
   )
 
   const loadScheduledServices = useCallback(
-    async (userId: string) => {
-      if (!userId) return
+    async (currentUserId: CurrentUser["id"]) => {
+      if (!currentUserId) return
 
       setIsScheduledServicesLoading(true)
       try {
@@ -218,7 +221,7 @@ export function DataProvider({ children }: DataProviderProps) {
             )
           `
           )
-          .eq("user_id", userId)
+          .eq("user_id", currentUserId)
           .eq("status", "pending")
           .order("scheduled_date", { ascending: true, nullsFirst: true })
 
@@ -240,34 +243,45 @@ export function DataProvider({ children }: DataProviderProps) {
     [supabase]
   )
 
+  const loadAllForUser = useCallback(
+    async (currentUserId: CurrentUser["id"]) => {
+      await Promise.all([
+        loadVehicles(currentUserId),
+        loadMaintenanceRecords(currentUserId),
+        loadScheduledServices(currentUserId),
+      ])
+    },
+    [loadVehicles, loadMaintenanceRecords, loadScheduledServices]
+  )
+
   const refreshVehicles = useCallback(async () => {
-    if (user?.id) {
-      await loadVehicles(user.id)
+    if (userId) {
+      await loadVehicles(userId)
     }
-  }, [user?.id, loadVehicles])
+  }, [userId, loadVehicles])
 
   const refreshMaintenance = useCallback(async () => {
-    if (user?.id) {
-      await loadMaintenanceRecords(user.id)
+    if (userId) {
+      await loadMaintenanceRecords(userId)
     }
-  }, [user?.id, loadMaintenanceRecords])
+  }, [userId, loadMaintenanceRecords])
 
   const refreshScheduledServices = useCallback(async () => {
-    if (user?.id) {
-      await loadScheduledServices(user.id)
+    if (userId) {
+      await loadScheduledServices(userId)
     }
-  }, [user?.id, loadScheduledServices])
+  }, [userId, loadScheduledServices])
 
   const refreshAll = useCallback(async () => {
-    if (user?.id) {
-      await Promise.all([loadVehicles(user.id), loadMaintenanceRecords(user.id), loadScheduledServices(user.id)])
+    if (userId) {
+      await loadAllForUser(userId)
     }
-  }, [user?.id, loadVehicles, loadMaintenanceRecords, loadScheduledServices])
+  }, [userId, loadAllForUser])
 
   // Optimistic update functions
   const addVehicleOptimistic = useCallback(
     async (vehicleData: Omit<Vehicle, "id" | "created_at" | "updated_at">) => {
-      if (!user?.id) return
+      if (!userId) return
 
       // Create optimistic vehicle
       const optimisticVehicle: Vehicle = {
@@ -283,7 +297,7 @@ export function DataProvider({ children }: DataProviderProps) {
       try {
         const { data, error } = await supabase
           .from("vehicles")
-          .insert({ ...vehicleData, user_id: user.id })
+          .insert({ ...vehicleData, user_id: userId })
           .select()
           .single()
 
@@ -297,7 +311,7 @@ export function DataProvider({ children }: DataProviderProps) {
         throw error
       }
     },
-    [user?.id, supabase]
+    [userId, supabase]
   )
 
   const updateVehicleOptimistic = useCallback(
@@ -347,7 +361,7 @@ export function DataProvider({ children }: DataProviderProps) {
 
   const addMaintenanceOptimistic = useCallback(
     async (recordData: Omit<MaintenanceRecord, "id" | "created_at" | "updated_at">) => {
-      if (!user?.id) return
+      if (!userId) return
 
       const optimisticRecord: MaintenanceRecord = {
         id: `temp-${Date.now()}`,
@@ -361,7 +375,7 @@ export function DataProvider({ children }: DataProviderProps) {
       try {
         const { data, error } = await supabase
           .from("maintenance_records")
-          .insert({ ...recordData, user_id: user.id })
+          .insert({ ...recordData, user_id: userId })
           .select()
           .single()
 
@@ -373,7 +387,7 @@ export function DataProvider({ children }: DataProviderProps) {
         throw error
       }
     },
-    [user?.id, supabase]
+    [userId, supabase]
   )
 
   const updateMaintenanceOptimistic = useCallback(
@@ -418,7 +432,7 @@ export function DataProvider({ children }: DataProviderProps) {
 
   const addScheduledServiceOptimistic = useCallback(
     async (serviceData: Omit<ScheduledService, "id" | "created_at" | "updated_at" | "vehicles">) => {
-      if (!user?.id) return
+      if (!userId) return
 
       const optimisticService: ScheduledService = {
         id: `temp-${Date.now()}`,
@@ -432,7 +446,7 @@ export function DataProvider({ children }: DataProviderProps) {
       try {
         const { data, error } = await supabase
           .from("scheduled_services")
-          .insert({ ...serviceData, user_id: user.id })
+          .insert({ ...serviceData, user_id: userId })
           .select(
             `
             *,
@@ -456,7 +470,7 @@ export function DataProvider({ children }: DataProviderProps) {
         throw error
       }
     },
-    [user?.id, supabase]
+    [userId, supabase]
   )
 
   const updateScheduledServiceOptimistic = useCallback(
@@ -535,10 +549,12 @@ export function DataProvider({ children }: DataProviderProps) {
   const hasLoadedRef = React.useRef(false)
 
   useEffect(() => {
-    if (isAuthenticated && user?.id && !hasLoadedRef.current) {
+    const transition = resolveDataAuthTransition(authState, hasLoadedRef.current)
+
+    if (transition.type === "load") {
       hasLoadedRef.current = true
-      refreshAll()
-    } else if (!isAuthenticated) {
+      void loadAllForUser(transition.userId)
+    } else if (transition.type === "clear") {
       // Clear data when user logs out
       hasLoadedRef.current = false
       setVehicles([])
@@ -549,7 +565,7 @@ export function DataProvider({ children }: DataProviderProps) {
       setIsMaintenanceLoading(false)
       setIsScheduledServicesLoading(false)
     }
-  }, [isAuthenticated, user?.id])
+  }, [authState.status, userId])
 
   const value: DataContextType = {
     // Data

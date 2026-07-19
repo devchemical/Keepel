@@ -7,7 +7,8 @@ import type React from "react"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { useAnalytics } from "@/hooks/use-analytics"
-import { useAuth, useSupabase, useData } from "@/contexts"
+import { useAuthProjection, useSupabase, useData } from "@/contexts"
+import { AUTH_STATE_STATUS } from "@/lib/auth/contracts"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -66,7 +67,7 @@ export function AddMaintenanceDialog({
   const [error, setError] = useState<string | null>(null)
 
   // Usar contextos en lugar de crear cliente directamente
-  const { user } = useAuth()
+  const authState = useAuthProjection()
   const supabase = useSupabase()
   const { refreshMaintenance } = useData()
   const router = useRouter()
@@ -119,9 +120,11 @@ export function AddMaintenanceDialog({
         throw new Error("Debe seleccionar al menos un tipo de mantenimiento")
       }
 
-      if (!user) {
+      if (authState.status !== AUTH_STATE_STATUS.AUTHENTICATED) {
         throw new Error("No hay sesión activa. Por favor, inicia sesión.")
       }
+
+      const userId = authState.user.id
 
       // Track maintenance add attempt
       trackMaintenanceAction("add", vehicleId)
@@ -146,7 +149,7 @@ export function AddMaintenanceDialog({
 
         return {
           vehicle_id: vehicleId,
-          user_id: user.id,
+          user_id: userId,
           type: service.type,
           description: service.description?.trim() || null,
           cost,
