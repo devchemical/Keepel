@@ -1,32 +1,19 @@
 "use client"
 
+import { useAuthProjection, useData } from "@/contexts"
 import { Dashboard } from "@/components/dashboard/Dashboard"
 import { LandingPage } from "@/components/home/LandingPage"
 import { Layout } from "@/components/layout/Layout"
-import { LoadingScreen } from "@/components/ui/loading-screen"
-import { useAuth, useData } from "@/contexts"
+import { AUTH_STATE_STATUS } from "@/lib/auth/contracts"
 
 export default function HomePage() {
-  const { user, profile, isLoading: authLoading } = useAuth()
+  const authState = useAuthProjection()
   const { vehicles, maintenanceRecords, scheduledServices, isLoading: dataLoading } = useData()
 
-  // Show loading screen only during initial auth check to prevent flash
-  const showLoadingScreen = authLoading
-
-  // Production ready - no debug logging
-
-  // Show loading screen during initial auth verification
-  if (showLoadingScreen) {
-    return <LoadingScreen message="Verificando autenticación..." />
-  }
-
-  // Renderizado condicional basado en autenticación
   return (
     <Layout showHeader={true}>
-      {user ? (
+      {authState.status === AUTH_STATE_STATUS.AUTHENTICATED ? (
         <Dashboard
-          user={user}
-          profile={profile}
           vehicles={vehicles}
           maintenanceRecords={maintenanceRecords}
           upcomingMaintenance={scheduledServices}

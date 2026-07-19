@@ -28,12 +28,11 @@ interface DashboardData {
 
 export function useDashboardData(): DashboardData & {
   user: any
-  profile: any
   isLoading: boolean
   signOut: () => Promise<void>
   refreshData: () => Promise<void>
 } {
-  const { user, profile, isLoading: authLoading, signOut } = useAuth()
+  const { user, isLoading: authLoading, signOut } = useAuth()
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
   const [maintenanceRecords, setMaintenanceRecords] = useState<any[]>([])
   const [upcomingMaintenance, setUpcomingMaintenance] = useState<ScheduledService[]>([])
@@ -178,7 +177,6 @@ export function useDashboardData(): DashboardData & {
 
   return {
     user,
-    profile,
     vehicles,
     maintenanceRecords,
     upcomingMaintenance,

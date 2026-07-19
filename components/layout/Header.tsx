@@ -6,10 +6,10 @@ import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { Car, User, LogOut, Plus, ChevronDown, Menu } from "lucide-react"
 
-import { useAuth, useData } from "@/contexts"
+import { useAuthProjection, useData } from "@/contexts"
 import { useAnalytics } from "@/hooks"
 import { LogoutControl } from "@/components/auth/logout-control"
-import { HeaderSkeleton } from "@/components/skeletons/header-skeleton"
+import { HeaderUserIdentity } from "@/components/layout/header-user-identity"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -20,9 +20,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetClose } from "@/components/ui/sheet"
+import { AUTH_STATE_STATUS } from "@/lib/auth/contracts"
 
 export function Header() {
-  const { user, profile, isLoading: authLoading } = useAuth()
+  const authState = useAuthProjection()
+  const user = authState.status === AUTH_STATE_STATUS.AUTHENTICATED ? authState.user : null
   const { vehicles } = useData()
   const { trackAuthAction } = useAnalytics()
   const [showVehiclesDropdown, setShowVehiclesDropdown] = useState(false)
@@ -36,11 +38,6 @@ export function Header() {
 
   const handleLogoutError = () => {
     trackAuthAction("error", "sign_out")
-  }
-
-  // Mostrar skeleton durante la carga inicial para evitar parpadeo
-  if (authLoading) {
-    return <HeaderSkeleton />
   }
 
   return (
@@ -58,8 +55,8 @@ export function Header() {
             {/* Desktop Navigation */}
             <div className="hidden items-center gap-3 lg:flex">
               {/* Saludo al usuario */}
-              <span className="text-muted-foreground text-sm">
-                Hola, {profile?.full_name || user.email?.split("@")[0]}
+              <span className="text-muted-foreground max-w-48 truncate text-sm" title={user.displayName}>
+                Hola, {user.displayName}
               </span>
 
               {/* Dropdown de Vehículos */}
@@ -126,10 +123,7 @@ export function Header() {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
                   <DropdownMenuLabel>
-                    <div className="flex flex-col space-y-1">
-                      <p className="text-sm leading-none font-medium">{profile?.full_name || "Usuario"}</p>
-                      <p className="text-muted-foreground text-xs leading-none">{user.email}</p>
-                    </div>
+                    <HeaderUserIdentity user={user} />
                   </DropdownMenuLabel>
 
                   <DropdownMenuSeparator />
@@ -172,10 +166,7 @@ export function Header() {
                       <div className="bg-primary/10 flex h-12 w-12 items-center justify-center rounded-full">
                         <User className="text-primary h-6 w-6" />
                       </div>
-                      <div className="flex flex-col">
-                        <p className="text-sm font-medium">{profile?.full_name || "Usuario"}</p>
-                        <p className="text-muted-foreground text-xs">{user.email}</p>
-                      </div>
+                      <HeaderUserIdentity user={user} />
                     </div>
 
                     {/* Vehicles Section */}
