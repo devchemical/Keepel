@@ -18,6 +18,12 @@ export const AUTH_ERROR_CODE = {
   UNEXPECTED: "unexpected",
 } as const
 
+export const OAUTH_ERROR_CODE = {
+  CANCELLED: "oauth_cancelled",
+  PROVIDER_ERROR: AUTH_ERROR_CODE.PROVIDER_ERROR,
+  UNEXPECTED: AUTH_ERROR_CODE.UNEXPECTED,
+} as const
+
 export const SIGN_UP_STATUS = {
   AUTHENTICATED: "authenticated",
   CONFIRMATION_REQUIRED: "confirmation_required",
@@ -36,6 +42,8 @@ declare const userIdBrand: unique symbol
 export type UserId = string & { readonly [userIdBrand]: "UserId" }
 
 export type AuthErrorCode = ValueOf<typeof AUTH_ERROR_CODE>
+
+export type OAuthErrorCode = ValueOf<typeof OAUTH_ERROR_CODE>
 
 export type SignUpRateLimitScope = ValueOf<typeof SIGN_UP_RATE_LIMIT_SCOPE>
 

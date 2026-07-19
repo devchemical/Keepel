@@ -2,7 +2,8 @@
 
 import type { NextRequest } from "next/server"
 import { NextResponse } from "next/server"
-import { sanitizeInternalRedirect } from "@/lib/auth/redirects"
+import { OAUTH_ERROR_CODE } from "@/lib/auth/contracts"
+import { createOAuthErrorRedirect, sanitizeInternalRedirect } from "@/lib/auth/redirects"
 import { createClient } from "@/lib/supabase/server"
 
 export interface AuthCallbackExchangeResult {
@@ -21,37 +22,35 @@ export function createAuthCallbackHandler(createAdapter: AuthCallbackAdapterFact
     try {
       const { searchParams, origin } = new URL(request.url)
       const code = searchParams.get("code")
-      const error = searchParams.get("error")
+      const providerError = searchParams.get("error")
       const next = sanitizeInternalRedirect(searchParams.get("next"))
 
-      // Si hay un error de OAuth
-      if (error) {
-        return NextResponse.redirect(`${origin}/auth/error?message=${encodeURIComponent(error)}`)
+      if (providerError) {
+        const errorCode =
+          providerError === "access_denied" ? OAUTH_ERROR_CODE.CANCELLED : OAUTH_ERROR_CODE.PROVIDER_ERROR
+        return NextResponse.redirect(createOAuthErrorRedirect(origin, errorCode))
       }
 
-      // Si no hay código, redirigir a error
       if (!code) {
-        return NextResponse.redirect(`${origin}/auth/error?message=${encodeURIComponent("No authorization code")}`)
+        return NextResponse.redirect(createOAuthErrorRedirect(origin, OAUTH_ERROR_CODE.PROVIDER_ERROR))
       }
 
-      // Intentar intercambiar el código por una sesión
       const adapter = await createAdapter()
       const { data, error: exchangeError } = await adapter.exchangeCodeForSession(code)
 
       if (exchangeError) {
-        return NextResponse.redirect(`${origin}/auth/error?message=${encodeURIComponent(exchangeError.message)}`)
+        return NextResponse.redirect(createOAuthErrorRedirect(origin, OAUTH_ERROR_CODE.PROVIDER_ERROR))
       }
 
       if (!data?.user) {
-        return NextResponse.redirect(`${origin}/auth/error?message=${encodeURIComponent("No user found")}`)
+        return NextResponse.redirect(createOAuthErrorRedirect(origin, OAUTH_ERROR_CODE.PROVIDER_ERROR))
       }
 
-      // Éxito - redirigir al destino
       return NextResponse.redirect(new URL(next, origin))
     } catch (error) {
       console.error("Auth callback error:", error)
       const { origin } = new URL(request.url)
-      return NextResponse.redirect(`${origin}/auth/error?message=${encodeURIComponent("Callback failed")}`)
+      return NextResponse.redirect(createOAuthErrorRedirect(origin, OAUTH_ERROR_CODE.UNEXPECTED))
     }
   }
 }
