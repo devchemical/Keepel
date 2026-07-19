@@ -3,10 +3,6 @@
  * Exportación centralizada de todos los hooks personalizados
  */
 
-// Auth hooks
-export { useProtectedRoute } from "./useProtectedRoute"
-export { useGuestRoute } from "./useGuestRoute"
-
 // Supabase hook
 export { useSupabase } from "./useSupabase"
 

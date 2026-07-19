@@ -35,9 +35,8 @@ Keepel cuenta con un **sistema de autenticación de clase empresarial**:
 - ✅ **Event-driven**: Responde a cambios en tiempo real sin polling
 - ✅ **AuthManager Singleton**: Gestión centralizada de estado de autenticación
 - ✅ **Sincronización Cross-Tab**: BroadcastChannel API para sync entre pestañas
-- ✅ **Middleware con Caché**: Validación optimizada de sesiones (reduce llamadas a DB en 90%)
+- ✅ **Proxy con Claims Verificados**: Protección temprana y refresh de cookies SSR en el servidor
 - ✅ **Token Refresh Automático**: Renovación transparente de tokens sin interrupciones
-- ✅ **Hooks de Protección**: `useProtectedRoute()` y `useGuestRoute()` para control de acceso
 
 ## 📸 Demo
 
@@ -475,10 +474,10 @@ Keepel/
 ├── 📁 hooks/                        # Custom React hooks
 ├── 📁 lib/                          # Utilidades y configuración
 │   ├── auth/                        # AuthManager singleton
-│   ├── supabase/                    # Clientes y middleware de Supabase
+│   ├── supabase/                    # Clientes y proxy de Supabase
 │   │   ├── client.ts                # Cliente del navegador
 │   │   ├── server.ts                # Cliente del servidor
-│   │   └── middleware.ts            # Middleware de autenticación
+│   │   └── proxy.ts                 # Refresh de sesión y protección de rutas
 │   ├── formatters.ts                # Formateadores de datos
 │   ├── ratelimit.ts                 # Configuración de rate limiting
 │   └── utils.ts                     # Funciones de utilidad
@@ -490,7 +489,7 @@ Keepel/
 ├── 📁 public/                       # Archivos estáticos
 │   ├── keepel_logo.svg              # Logo del proyecto
 │   └── robots.txt                   # Reglas para crawlers
-├── 📄 middleware.ts                 # Middleware de Next.js
+├── 📄 proxy.ts                      # Proxy de autenticación de Next.js
 ├── 📄 next.config.mjs               # Configuración de Next.js
 ├── 📄 tsconfig.json                 # Configuración de TypeScript
 └── 📄 package.json                  # Dependencias del proyecto
@@ -543,7 +542,7 @@ graph TD
 - ✅ Registro con email y contraseña
 - ✅ Inicio de sesión seguro
 - ✅ OAuth con Google
-- ✅ Protección de rutas con middleware
+- ✅ Protección de rutas con proxy y claims verificados
 - ✅ Gestión automática de sesiones
 - ✅ Tokens JWT seguros
 
