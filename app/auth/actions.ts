@@ -2,6 +2,7 @@
 
 /* eslint-disable no-console -- Server actions log unexpected auth failures until centralized observability is added. */
 
+import { revalidatePath } from "next/cache"
 import { headers } from "next/headers"
 import {
   AUTH_COMMAND_STATUS,
@@ -11,9 +12,11 @@ import {
   type SignUpResult,
 } from "@/lib/auth/contracts"
 import { createPasswordLoginCommand, type PasswordLoginResult } from "@/lib/auth/password-login"
-import { getCurrentUser } from "@/lib/auth/server"
+import { createLogoutCommand, type LogoutResult } from "@/lib/auth/logout"
+import { getCurrentUser, requireCurrentUser } from "@/lib/auth/server"
 import { createSignupCommand } from "@/lib/auth/signup"
 import { createSupabasePasswordLoginAuthAdapter } from "@/lib/auth/supabase-password-login-adapter"
+import { createSupabaseLogoutAuthAdapter } from "@/lib/auth/supabase-logout-adapter"
 import { createSupabaseSignupAuthAdapter } from "@/lib/auth/supabase-signup-adapter"
 import { loginRateLimiter, signupRateLimiter } from "@/lib/ratelimit"
 import { createClient } from "@/lib/supabase/server"
@@ -30,6 +33,11 @@ const passwordLogin = createPasswordLoginCommand({
       return emailLimit.success && ipLimit.success
     },
   },
+})
+
+const logout = createLogoutCommand({
+  authAdapter: createSupabaseLogoutAuthAdapter(createClient),
+  requireCurrentUser,
 })
 
 const signup = createSignupCommand({
@@ -90,6 +98,16 @@ export async function loginAction(
       error: { code: AUTH_ERROR_CODE.UNEXPECTED },
     }
   }
+}
+
+export async function logoutAction(_previousResult: LogoutResult | null, _formData: FormData): Promise<LogoutResult> {
+  const result = await logout()
+
+  if (result.status === AUTH_COMMAND_STATUS.SUCCESS) {
+    revalidatePath("/", "layout")
+  }
+
+  return result
 }
 
 export async function signupAction(_previousResult: SignUpResult | null, formData: FormData): Promise<SignUpResult> {

@@ -1,11 +1,15 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { Car, User, LogOut, Plus, ChevronDown, Menu } from "lucide-react"
 
+import { useAuth, useData } from "@/contexts"
+import { useAnalytics } from "@/hooks"
+import { LogoutControl } from "@/components/auth/logout-control"
+import { HeaderSkeleton } from "@/components/skeletons/header-skeleton"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -16,53 +20,22 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetClose } from "@/components/ui/sheet"
-import { useAuth, useData } from "@/contexts"
-import { HeaderSkeleton } from "@/components/skeletons/header-skeleton"
 
 export function Header() {
-  const { user, profile, isLoading: authLoading, isLoggingOut, signOut } = useAuth()
+  const { user, profile, isLoading: authLoading } = useAuth()
   const { vehicles } = useData()
+  const { trackAuthAction } = useAnalytics()
   const [showVehiclesDropdown, setShowVehiclesDropdown] = useState(false)
   const [showUserDropdown, setShowUserDropdown] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const router = useRouter()
 
-  // Safety timeout: if logout takes more than 2 seconds, force redirect
-  useEffect(() => {
-    if (isLoggingOut) {
-      const timeoutId = setTimeout(() => {
-        window.location.replace("/auth/login")
-      }, 2000)
-
-      return () => {
-        clearTimeout(timeoutId)
-      }
-    }
-  }, [isLoggingOut])
-
-  const handleSignOut = async () => {
-    setShowUserDropdown(false)
-    setMobileMenuOpen(false)
-    await signOut()
+  const handleLogoutAttempt = () => {
+    trackAuthAction("sign_out")
   }
 
-  // Mostrar pantalla de carga completa durante logout
-  if (isLoggingOut) {
-    return (
-      <div className="bg-background/95 fixed inset-0 z-[100] flex items-center justify-center backdrop-blur-sm">
-        <div className="flex flex-col items-center gap-4">
-          <Image src="/logo_keepel_grueso.svg" alt="Keepel" width={48} height={48} className="animate-pulse" />
-          <div className="flex flex-col items-center gap-2">
-            <p className="text-foreground text-xl font-semibold">Cerrando sesión...</p>
-          </div>
-          <div className="flex gap-2">
-            <div className="bg-primary h-2 w-2 animate-bounce rounded-full [animation-delay:-0.3s]"></div>
-            <div className="bg-primary h-2 w-2 animate-bounce rounded-full [animation-delay:-0.15s]"></div>
-            <div className="bg-primary h-2 w-2 animate-bounce rounded-full"></div>
-          </div>
-        </div>
-      </div>
-    )
+  const handleLogoutError = () => {
+    trackAuthAction("error", "sign_out")
   }
 
   // Mostrar skeleton durante la carga inicial para evitar parpadeo
@@ -161,10 +134,16 @@ export function Header() {
 
                   <DropdownMenuSeparator />
 
-                  <DropdownMenuItem onClick={handleSignOut} className="cursor-pointer">
-                    <LogOut className="mr-2 h-4 w-4" />
-                    <span>Cerrar Sesión</span>
-                  </DropdownMenuItem>
+                  <LogoutControl className="w-full" onAttempt={handleLogoutAttempt} onError={handleLogoutError}>
+                    {({ isPending }) => (
+                      <DropdownMenuItem asChild disabled={isPending} onSelect={(event) => event.preventDefault()}>
+                        <button type="submit" className="w-full cursor-pointer">
+                          <LogOut className="mr-2 h-4 w-4" />
+                          <span>{isPending ? "Cerrando sesión..." : "Cerrar Sesión"}</span>
+                        </button>
+                      </DropdownMenuItem>
+                    )}
+                  </LogoutControl>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
@@ -243,14 +222,19 @@ export function Header() {
 
                     {/* Actions Section */}
                     <div className="border-border mt-auto space-y-2 border-t pt-4">
-                      <Button
-                        variant="ghost"
-                        className="hover:bg-destructive/10 hover:text-destructive w-full justify-start gap-3"
-                        onClick={handleSignOut}
-                      >
-                        <LogOut className="h-5 w-5" />
-                        <span>Cerrar Sesión</span>
-                      </Button>
+                      <LogoutControl className="w-full" onAttempt={handleLogoutAttempt} onError={handleLogoutError}>
+                        {({ isPending }) => (
+                          <Button
+                            type="submit"
+                            variant="ghost"
+                            className="hover:bg-destructive/10 hover:text-destructive w-full justify-start gap-3"
+                            disabled={isPending}
+                          >
+                            <LogOut className="h-5 w-5" />
+                            <span>{isPending ? "Cerrando sesión..." : "Cerrar Sesión"}</span>
+                          </Button>
+                        )}
+                      </LogoutControl>
                     </div>
                   </div>
                 </SheetContent>

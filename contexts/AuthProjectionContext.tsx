@@ -1,9 +1,10 @@
 "use client"
 
-import { createContext, useContext, type ReactNode } from "react"
-import type { AuthState } from "@/lib/auth/contracts"
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react"
+import { AUTH_STATE_STATUS, type AuthState } from "@/lib/auth/contracts"
 
 const AuthProjectionContext = createContext<AuthState | null>(null)
+const AuthProjectionInvalidationContext = createContext<(() => void) | null>(null)
 
 interface AuthProjectionProviderProps {
   children?: ReactNode
@@ -11,7 +12,21 @@ interface AuthProjectionProviderProps {
 }
 
 export function AuthProjectionProvider({ children, initialState }: AuthProjectionProviderProps) {
-  return <AuthProjectionContext.Provider value={initialState}>{children}</AuthProjectionContext.Provider>
+  const [state, setState] = useState(initialState)
+
+  useEffect(() => {
+    setState(initialState)
+  }, [initialState])
+
+  const invalidate = useCallback(() => {
+    setState({ status: AUTH_STATE_STATUS.ANONYMOUS, user: null })
+  }, [])
+
+  return (
+    <AuthProjectionInvalidationContext.Provider value={invalidate}>
+      <AuthProjectionContext.Provider value={state}>{children}</AuthProjectionContext.Provider>
+    </AuthProjectionInvalidationContext.Provider>
+  )
 }
 
 export function useAuthProjection() {
@@ -22,4 +37,14 @@ export function useAuthProjection() {
   }
 
   return state
+}
+
+export function useAuthProjectionInvalidation() {
+  const invalidate = useContext(AuthProjectionInvalidationContext)
+
+  if (!invalidate) {
+    throw new Error("useAuthProjectionInvalidation must be used within an AuthProjectionProvider")
+  }
+
+  return invalidate
 }
