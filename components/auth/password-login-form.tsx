@@ -3,6 +3,7 @@
 import { useActionState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import { useAuthProjectionInvalidation } from "@/contexts"
 import { useAnalytics } from "@/hooks/use-analytics"
 import { GoogleSignInButton } from "./google-signin-button"
 import { PasswordLoginFeedback } from "./password-login-feedback"
@@ -20,6 +21,7 @@ interface PasswordLoginFormProps {
 
 export function PasswordLoginForm({ redirectTo }: PasswordLoginFormProps) {
   const router = useRouter()
+  const invalidateProjection = useAuthProjectionInvalidation()
   const { trackAuthAction } = useAnalytics()
   const [result, formAction, isPending] = useActionState(
     (previousResult: PasswordLoginResult | null, formData: FormData) =>
@@ -33,6 +35,7 @@ export function PasswordLoginForm({ redirectTo }: PasswordLoginFormProps) {
         },
         onSuccess(destination) {
           trackAuthAction("sign_in", "email")
+          invalidateProjection()
           router.replace(destination)
           router.refresh()
         },
