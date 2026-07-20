@@ -87,6 +87,8 @@ This project uses the following technologies. Agents should understand these reg
 bun dev              # Development server
 bun build            # Production build
 bun start            # Start production build
+bun run test          # Unit and integration tests
+bun run test:e2e      # Playwright browser tests
 bun lint             # oxlint
 bun type-check       # TypeScript check without emitting
 bun format           # oxfmt format

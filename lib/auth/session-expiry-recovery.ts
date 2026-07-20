@@ -20,8 +20,8 @@ export function createSessionExpiredRecovery({
     const searchParams = new URLSearchParams({ redirect: sanitizeInternalRedirect(returnTo) })
 
     invalidateProjection()
-    navigate(`/auth/login?${searchParams.toString()}`)
     refreshNavigation()
+    navigate(`/auth/login?${searchParams.toString()}`)
 
     return true
   }

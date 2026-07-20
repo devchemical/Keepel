@@ -1,6 +1,6 @@
 # Google OAuth manual verification
 
-The automated auth integration tests cover Keepel's server initiation, PKCE callback exchange, cancellation, and stable error mapping. The Google consent screen itself requires this manual check against a configured Supabase project.
+The automated auth integration and Playwright browser tests cover Keepel's server initiation, controlled PKCE callback exchange, cancellation, stable error mapping, and authenticated UI return. Run them with `bun run test` and `bun run test:e2e`. The real Google consent screen itself requires this manual check against a configured Supabase project.
 
 ## Prerequisites
 

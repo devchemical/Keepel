@@ -38,6 +38,6 @@ describe("session expiry recovery", () => {
       error: { code: AUTH_ERROR_CODE.SESSION_EXPIRED },
     })
     expect(recovered).toBe(true)
-    expect(recoveryEvents).toEqual(["invalidate", "navigate:/auth/login?redirect=%2F", "refresh"])
+    expect(recoveryEvents).toEqual(["invalidate", "refresh", "navigate:/auth/login?redirect=%2F"])
   })
 })
