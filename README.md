@@ -28,15 +28,15 @@
 
 ## 🎯 Características Destacadas
 
-### 🔐 Sistema de Autenticación Refactorizado (v2.0)
+### 🔐 Autenticación Server-Authoritative
 
-Keepel cuenta con un **sistema de autenticación de clase empresarial**:
+Keepel mantiene la sesión y los comandos de autenticación en el servidor:
 
-- ✅ **Event-driven**: Responde a cambios en tiempo real sin polling
-- ✅ **AuthManager Singleton**: Gestión centralizada de estado de autenticación
-- ✅ **Sincronización Cross-Tab**: BroadcastChannel API para sync entre pestañas
+- ✅ **Proyección Tipada**: El navegador recibe solo `AuthState` y `CurrentUser`
+- ✅ **Comandos en el Servidor**: Login, registro, OAuth y logout no exponen tokens al cliente
+- ✅ **Sincronización Cross-Tab**: BroadcastChannel transmite únicamente invalidaciones semánticas
 - ✅ **Proxy con Claims Verificados**: Protección temprana y refresh de cookies SSR en el servidor
-- ✅ **Token Refresh Automático**: Renovación transparente de tokens sin interrupciones
+- ✅ **Cliente de Datos Único**: Supabase en el navegador se conserva solo para operaciones de datos
 
 ## 📸 Demo
 
@@ -135,42 +135,38 @@ Keepel cuenta con un **sistema de autenticación de clase empresarial**:
 
 ```mermaid
 graph TD
-    A[Next.js App Router] --> B[React Components]
-    B --> C[shadcn/ui Components]
-    B --> D[TailwindCSS Styling]
-    A --> E[Supabase Client]
-    E --> F[PostgreSQL Database]
-    E --> G[Authentication]
-    E --> H[Real-time Subscriptions]
+    A[Next.js App Router] --> B[Server Components and Actions]
+    A --> C[React Client Components]
+    B --> D[Server Supabase Client]
+    D --> E[Authentication]
+    D --> F[PostgreSQL Database]
+    C --> G[Auth Projection]
+    C --> H[Browser Data Client]
+    H --> F
     F --> I[Row Level Security]
-
-    J[AuthManager Singleton] --> G
-    J --> K[BroadcastChannel]
-    J --> L[Session Cache]
-    M[Middleware] --> J
-    M --> L
+    J[Next.js Proxy] --> E
+    K[Semantic Invalidation] --> G
 ```
 
-### Sistema de Autenticación v2.0
+### Flujo de Autenticación
 
 ```mermaid
 sequenceDiagram
     participant User
     participant UI
-    participant AuthManager
+    participant ServerAction
     participant Supabase
-    participant Middleware
+    participant Projection
+    participant OtherTabs
 
     User->>UI: Login
-    UI->>AuthManager: signIn(email, password)
-    AuthManager->>Supabase: auth.signInWithPassword()
-    Supabase-->>AuthManager: session + tokens
-    AuthManager->>AuthManager: Update internal state
-    AuthManager->>UI: Notify via subscription
-    AuthManager->>BroadcastChannel: Sync other tabs
-    UI->>Middleware: Navigate to dashboard
-    Middleware->>Middleware: Validate session (from cache)
-    Middleware-->>UI: Allow access
+    UI->>ServerAction: loginAction(credentials)
+    ServerAction->>Supabase: auth.signInWithPassword()
+    Supabase-->>ServerAction: SSR cookies
+    ServerAction-->>UI: Typed result without session data
+    UI->>Projection: Invalidate and refresh
+    Projection->>OtherTabs: auth-invalidated
+    UI->>UI: Render server-projected CurrentUser
 ```
 
 ### Características Técnicas
@@ -178,9 +174,9 @@ sequenceDiagram
 - **🏗️ App Router**: Utilizando el App Router de Next.js 16
 - **🎨 Design System**: Componentes consistentes con shadcn/ui
 - **🔄 Real-time**: Actualizaciones en tiempo real con Supabase
-- **🔐 Auth v2.0**: Sistema event-driven con AuthManager singleton
-- **💾 Session Cache**: Middleware optimizado con caché de sesiones
-- **🔗 Cross-Tab Sync**: Sincronización de auth entre pestañas
+- **🔐 Auth Server-Authoritative**: Comandos y validación de sesión en el servidor
+- **💾 Proyección de Sesión**: Identidad mínima y tipada para la interfaz
+- **🔗 Cross-Tab Sync**: Invalidación semántica de auth entre pestañas
 - **🔒 Type Safety**: TypeScript en toda la aplicación
 - **✅ Form Validation**: Validación robusta con Zod y React Hook Form
 
@@ -468,12 +464,12 @@ Keepel/
 │       └── vehicles-list.tsx        # Lista de vehículos
 ├── 📁 contexts/                     # React Contexts
 │   ├── AppProviders.tsx             # Root provider tree
-│   ├── AuthContext.tsx              # Auth state
+│   ├── AuthProjectionContext.tsx    # Proyección de auth desde el servidor
 │   ├── DataContext.tsx              # App data + optimistic updates
-│   └── SupabaseContext.tsx          # Supabase client
+│   └── SupabaseContext.tsx          # Cliente de datos del navegador
 ├── 📁 hooks/                        # Custom React hooks
 ├── 📁 lib/                          # Utilidades y configuración
-│   ├── auth/                        # AuthManager singleton
+│   ├── auth/                        # Comandos, proyección e invalidación de auth
 │   ├── supabase/                    # Clientes y proxy de Supabase
 │   │   ├── client.ts                # Cliente del navegador
 │   │   ├── server.ts                # Cliente del servidor
@@ -671,7 +667,7 @@ El dashboard centraliza toda la información importante:
 | **Row Level Security (RLS)**  |  Cada usuario solo accede a sus datos  | Implementado |
 |     **Autenticación JWT**     | Tokens seguros manejados por Supabase  | Implementado |
 | **Validación de Formularios** | Validación cliente y servidor con Zod  | Implementado |
-| **Middleware de Protección**  |    Rutas protegidas automáticamente    | Implementado |
+|    **Proxy de Protección**    |    Rutas protegidas automáticamente    | Implementado |
 |   **Encriptación de Datos**   | Datos encriptados en tránsito y reposo | Por defecto  |
 |   **Auditoría de Accesos**    |  Registro de actividades del usuario   | Planificado  |
 
@@ -681,9 +677,9 @@ El dashboard centraliza toda la información importante:
 
 ```mermaid
 graph TD
-    A[Usuario] --> B[Next.js Middleware]
-    B --> C{Token Válido?}
-    C -->|Sí| D[Supabase Auth]
+    A[Usuario] --> B[Next.js Proxy]
+    B --> C{Claims verificados?}
+    C -->|Sí| D[Server Auth Boundary]
     C -->|No| E[Redirect Login]
     D --> F[Row Level Security]
     F --> G[PostgreSQL Database]

@@ -877,7 +877,7 @@
             <div class="arch-layer">
               <div class="arch-box">
                 <h4>Lib / Utils</h4>
-                <p>AuthManager, Supabase clients, formatters, rate limiting</p>
+                <p>Server auth boundaries, Supabase clients, formatters, rate limiting</p>
               </div>
               <div class="arch-box">
                 <h4>Supabase</h4>
@@ -891,16 +891,16 @@
           <h3 style="font-size: 1rem; margin-bottom: 20px">Authentication Flow</h3>
           <div class="flow-diagram">
             <div class="flow-row">
-              <div class="flow-node">AuthManager</div>
+              <div class="flow-node">Next.js Proxy</div>
               <div class="flow-arrow">→</div>
-              <div class="flow-node">BroadcastChannel</div>
+              <div class="flow-node">Server Commands</div>
               <div class="flow-arrow">→</div>
-              <div class="flow-node">AuthProvider</div>
+              <div class="flow-node">Auth Projection</div>
               <div class="flow-arrow">→</div>
               <div class="flow-node">DataProvider</div>
             </div>
             <div class="flow-label">
-              Singleton manages Supabase client and broadcasts state changes to React context layers
+              The server owns sessions; tabs receive typed identity and exchange semantic invalidation only
             </div>
 
             <div class="flow-row">
@@ -1094,8 +1094,8 @@
             ><span class="tree-comment"># Root provider tree</span>
           </div>
           <div class="tree-line">
-            <span class="tree-indent">│ ├── </span><span class="tree-file">AuthContext.tsx</span
-            ><span class="tree-comment"># Auth state</span>
+            <span class="tree-indent">│ ├── </span><span class="tree-file">AuthProjectionContext.tsx</span
+            ><span class="tree-comment"># Server-seeded auth projection</span>
           </div>
           <div class="tree-line">
             <span class="tree-indent">│ ├── </span><span class="tree-file">DataContext.tsx</span
@@ -1103,7 +1103,7 @@
           </div>
           <div class="tree-line">
             <span class="tree-indent">│ └── </span><span class="tree-file">SupabaseContext.tsx</span
-            ><span class="tree-comment"># Supabase client</span>
+            ><span class="tree-comment"># Browser data client</span>
           </div>
           <div class="tree-line"><span class="tree-indent">│</span></div>
           <div class="tree-line">
@@ -1117,7 +1117,7 @@
           </div>
           <div class="tree-line">
             <span class="tree-indent">│ ├── </span><span class="tree-dir">auth/</span
-            ><span class="tree-comment"># AuthManager singleton</span>
+            ><span class="tree-comment"># Server commands, projection, invalidation</span>
           </div>
           <div class="tree-line">
             <span class="tree-indent">│ ├── </span><span class="tree-dir">supabase/</span
@@ -1177,9 +1177,9 @@
             </thead>
             <tbody>
               <tr>
-                <td><code>useAuth()</code></td>
+                <td><code>useAuthProjection()</code></td>
                 <td><code>@/contexts</code></td>
-                <td>user, profile, isAuthenticated, signOut</td>
+                <td>Typed AuthState and server-projected user</td>
               </tr>
               <tr>
                 <td><code>useData()</code></td>
@@ -1189,12 +1189,12 @@
               <tr>
                 <td><code>useSupabase()</code></td>
                 <td><code>@/contexts</code></td>
-                <td>Raw Supabase client</td>
+                <td>Browser client for data operations</td>
               </tr>
               <tr>
-                <td><code>useDashboardData()</code></td>
+                <td><code>useAuthCommandRecovery()</code></td>
                 <td><code>@/hooks</code></td>
-                <td>Dashboard data fetching</td>
+                <td>Session-expiry recovery for server commands</td>
               </tr>
               <tr>
                 <td><code>useAnalytics()</code></td>

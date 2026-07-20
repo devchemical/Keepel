@@ -125,18 +125,19 @@ The app follows a clean architecture with these layers:
 - **Components** (`components/`) — UI and feature components
 - **Contexts** (`contexts/`) — React Contexts for auth and data state
 - **Hooks** (`hooks/`) — Custom React hooks
-- **Lib** (`lib/`) — Utilities, Supabase clients, auth manager
+- **Lib** (`lib/`) — Utilities, Supabase clients, and server auth boundaries
 
 ### Key Patterns
 
 #### Authentication Flow
 
-The auth system is migrating incrementally to a server-authoritative projection:
+Authentication is server-authoritative:
 
-1. **AuthManager** — Singleton that manages Supabase client and broadcasts state changes via BroadcastChannel
-2. **AuthProjectionProvider** — React projection seeded by the server with typed `CurrentUser` identity
-3. **AuthProvider** — Compatibility context for data/form consumers until the legacy migration is complete
-4. **DataProvider** — Loads vehicles and maintenance with optimistic updates
+1. **Proxy** — Refreshes SSR cookies and protects routes with verified claims
+2. **Server commands** — Login, signup, OAuth, and logout call Supabase only on the server
+3. **AuthProjectionProvider** — Seeds client UI with the typed `AuthState`/`CurrentUser` projection
+4. **AuthProjectionSynchronization** — Sends semantic invalidation across tabs without session data
+5. **DataProvider** — Uses the single browser Supabase client for data queries and optimistic updates
 
 #### Data Flow
 
@@ -340,13 +341,13 @@ CarCare/
 │
 ├── contexts/                         # React Contexts
 │   ├── AppProviders.tsx             # Root provider tree
-│   ├── AuthContext.tsx              # Auth state
+│   ├── AuthProjectionContext.tsx    # Server-seeded auth projection
 │   ├── DataContext.tsx              # App data + optimistic updates
-│   └── SupabaseContext.tsx          # Supabase client
+│   └── SupabaseContext.tsx          # Browser data client
 │
 ├── hooks/                            # Custom hooks
 ├── lib/                              # Utilities
-│   ├── auth/                        # AuthManager singleton
+│   ├── auth/                        # Server auth commands + projection
 │   ├── supabase/                    # Client, server, proxy
 │   ├── formatters.ts                # Data formatters
 │   ├── ratelimit.ts                 # Rate limiting config
@@ -365,29 +366,29 @@ CarCare/
 
 ### Key Files
 
-| File                            | Purpose                            |
-| ------------------------------- | ---------------------------------- |
-| `proxy.ts`                      | Session refresh + route protection |
-| `lib/auth/authManager.ts`       | Auth singleton                     |
-| `lib/supabase/client.ts`        | Browser client                     |
-| `lib/supabase/server.ts`        | Server client                      |
-| `lib/ratelimit.ts`              | Rate limiting configuration        |
-| `contexts/AuthContext.tsx`      | Auth state                         |
-| `contexts/DataContext.tsx`      | Data + optimistic mutations        |
-| `app/auth/actions.ts`           | Login/signup Server Actions        |
-| `app/api/auth/signout/route.ts` | Sign-out API route                 |
+| File                                 | Purpose                                  |
+| ------------------------------------ | ---------------------------------------- |
+| `proxy.ts`                           | Session refresh + route protection       |
+| `lib/auth/server.ts`                 | Server authentication boundary           |
+| `lib/auth/auth-invalidation.ts`      | Semantic cross-tab invalidation          |
+| `lib/supabase/client.ts`             | Singleton browser data client            |
+| `lib/supabase/server.ts`             | Server Supabase client                   |
+| `lib/ratelimit.ts`                   | Rate limiting configuration              |
+| `contexts/AuthProjectionContext.tsx` | Typed server-seeded authentication state |
+| `contexts/DataContext.tsx`           | Data + optimistic mutations              |
+| `app/auth/actions.ts`                | Login/signup/logout Server Actions       |
 
 ### Contexts & Hooks
 
-| Item                  | Import       | Exposes                                     |
-| --------------------- | ------------ | ------------------------------------------- |
-| `useAuthProjection()` | `@/contexts` | Typed `AuthState` and server-projected user |
-| `useAuth()`           | `@/contexts` | Legacy user, isAuthenticated, signOut       |
-| `useData()`           | `@/contexts` | vehicles, maintenance, CRUD methods         |
-| `useSupabase()`       | `@/contexts` | Raw Supabase client                         |
-| `useDashboardData()`  | `@/hooks`    | Dashboard data fetching                     |
-| `useAnalytics()`      | `@/hooks`    | @openpanel/nextjs analytics integration     |
-| `useMediaQuery()`     | `@/hooks`    | Responsive breakpoint detection             |
+| Item                              | Import       | Exposes                                     |
+| --------------------------------- | ------------ | ------------------------------------------- |
+| `useAuthProjection()`             | `@/contexts` | Typed `AuthState` and server-projected user |
+| `useAuthProjectionInvalidation()` | `@/contexts` | Local + cross-tab auth invalidation         |
+| `useData()`                       | `@/contexts` | vehicles, maintenance, CRUD methods         |
+| `useSupabase()`                   | `@/contexts` | Browser client for data operations          |
+| `useAuthCommandRecovery()`        | `@/hooks`    | Session-expiry recovery for server commands |
+| `useAnalytics()`                  | `@/hooks`    | @openpanel/nextjs analytics integration     |
+| `useMediaQuery()`                 | `@/hooks`    | Responsive breakpoint detection             |
 
 ---
 
