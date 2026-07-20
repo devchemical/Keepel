@@ -26,7 +26,7 @@ describe("browser data client", () => {
     RecordingBroadcastChannel.instances = []
   })
 
-  it("closes Supabase's session channel before browser data access", async () => {
+  it("reuses one data client and closes its Supabase session channel", async () => {
     vi.stubGlobal("BroadcastChannel", RecordingBroadcastChannel)
     vi.stubGlobal("window", globalThis)
     vi.stubGlobal("document", { cookie: "" })
@@ -35,10 +35,12 @@ describe("browser data client", () => {
     vi.resetModules()
     const { createClient } = await import("@/lib/supabase/client")
 
-    createClient()
+    const firstClient = createClient()
+    const secondClient = createClient()
     await Promise.resolve()
     await Promise.resolve()
 
+    expect(secondClient).toBe(firstClient)
     expect(RecordingBroadcastChannel.instances).toHaveLength(1)
     expect(RecordingBroadcastChannel.instances[0]).toMatchObject({
       name: "sb-keepel-test-auth-token",
