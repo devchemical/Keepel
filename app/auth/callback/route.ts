@@ -2,6 +2,7 @@
 
 import type { NextRequest } from "next/server"
 import { NextResponse } from "next/server"
+import { AUTH_INVALIDATION_SEARCH_PARAM } from "@/lib/auth/auth-invalidation"
 import { OAUTH_ERROR_CODE } from "@/lib/auth/contracts"
 import { createOAuthErrorRedirect, sanitizeInternalRedirect } from "@/lib/auth/redirects"
 import { createClient } from "@/lib/supabase/server"
@@ -46,7 +47,10 @@ export function createAuthCallbackHandler(createAdapter: AuthCallbackAdapterFact
         return NextResponse.redirect(createOAuthErrorRedirect(origin, OAUTH_ERROR_CODE.PROVIDER_ERROR))
       }
 
-      return NextResponse.redirect(new URL(next, origin))
+      const destination = new URL(next, origin)
+      destination.searchParams.set(AUTH_INVALIDATION_SEARCH_PARAM, "1")
+
+      return NextResponse.redirect(destination)
     } catch (error) {
       console.error("Auth callback error:", error)
       const { origin } = new URL(request.url)

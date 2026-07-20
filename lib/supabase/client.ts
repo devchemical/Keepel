@@ -62,8 +62,15 @@ export function createClient() {
           document.cookie = cookie
         },
       },
+      auth: {
+        skipAutoInitialize: true,
+      },
+      isSingleton: false,
     }
   )
+
+  // Data requests read the SSR session lazily; Supabase's auth channel must not broadcast that session.
+  void supabaseClient.auth.dispose()
 
   return supabaseClient
 }

@@ -1,11 +1,13 @@
 // Context exports
 export { AppProviders } from "./AppProviders"
-export { AuthProvider, useAuth } from "./AuthContext"
-export { AuthProjectionProvider, useAuthProjection, useAuthProjectionInvalidation } from "./AuthProjectionContext"
+export {
+  AuthProjectionProvider,
+  AuthProjectionSynchronization,
+  useAuthProjection,
+  useAuthProjectionInvalidation,
+} from "./AuthProjectionContext"
 export { DataProvider, useData } from "./DataContext"
 export { SupabaseProvider, useSupabase } from "./SupabaseContext"
 
 // Types
-export type { AuthContextValue, AuthUser } from "./AuthContext"
-
 export type { Vehicle, MaintenanceRecord, ScheduledService, ScheduledServiceStatus } from "./DataContext"

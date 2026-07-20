@@ -6,17 +6,20 @@ import { signupAction } from "@/app/auth/actions"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { useAuthProjectionInvalidation } from "@/contexts"
 import { SignupFeedback } from "./signup-feedback"
 import { SIGN_UP_STATUS, type SignUpResult } from "@/lib/auth/contracts"
 import { runSignupFormAction } from "./signup-form-action"
 
 export function SignupForm() {
   const router = useRouter()
+  const invalidateProjection = useAuthProjectionInvalidation()
   const [result, formAction, isPending] = useActionState(
     (previousResult: SignUpResult | null, formData: FormData) =>
       runSignupFormAction(previousResult, formData, {
         signupAction,
         onAuthenticated(destination) {
+          invalidateProjection()
           router.replace(destination)
           router.refresh()
         },

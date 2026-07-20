@@ -2,8 +2,7 @@
 
 import React from "react"
 import { Toaster } from "sonner"
-import { AuthProvider } from "./AuthContext"
-import { AuthProjectionProvider } from "./AuthProjectionContext"
+import { AuthProjectionProvider, AuthProjectionSynchronization } from "./AuthProjectionContext"
 import { DataProvider } from "./DataContext"
 import { SupabaseProvider } from "./SupabaseContext"
 import { AuthAnalyticsAdapter } from "@/components/analytics/auth-analytics-adapter"
@@ -19,15 +18,15 @@ export function AppProviders({ children, initialAuthState }: AppProvidersProps) 
   return (
     <ContextErrorBoundary>
       <AuthProjectionProvider initialState={initialAuthState}>
-        <AuthAnalyticsAdapter />
-        <SupabaseProvider>
-          <AuthProvider>
+        <AuthProjectionSynchronization>
+          <AuthAnalyticsAdapter />
+          <SupabaseProvider>
             <DataProvider>
               {children}
               <Toaster />
             </DataProvider>
-          </AuthProvider>
-        </SupabaseProvider>
+          </SupabaseProvider>
+        </AuthProjectionSynchronization>
       </AuthProjectionProvider>
     </ContextErrorBoundary>
   )

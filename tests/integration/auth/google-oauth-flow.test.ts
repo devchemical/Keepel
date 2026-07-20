@@ -137,7 +137,9 @@ describe("Google OAuth flow", () => {
 
     const response = await handleCallback(request)
 
-    expect(response.headers.get("location")).toBe("https://keepel.example/vehicles?filter=due")
+    expect(response.headers.get("location")).toBe(
+      "https://keepel.example/vehicles?filter=due&keepel-auth-invalidated=1"
+    )
     expect(Array.from(serverCookies.values.keys())).toContainEqual(expect.stringMatching(/^sb-keepel-test-auth-token$/))
     expect(response.headers.get("location")).not.toMatch(/access.?token|refresh.?token|session/i)
     expect(await response.text()).toBe("")
