@@ -154,8 +154,8 @@ describe("cross-tab authentication invalidation", () => {
     expect(tabs.hub.messages).toEqual([AUTH_INVALIDATION_EVENT])
     expect(tabs.senderEvents).toEqual([
       "invalidate",
-      "navigate:/auth/login?redirect=%2Fvehicles%2Fvehicle-1",
       "refresh",
+      "navigate:/auth/login?redirect=%2Fvehicles%2Fvehicle-1",
     ])
     expect(tabs.receiverEvents).toEqual(["invalidate", "refresh"])
 
