@@ -28,13 +28,13 @@ bun install --frozen-lockfile
 bun run data-api:start
 bun run test:data-api
 # Optional focused run (each file prepares its own database):
-bun run test:data-api --reporter=verbose
+bun run test:data-api tests/data-api/maintenance-batch.test.ts --reporter=verbose
 # When all tickets using this environment are done:
 bun run data-api:stop
 ```
 
 `test:data-api` destroys and recreates **only this project's local test database**, then replays
-`scripts/001` through `006`. Migration tests pause at `004`, seed historical records via the API,
+`scripts/001` through `007` by default. Historical migration tests explicitly start at `004`. Migration tests pause at `004`, seed historical records via the API,
 replay `005`, repeat it, and verify the result via the same ordinary client before `006` removes
 source columns. Script `003` is currently empty and is still replayed. The standard `bun run test`
 suite excludes tests requiring Docker; explicitly use `test:data-api` for these checks.
@@ -55,6 +55,9 @@ If `006` has already run, dropped `next_service_date` and `next_service_mileage`
 reconstructed from the resulting schema. Recovery requires a verified pre-drop backup/source.
 Do not claim that rerunning the corrected script recovers previously dropped data. This harness
 rehearses local migrations; it neither changes nor deploys a hosted database.
+
+See [transactional maintenance batches](maintenance-batch.md) for script 007, operation/RPC contracts,
+generated types and form verification.
 
 Official references checked for the local harness:
 [Supabase local development](https://supabase.com/docs/guides/local-development/cli/getting-started),

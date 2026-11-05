@@ -29,11 +29,15 @@ try {
       throw new Error("Start this checkout's isolated stack first: bun run data-api:start")
     }
     if (command === "test") {
-      const result = spawnSync("bun", ["run", "test", "--", "tests/data-api", ...process.argv.slice(3)], {
-        cwd: ROOT,
-        env: process.env,
-        stdio: "inherit",
-      })
+      const result = spawnSync(
+        "bun",
+        ["run", "test", "--", ...(process.argv.length > 3 ? process.argv.slice(3) : ["tests/data-api"])],
+        {
+          cwd: ROOT,
+          env: process.env,
+          stdio: "inherit",
+        }
+      )
       process.exitCode = result.status ?? 1
     } else if (command === "stop") {
       cli(["stop", "--no-backup"])
