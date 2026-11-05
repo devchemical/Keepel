@@ -2,8 +2,9 @@
 -- to the new scheduled_services table.
 -- This script is idempotent: it can be run multiple times without duplicating data.
 
--- Only migrate records that have a next_service_date set and haven't been migrated yet
--- (uses a LEFT JOIN to check if a scheduled_service already exists for this record)
+-- Migrate records with either a date or mileage forecast that have not been migrated yet
+-- Match nullable criteria using null-safe equality so replay does not duplicate forecasts.
+-- Run before 006; already-dropped source values require a pre-drop backup to recover.
 INSERT INTO public.scheduled_services (
   vehicle_id,
   user_id,
@@ -31,9 +32,9 @@ FROM public.maintenance_records mr
 LEFT JOIN public.scheduled_services ss
   ON ss.vehicle_id = mr.vehicle_id
   AND ss.user_id = mr.user_id
-  AND ss.scheduled_date = mr.next_service_date
-  AND ss.scheduled_mileage = mr.next_service_mileage
+  AND ss.scheduled_date IS NOT DISTINCT FROM mr.next_service_date
+  AND ss.scheduled_mileage IS NOT DISTINCT FROM mr.next_service_mileage
   AND ss.type = mr.type
   AND ss.notes LIKE '%Migrado automáticamente%'
-WHERE mr.next_service_date IS NOT NULL
+WHERE (mr.next_service_date IS NOT NULL OR mr.next_service_mileage IS NOT NULL)
   AND ss.id IS NULL;
