@@ -1,5 +1,7 @@
 "use client"
 
+import { useEffect } from "react"
+import { formatCurrency } from "@/lib/formatters"
 import { useData } from "@/contexts"
 import { DataRecovery } from "@/components/data/data-recovery"
 import { MaintenanceList } from "@/components/maintenance/maintenance-list"
@@ -13,9 +15,14 @@ import Link from "next/link"
 import { Layout } from "@/components/layout/Layout"
 
 export function VehicleHistoryScreen({ id }: { id: string }) {
-  const { vehicles, maintenanceRecords: allRecords, hasLoaded, isLoading } = useData()
+  const { vehicles, history, selectHistory, changeHistoryPage, hasLoaded, isLoading } = useData()
+  useEffect(() => {
+    selectHistory(id)
+    return () => selectHistory()
+  }, [id, selectHistory])
+  const currentHistory = history?.vehicleId === id ? history : null
   const vehicle = vehicles.find((row) => row.id === id)
-  const maintenanceRecords = allRecords.filter((row) => row.vehicle_id === id)
+  const maintenanceRecords = currentHistory?.records ?? []
   if (!hasLoaded || !vehicle)
     return (
       <Layout showHeader>
@@ -78,12 +85,41 @@ export function VehicleHistoryScreen({ id }: { id: string }) {
               <Wrench className="text-primary h-6 w-6" />
               Historial de Mantenimiento
             </h2>
-            <p className="text-muted-foreground mt-1">{maintenanceRecords?.length || 0} registro(s) de mantenimiento</p>
+            <p className="text-muted-foreground mt-1">
+              {currentHistory ? currentHistory.totals.record_count : "—"} registro(s) de mantenimiento
+            </p>
           </div>
         </div>
 
+        {currentHistory && (
+          <p className="text-muted-foreground mb-4">Gasto total: {formatCurrency(currentHistory.totals.total_cost)}</p>
+        )}
+        {!currentHistory && isLoading && <p role="status">Cargando historial…</p>}
         <MaintenanceList records={maintenanceRecords} vehicleId={id} />
-        {maintenanceRecords.length === 0 && (
+        {currentHistory && (
+          <nav
+            aria-label="Paginación del historial"
+            className="my-6 flex flex-wrap items-center justify-center gap-4"
+            aria-busy={isLoading}
+          >
+            <Button
+              variant="outline"
+              disabled={isLoading || currentHistory.page <= 1}
+              onClick={() => changeHistoryPage("previous")}
+            >
+              Página anterior
+            </Button>
+            <span role="status">Página {currentHistory.page}</span>
+            <Button
+              variant="outline"
+              disabled={isLoading || !currentHistory.hasNext}
+              onClick={() => changeHistoryPage("next")}
+            >
+              Página siguiente
+            </Button>
+          </nav>
+        )}
+        {currentHistory && currentHistory.totals.record_count === 0 && (
           <Card className="py-12 text-center">
             <CardHeader>
               <div className="mb-4 flex justify-center">

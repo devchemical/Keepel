@@ -2,6 +2,7 @@
 
 /* eslint-disable react/no-array-index-key, unicorn/consistent-function-scoping -- Static skeleton placeholders have no ids; formatter stays near usage for readability. */
 
+import { useData } from "@/contexts"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Car, Wrench, DollarSign, Calendar } from "lucide-react"
@@ -15,12 +16,12 @@ interface Vehicle {
 
 interface DashboardStatsProps {
   vehicles: Vehicle[]
-  maintenanceRecords: { cost?: number | null }[]
   reminderCount: number
   isLoading?: boolean
 }
 
-export function DashboardStats({ vehicles, maintenanceRecords, reminderCount, isLoading }: DashboardStatsProps) {
+export function DashboardStats({ vehicles, reminderCount, isLoading }: DashboardStatsProps) {
+  const { totals } = useData()
   if (isLoading) {
     return (
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
@@ -40,11 +41,8 @@ export function DashboardStats({ vehicles, maintenanceRecords, reminderCount, is
     )
   }
   const totalVehicles = vehicles.length
-  const totalMaintenanceRecords = maintenanceRecords.length
-
-  const totalCost = maintenanceRecords.reduce((sum, record) => {
-    return sum + (record.cost || 0)
-  }, 0)
+  const totalMaintenanceRecords = totals?.record_count
+  const totalCost = totals?.total_cost
 
   const upcomingServices = reminderCount
 
@@ -65,14 +63,14 @@ export function DashboardStats({ vehicles, maintenanceRecords, reminderCount, is
     },
     {
       title: "Mantenimientos",
-      value: totalMaintenanceRecords.toString(),
+      value: totalMaintenanceRecords?.toString() ?? "—",
       icon: Wrench,
       description: "Servicios realizados",
       color: "text-blue-600",
     },
     {
       title: "Gasto Total",
-      value: formatCurrency(totalCost),
+      value: totalCost === undefined ? "—" : formatCurrency(totalCost),
       icon: DollarSign,
       description: "En mantenimientos",
       color: "text-green-700",

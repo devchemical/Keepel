@@ -2,7 +2,8 @@
 
 These tests exercise real Supabase Auth and PostgREST with two ordinary, synthetic accounts.
 They do not mock RLS or use a service-role client. SQL access is reserved for replaying repository
-scripts and resetting the disposable test database. Application authentication and analytics
+scripts, resetting the disposable test database, and explicitly scoped synthetic plan rehearsals.
+Application authentication and analytics
 remain governed by ADR0001 and ADR0002.
 
 ## Local environment contract
@@ -34,7 +35,7 @@ bun run data-api:stop
 ```
 
 `test:data-api` destroys and recreates **only this project's local test database**, then replays
-`scripts/001` through `008` by default. Historical migration tests explicitly start at `004`. Migration tests pause at `004`, seed historical records via the API,
+`scripts/001` through `009` by default. Historical migration tests explicitly start at `004`. Migration tests pause at `004`, seed historical records via the API,
 replay `005`, repeat it, and verify the result via the same ordinary client before `006` removes
 source columns. Script `003` is currently empty and is still replayed. The standard `bun run test`
 suite excludes tests requiring Docker; explicitly use `test:data-api` for these checks.
@@ -65,3 +66,6 @@ Official references checked for the local harness:
 [CLI configuration](https://supabase.com/docs/guides/local-development/cli/config), and the
 [CLI v3 change notice](https://supabase.com/changelog/supabase-cli-v3). The harness deliberately
 uses explicit local flags and the installed v2 CLI rather than upgrading during this ticket.
+
+See [complete history and totals](history-pagination.md) for script009, measured indexes, cap regressions
+and the guarded `bun run test:data-browser` real API browser journey.

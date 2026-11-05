@@ -431,7 +431,7 @@ async function handleRequest(request: IncomingMessage, response: ServerResponse)
       200,
       request.headers.accept?.includes("vnd.pgrst.object")
         ? maintenanceVehicle
-        : vehicleExists
+        : vehicleExists && !url.searchParams.has("id")
           ? [maintenanceVehicle]
           : []
     )
@@ -442,7 +442,11 @@ async function handleRequest(request: IncomingMessage, response: ServerResponse)
       response,
       200,
       maintenanceSchedules
-        .filter((row) => row.status === "pending")
+        .filter(
+          (row) =>
+            row.status === "pending" &&
+            (!url.searchParams.has("id") || String(row.id) > (url.searchParams.get("id") ?? "").slice(3))
+        )
         .map((row) => ({ ...row, vehicles: maintenanceVehicle }))
     )
     return
@@ -473,11 +477,33 @@ async function handleRequest(request: IncomingMessage, response: ServerResponse)
     sendJson(response, 200, { ...row, vehicles: maintenanceVehicle })
     return
   }
+  if (request.method === "POST" && url.pathname === "/rest/v1/rpc/maintenance_totals") {
+    const body = (await readJson(request)) as { p_vehicle_id?: string }
+    const rows = maintenanceRecords.filter((row) => !body.p_vehicle_id || row.vehicle_id === body.p_vehicle_id)
+    sendJson(response, 200, [
+      { record_count: rows.length, total_cost: rows.reduce((sum, row) => sum + Number(row.cost ?? 0), 0) },
+    ])
+    return
+  }
   if (maintenanceMode && request.method === "GET" && url.pathname === "/rest/v1/maintenance_records") {
+    const cursor = url.searchParams.get("or")
+    const date = cursor?.match(/service_date\.lt\.([0-9-]+)/)?.[1]
+    const id = cursor?.match(/id\.lt\.([a-zA-Z0-9-]+)/)?.[1]
+    const vehicleId = url.searchParams.get("vehicle_id")?.slice(3)
+    const rows = maintenanceRecords
+      .filter((row) => !vehicleId || row.vehicle_id === vehicleId)
+      .toSorted(
+        (a, b) =>
+          String(b.service_date).localeCompare(String(a.service_date)) || String(b.id).localeCompare(String(a.id))
+      )
+      .filter(
+        (row) => !date || String(row.service_date) < date || (row.service_date === date && String(row.id) < (id ?? ""))
+      )
+      .slice(0, Number(url.searchParams.get("limit") ?? 1000))
     sendJson(
       response,
       200,
-      maintenanceRecords.map((row) => ({ ...row, vehicles: maintenanceVehicle }))
+      rows.map((row) => ({ ...row, vehicles: maintenanceVehicle }))
     )
     return
   }

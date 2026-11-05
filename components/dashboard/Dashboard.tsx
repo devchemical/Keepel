@@ -51,12 +51,7 @@ export function Dashboard({ vehicles, maintenanceRecords, upcomingMaintenance, i
       </div>
 
       {/* Dashboard Stats */}
-      <DashboardStats
-        vehicles={vehicles}
-        maintenanceRecords={maintenanceRecords}
-        reminderCount={reminders.length}
-        isLoading={isLoading}
-      />
+      <DashboardStats vehicles={vehicles} reminderCount={reminders.length} isLoading={isLoading} />
 
       {/* Main Content Grid */}
       <div className="mt-10 grid gap-8 lg:grid-cols-3">

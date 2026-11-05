@@ -10,7 +10,8 @@ with the existing server client and pass only the route's vehicle ID. They do no
 snapshots or redirect on a failed resource query. History shows unavailable only after a successful
 owned load cannot find the vehicle.
 
-`readDataSnapshot` reads vehicles, history and pending schedules through the single browser client.
+`readDataSnapshot` reads complete vehicles, five recent records, pending schedules and database totals
+through the single browser client. Vehicle history pages are requested separately by the same owner.
 The owner publishes a complete successful snapshot; any failed constituent query preserves the last
 valid data and exposes `loadError`. `hasLoaded` distinguishes initial loading/error from confirmed
 empty data. Refresh loading does not replace valid content with skeletons. All three former refresh
@@ -58,15 +59,19 @@ no telemetry. Other accounts do not see it. A storage failure keeps the in-memor
 a request to keep the tab open. Private receipts remain queryable while that account exists. #93's
 batch modal retains its original immutable operation, explicit read and user-requested idempotent replay.
 
-## #96 seam and deliberate limits
+## Complete history and deliberate limits (#96)
 
-`lib/data/queries.ts::maintenanceHistoryQuery` owns account/optional vehicle scope and stable ordering
-by service_date DESC, id DESC. #96 should add cursor pages at this seam and separate database totals;
-DataContext remains the interactive owner and exposes page/total load states. Every confirmed mutation
-already converges through `refreshAll`; replace that invalidation with the relevant page/totals queries.
+`lib/data/queries.ts::maintenanceHistoryQuery` owns account/optional vehicle scope, explicit fields,
+and stable service_date DESC/id DESC cursor pages. The owner separately publishes the selected
+vehicle page, complete vehicle count/cost and account aggregates. Dashboard recent records are
+bounded to five and never supply totals. Confirmed receipts invalidate the page and aggregates,
+reset to page one, and refresh through the same owner. Failed navigation retains a valid page;
+failed post-mutation reload shows unavailable page/totals with retry, not pre-operation data.
+History pages and aggregate values are not optimistically edited for unknown writes.
 
-The current history snapshot still has the configured Data API response cap. Dashboard totals are
-coherent for the loaded snapshot; this ticket does not claim complete-history totals beyond that cap.
+See [history pagination](history-pagination.md) for the cursor, loading/recovery, complete collection,
+SQL009, measured index and real API browser contracts.
+
 Other tabs' resource changes require explicit refresh. A receipt absent after a transport failure stays
 unknown; no generic operation cancellation or automatic resend pretends otherwise. Closing a tab while
 unresolved loses its per-tab journal; retain the displayed operation reference for support. No hosted

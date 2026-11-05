@@ -19,6 +19,7 @@
     "lint": "oxlint",
     "lint:fix": "oxlint --fix",
     "data-api:start": "bun tests/data-api/run.ts start",
+    "test:data-browser": "bun tests/data-api/run.ts browser",
     "test:data-api": "bun tests/data-api/run.ts test",
     "data-api:stop": "bun tests/data-api/run.ts stop"
   },

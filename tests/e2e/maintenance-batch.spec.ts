@@ -22,7 +22,7 @@ test("partial maintenance rows stay visible and block the entire batch until cor
   await dialog.getByRole("button", { name: "Agregar Servicios", exact: true }).click()
   await expect(dialog).toBeHidden()
   await expect(page.getByText("2 registro(s) de mantenimiento")).toBeVisible()
-  await expect(page.getByText("0,00", { exact: false })).toBeVisible()
+  await expect(page.getByText("0,00 €", { exact: true })).toBeVisible()
   const saved = await (await request.get(`${CONTROLLED_SERVICES_URL}/__test__/maintenance`)).json()
   expect(saved.records).toHaveLength(2)
   expect(saved.records[0]).toMatchObject({ cost: 0, mileage: null, description: null })

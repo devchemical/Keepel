@@ -4,7 +4,14 @@
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from "react"
 import { readPendingCommands, writePendingCommands } from "@/lib/data/pending-operations"
-import { readDataSnapshot } from "@/lib/data/queries"
+import {
+  readDataSnapshot,
+  maintenanceHistoryQuery,
+  readMaintenanceTotals,
+  HISTORY_PAGE_SIZE,
+  type HistoryCursor,
+  type MaintenanceTotals,
+} from "@/lib/data/queries"
 import { useAuthProjection } from "./AuthProjectionContext"
 import { useSupabase } from "./SupabaseContext"
 import { AUTH_STATE_STATUS } from "@/lib/auth/contracts"
@@ -50,6 +57,16 @@ export type ScheduledService = Omit<
 export type PendingDataOperation = { command: DataCommand; status: "sending" | "unknown" | "checking" }
 
 interface DataContextType {
+  totals: MaintenanceTotals | null
+  history: {
+    vehicleId: string
+    records: MaintenanceRecord[]
+    totals: MaintenanceTotals
+    page: number
+    hasNext: boolean
+  } | null
+  selectHistory: (vehicleId?: string) => void
+  changeHistoryPage: (direction: "next" | "previous") => void
   operationStorageError: boolean
   pendingOperations: PendingDataOperation[]
   reconcileDataOperation: (operationId: string) => Promise<void>
@@ -98,6 +115,10 @@ interface DataProviderProps {
 export function DataProvider({ children }: DataProviderProps) {
   const authState = useAuthProjection()
   const userId = authState.status === AUTH_STATE_STATUS.AUTHENTICATED ? authState.user.id : null
+  const [totals, setTotals] = useState<MaintenanceTotals | null>(null)
+  const [history, setHistory] = useState<DataContextType["history"]>(null)
+  const historyRequest = React.useRef<{ vehicleId: string; cursors: (HistoryCursor | undefined)[] } | null>(null)
+  const committedHistoryRequest = React.useRef<typeof historyRequest.current>(null)
   const [dataOwner, setDataOwner] = useState(userId)
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
   const [maintenanceRecords, setMaintenanceRecords] = useState<MaintenanceRecord[]>([])
@@ -129,8 +150,38 @@ export function DataProvider({ children }: DataProviderProps) {
       setIsMaintenanceLoading(true)
       setIsScheduledServicesLoading(true)
       try {
-        const snapshot = await readDataSnapshot(supabase, currentUserId)
+        const requestedHistory = historyRequest.current
+        const [snapshot, historyResult] = await Promise.all([
+          readDataSnapshot(supabase, currentUserId),
+          requestedHistory
+            ? Promise.all([
+                maintenanceHistoryQuery(
+                  supabase,
+                  currentUserId,
+                  requestedHistory.vehicleId,
+                  requestedHistory.cursors.at(-1),
+                  HISTORY_PAGE_SIZE + 1
+                )
+                  .abortSignal(AbortSignal.timeout(15000))
+                  .retry(false),
+                readMaintenanceTotals(supabase, requestedHistory.vehicleId),
+              ])
+            : null,
+        ])
+        if (historyResult?.[0].error || (historyResult && !historyResult[0].data))
+          throw new Error("History unavailable")
         if (scope.current !== owner || request !== owner.request || revision !== owner.revision) return
+        committedHistoryRequest.current = requestedHistory
+        setTotals(snapshot.totals)
+        if (requestedHistory && historyResult)
+          setHistory({
+            vehicleId: requestedHistory.vehicleId,
+            records: (historyResult[0].data ?? []).slice(0, HISTORY_PAGE_SIZE),
+            totals: historyResult[1],
+            page: requestedHistory.cursors.length,
+            hasNext: (historyResult[0].data ?? []).length > HISTORY_PAGE_SIZE,
+          })
+        else setHistory(null)
         setVehicles(snapshot.vehicles)
         setMaintenanceRecords(snapshot.maintenanceRecords)
         setScheduledServices(snapshot.scheduledServices as ScheduledService[])
@@ -152,6 +203,37 @@ export function DataProvider({ children }: DataProviderProps) {
   const refreshAll = useCallback(async () => {
     if (userId) await loadAllForUser(userId)
   }, [userId, loadAllForUser])
+  const selectHistory = useCallback(
+    (vehicleId?: string) => {
+      if (historyRequest.current?.vehicleId === vehicleId) return
+      historyRequest.current = vehicleId ? { vehicleId, cursors: [undefined] } : null
+      setHistory(null)
+      if (userId) void loadAllForUser(userId)
+    },
+    [userId, loadAllForUser]
+  )
+  const changeHistoryPage = useCallback(
+    (direction: "next" | "previous") => {
+      if (!history || !userId) return
+      const cursors = committedHistoryRequest.current?.cursors.slice(0, history.page) ?? [undefined]
+      if (direction === "next") {
+        if (!history.hasNext) return
+        cursors.push(history.records.at(-1))
+      } else {
+        if (history.page <= 1) return
+        cursors.pop()
+      }
+      historyRequest.current = { vehicleId: history.vehicleId, cursors }
+      void loadAllForUser(userId)
+    },
+    [history, userId, loadAllForUser]
+  )
+  const invalidateHistory = useCallback(() => {
+    setTotals(null)
+    setHistory(null)
+    if (historyRequest.current)
+      historyRequest.current = { vehicleId: historyRequest.current.vehicleId, cursors: [undefined] }
+  }, [])
   const refreshVehicles = refreshAll
   const refreshMaintenance = refreshAll
   const refreshScheduledServices = refreshAll
@@ -171,40 +253,44 @@ export function DataProvider({ children }: DataProviderProps) {
     [userId]
   )
 
-  const acceptDataReceipt = useCallback((receipt: DataReceipt) => {
-    scope.current.revision++
-    if ("vehicle_id" in receipt.row && deletedVehicles.current.has(receipt.row.vehicle_id)) return
-    const id = receipt.row.id
-    if (receipt.action.startsWith("vehicle.")) {
-      if (receipt.action === "vehicle.delete") {
-        deletedVehicles.current.add(id)
-        setVehicles((prev) => prev.filter((row) => row.id !== id))
-        setMaintenanceRecords((prev) => prev.filter((row) => row.vehicle_id !== id))
-        setScheduledServices((prev) => prev.filter((row) => row.vehicle_id !== id))
+  const acceptDataReceipt = useCallback(
+    (receipt: DataReceipt) => {
+      scope.current.revision++
+      invalidateHistory()
+      if ("vehicle_id" in receipt.row && deletedVehicles.current.has(receipt.row.vehicle_id)) return
+      const id = receipt.row.id
+      if (receipt.action.startsWith("vehicle.")) {
+        if (receipt.action === "vehicle.delete") {
+          deletedVehicles.current.add(id)
+          setVehicles((prev) => prev.filter((row) => row.id !== id))
+          setMaintenanceRecords((prev) => prev.filter((row) => row.vehicle_id !== id))
+          setScheduledServices((prev) => prev.filter((row) => row.vehicle_id !== id))
+        } else {
+          const row = receipt.row as VehicleRow
+          setVehicles((prev) => {
+            const current = prev.find((value) => value.id === id)
+            if (current?.updated_at && row.updated_at && current.updated_at > row.updated_at) return prev
+            return [row, ...prev.filter((value) => value.id !== id)]
+          })
+        }
+      } else if (receipt.action.startsWith("maintenance.")) {
+        const row = receipt.row as Tables<"maintenance_records">
+        setMaintenanceRecords((prev) =>
+          receipt.action === "maintenance.delete"
+            ? prev.filter((value) => value.id !== id)
+            : prev.map((value) => (value.id === id ? row : value))
+        )
       } else {
-        const row = receipt.row as VehicleRow
-        setVehicles((prev) => {
-          const current = prev.find((value) => value.id === id)
-          if (current?.updated_at && row.updated_at && current.updated_at > row.updated_at) return prev
-          return [row, ...prev.filter((value) => value.id !== id)]
-        })
+        const row = receipt.row as ScheduledService
+        setScheduledServices((prev) =>
+          row.status === "pending"
+            ? [row, ...prev.filter((value) => value.id !== id)]
+            : prev.filter((value) => value.id !== id)
+        )
       }
-    } else if (receipt.action.startsWith("maintenance.")) {
-      const row = receipt.row as Tables<"maintenance_records">
-      setMaintenanceRecords((prev) =>
-        receipt.action === "maintenance.delete"
-          ? prev.filter((value) => value.id !== id)
-          : prev.map((value) => (value.id === id ? row : value))
-      )
-    } else {
-      const row = receipt.row as ScheduledService
-      setScheduledServices((prev) =>
-        row.status === "pending"
-          ? [row, ...prev.filter((value) => value.id !== id)]
-          : prev.filter((value) => value.id !== id)
-      )
-    }
-  }, [])
+    },
+    [invalidateHistory]
+  )
 
   const reconcileDataOperation = useCallback(
     async (operationId: string) => {
@@ -294,11 +380,16 @@ export function DataProvider({ children }: DataProviderProps) {
   const acceptMaintenanceReceipt = useCallback(
     async (receipt: MaintenanceReceipt) => {
       scope.current.revision++
+      invalidateHistory()
       if (deletedVehicles.current.has(receipt.vehicle.id)) return
-      setMaintenanceRecords((prev) => [
-        ...receipt.records.map((record) => ({ ...record, vehicles: receipt.vehicle })),
-        ...prev.filter((row) => !receipt.records.some((saved) => saved.id === row.id)),
-      ])
+      setMaintenanceRecords((prev) =>
+        [
+          ...receipt.records.map((record) => ({ ...record, vehicles: receipt.vehicle })),
+          ...prev.filter((row) => !receipt.records.some((saved) => saved.id === row.id)),
+        ]
+          .toSorted((a, b) => b.service_date.localeCompare(a.service_date) || b.id.localeCompare(a.id))
+          .slice(0, 5)
+      )
       setVehicles((prev) =>
         prev.map((vehicle) =>
           vehicle.id === receipt.vehicle.id
@@ -320,7 +411,7 @@ export function DataProvider({ children }: DataProviderProps) {
         setScheduledServices((prev) => prev.filter((service) => service.id !== receipt.scheduled_service?.id))
       void refreshAll()
     },
-    [refreshAll]
+    [refreshAll, invalidateHistory]
   )
 
   const reconcileMaintenanceBatch = useCallback(
@@ -413,6 +504,10 @@ export function DataProvider({ children }: DataProviderProps) {
       : []
     setPendingOperations(pendingRef.current)
     setOperationStorageError(false)
+    setTotals(null)
+    setHistory(null)
+    if (historyRequest.current)
+      historyRequest.current = { vehicleId: historyRequest.current.vehicleId, cursors: [undefined] }
     setVehicles([])
     setMaintenanceRecords([])
     setScheduledServices([])
@@ -442,9 +537,6 @@ export function DataProvider({ children }: DataProviderProps) {
       visibleRecords = visibleRecords.filter((row) => row.vehicle_id !== id)
       visibleSchedules = visibleSchedules.filter((row) => row.vehicle_id !== id)
     }
-    if (action === "maintenance.update")
-      visibleRecords = visibleRecords.map((row) => (row.id === id ? { ...row, ...values } : row))
-    if (action === "maintenance.delete") visibleRecords = visibleRecords.filter((row) => row.id !== id)
     if (action === "schedule.update")
       visibleSchedules = visibleSchedules.map((row) => (row.id === id ? { ...row, ...values } : row))
     // Cancellation stays visible until confirmed so its recovery action remains reachable.
@@ -460,6 +552,10 @@ export function DataProvider({ children }: DataProviderProps) {
   }))
 
   const value: DataContextType = {
+    totals: dataOwner === userId ? totals : null,
+    history: dataOwner === userId ? history : null,
+    selectHistory,
+    changeHistoryPage,
     operationStorageError: dataOwner === userId && operationStorageError,
     pendingOperations: dataOwner === userId ? pendingOperations : [],
     reconcileDataOperation,

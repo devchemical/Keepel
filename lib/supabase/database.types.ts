@@ -199,6 +199,13 @@ export type Database = {
         Args: { p_operation_id: string }
         Returns: Json
       }
+      maintenance_totals: {
+        Args: { p_vehicle_id?: string }
+        Returns: {
+          record_count: number
+          total_cost: number
+        }[]
+      }
       mutate_data: {
         Args: {
           p_action: string
