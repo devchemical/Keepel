@@ -12,9 +12,9 @@ import Link from "next/link"
 interface MaintenanceRecord {
   id: string
   type: string
-  cost?: number
+  cost?: number | null
   service_date: string
-  vehicles: {
+  vehicles?: {
     make: string
     model: string
     year: number
@@ -156,7 +156,9 @@ export function RecentActivity({ maintenanceRecords, isLoading }: RecentActivity
                 <div className="flex items-center gap-2 text-xs text-slate-500">
                   <Car className="h-3.5 w-3.5 text-slate-400" />
                   <span>
-                    {record.vehicles.make} {record.vehicles.model} {record.vehicles.year}
+                    {record.vehicles
+                      ? `${record.vehicles.make} ${record.vehicles.model} ${record.vehicles.year}`
+                      : "Vehículo no disponible"}
                   </span>
                   <span className="text-slate-300">•</span>
                   <span>{formatDate(record.service_date)}</span>

@@ -12,18 +12,7 @@ import Link from "next/link"
 import { formatMileage } from "@/lib/formatters"
 import { VehiclesSkeleton } from "@/components/skeletons/vehicles-skeleton"
 
-interface Vehicle {
-  id: string
-  make: string
-  model: string
-  year: number
-  license_plate?: string
-  vin?: string
-  color?: string
-  mileage: number
-  created_at: string
-  updated_at: string
-}
+import type { Vehicle } from "@/contexts/DataContext"
 
 interface VehiclesListProps {
   vehicles: Vehicle[]
@@ -52,7 +41,12 @@ export function VehiclesList({ vehicles, isLoading }: VehiclesListProps) {
               </div>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                  <Button
+                    aria-label={`Acciones de ${vehicle.make} ${vehicle.model}`}
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0"
+                  >
                     <MoreVertical className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>

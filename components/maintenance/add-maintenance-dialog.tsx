@@ -5,7 +5,6 @@
 import type React from "react"
 
 import { useRef, useState } from "react"
-import { useRouter } from "next/navigation"
 import { useData } from "@/contexts"
 import { Button } from "@/components/ui/button"
 import {
@@ -63,7 +62,6 @@ export function AddMaintenanceDialog({
   const pendingSchedules = scheduledServices.filter(
     (service) => service.vehicle_id === vehicleId && service.status === "pending"
   )
-  const router = useRouter()
 
   // Helper para generar IDs temporales compatibles con todos los navegadores
   const generateTempId = () => `${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 11)}`
@@ -146,7 +144,6 @@ export function AddMaintenanceDialog({
         setSelectedSchedule("none")
         setCompletionRowId("")
         setOpen(false)
-        router.refresh()
       } else if (result.status === "rejected" && !pendingOperation) {
         setPendingOperation(null)
         setError("No se pudo guardar el mantenimiento. Revisa los datos y la sesión e inténtalo de nuevo.")

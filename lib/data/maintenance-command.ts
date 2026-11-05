@@ -32,7 +32,7 @@ export type MaintenanceBatchResult = { status: "success" } | { status: "unknown"
 
 const nullableText = z.string().nullable()
 const timestamps = { created_at: nullableText, updated_at: nullableText }
-const recordSchema = z.object({
+export const recordSchema = z.object({
   id: z.string().uuid(),
   vehicle_id: z.string().uuid(),
   user_id: z.string().uuid(),
@@ -44,7 +44,7 @@ const recordSchema = z.object({
   notes: nullableText,
   ...timestamps,
 }) satisfies z.ZodType<Tables<"maintenance_records">>
-const vehicleSchema = z.object({
+export const vehicleSchema = z.object({
   id: z.string().uuid(),
   user_id: z.string().uuid(),
   make: z.string(),
@@ -56,7 +56,7 @@ const vehicleSchema = z.object({
   mileage: z.number().int().nonnegative().nullable(),
   ...timestamps,
 }) satisfies z.ZodType<Tables<"vehicles">>
-const scheduledSchema = z.object({
+export const scheduledSchema = z.object({
   id: z.string().uuid(),
   vehicle_id: z.string().uuid(),
   user_id: z.string().uuid(),

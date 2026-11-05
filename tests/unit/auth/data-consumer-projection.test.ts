@@ -50,7 +50,6 @@ describe("projected authentication data consumers", () => {
     expectTypeOf<DataContextValue["addVehicleOptimistic"]>().returns.toEqualTypeOf<Promise<void>>()
     expectTypeOf<DataContextValue["updateVehicleOptimistic"]>().returns.toEqualTypeOf<Promise<void>>()
     expectTypeOf<DataContextValue["deleteVehicleOptimistic"]>().returns.toEqualTypeOf<Promise<void>>()
-    expectTypeOf<DataContextValue["addMaintenanceOptimistic"]>().returns.toEqualTypeOf<Promise<void>>()
     expectTypeOf<DataContextValue["updateMaintenanceOptimistic"]>().returns.toEqualTypeOf<Promise<void>>()
     expectTypeOf<DataContextValue["deleteMaintenanceOptimistic"]>().returns.toEqualTypeOf<Promise<void>>()
     expectTypeOf<DataContextValue["addScheduledServiceOptimistic"]>().returns.toEqualTypeOf<Promise<void>>()

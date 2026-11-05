@@ -1,11 +1,38 @@
 import { beforeAll, expect, test } from "vitest"
 import { randomUUID } from "node:crypto"
 import { createAccount, prepareDatabase } from "./support"
-import {
-  createScheduledService,
-  updateScheduledService,
-  cancelScheduledService,
-} from "../../lib/data/scheduled-command"
+import { executeDataCommand, type DataCommand } from "../../lib/data/data-command"
+import { scheduledServiceSchema } from "../../lib/data/scheduled-command"
+import type { SupabaseClient } from "@supabase/supabase-js"
+import type { Database, Tables } from "../../lib/supabase/database.types"
+async function scheduleCommand(
+  client: SupabaseClient<Database>,
+  userId: string,
+  action: DataCommand["action"],
+  id: string,
+  values: unknown
+) {
+  const result = await executeDataCommand(client, userId, {
+    operationId: randomUUID(),
+    action,
+    id,
+    values,
+  } as DataCommand)
+  if (result.status !== "success") throw new Error("Not confirmed")
+  return result.receipt.row as Tables<"scheduled_services">
+}
+function createScheduledService(client: SupabaseClient<Database>, userId: string, vehicleId: string, input: unknown) {
+  return scheduleCommand(client, userId, "schedule.create", randomUUID(), {
+    ...scheduledServiceSchema.parse(input),
+    vehicle_id: vehicleId,
+  })
+}
+async function updateScheduledService(client: SupabaseClient<Database>, userId: string, id: string, input: unknown) {
+  return scheduleCommand(client, userId, "schedule.update", id, scheduledServiceSchema.parse(input))
+}
+function cancelScheduledService(client: SupabaseClient<Database>, userId: string, id: string) {
+  return scheduleCommand(client, userId, "schedule.cancel", id, {})
+}
 
 let alice: Awaited<ReturnType<typeof createAccount>>
 let vehicleId: string

@@ -56,9 +56,9 @@ export function AddVehicleDialogContext({ children }: AddVehicleDialogContextPro
         make: formData.make,
         model: formData.model,
         year: formData.year,
-        license_plate: formData.license_plate || undefined,
-        vin: formData.vin || undefined,
-        color: formData.color || undefined,
+        license_plate: formData.license_plate || null,
+        vin: formData.vin || null,
+        color: formData.color || null,
         mileage: formData.mileage,
       })
 

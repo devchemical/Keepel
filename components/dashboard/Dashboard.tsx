@@ -1,7 +1,5 @@
 "use client"
 
-/* eslint-disable typescript/no-explicit-any -- Dashboard receives Supabase-shaped records until generated database types are introduced. */
-
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { Car, CheckCircle } from "lucide-react"
@@ -12,11 +10,11 @@ import { VehicleOverview } from "@/components/dashboard/vehicle-overview"
 import { DashboardSkeleton } from "@/components/skeletons/dashboard-skeleton"
 import { localToday } from "@/lib/data/calendar-day"
 import { selectScheduledServices } from "@/lib/data/scheduled-services"
-import type { ScheduledService, Vehicle } from "@/contexts"
+import type { MaintenanceRecord, ScheduledService, Vehicle } from "@/contexts"
 
 interface DashboardProps {
   vehicles: Vehicle[]
-  maintenanceRecords: any[]
+  maintenanceRecords: MaintenanceRecord[]
   upcomingMaintenance: ScheduledService[]
   isLoading?: boolean
 }

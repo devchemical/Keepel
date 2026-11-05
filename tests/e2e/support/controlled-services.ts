@@ -32,6 +32,8 @@ const sessions = new Map<string, ControlledUser>()
 const analyticsEvents: unknown[] = []
 let maintenanceMode = false
 const maintenanceRecords: Record<string, unknown>[] = []
+const dataReceipts = new Map<string, unknown>()
+let vehicleExists = true
 const maintenanceReceipts = new Map<string, unknown>()
 const maintenanceAttempts: string[] = []
 let maintenanceAvailable = true
@@ -177,13 +179,22 @@ async function handleRequest(request: IncomingMessage, response: ServerResponse)
       oauthMode?: unknown
       rateLimitMode?: unknown
       maintenance?: unknown
+      emptyVehicles?: boolean
       maintenanceResponse?: unknown
       maintenanceSchedule?: unknown
       schedules?: Record<string, unknown>[]
       vehicleMileage?: number
+      records?: Record<string, unknown>[]
     } | null
     maintenanceMode = body?.maintenance === true
     maintenanceRecords.length = 0
+    maintenanceRecords.push(...(body?.records ?? []))
+    maintenanceVehicle.id = "00000000-0000-4000-8000-000000000093"
+    dataReceipts.clear()
+    vehicleExists = body?.emptyVehicles !== true
+    maintenanceVehicle.make = "Synthetic"
+    maintenanceVehicle.model = "Maintenance"
+    maintenanceVehicle.license_plate = null
     maintenanceReceipts.clear()
     maintenanceAttempts.length = 0
     maintenanceAvailable = body?.maintenanceResponse !== "unavailable"
@@ -342,6 +353,67 @@ async function handleRequest(request: IncomingMessage, response: ServerResponse)
     sendJson(response, 200, { ok: true })
     return
   }
+  if (maintenanceMode && request.method === "POST" && url.pathname === "/rest/v1/rpc/get_data_operation") {
+    const body = (await readJson(request)) as { p_operation_id: string }
+    sendJson(response, 200, dataReceipts.get(body.p_operation_id) ?? null)
+    return
+  }
+  if (maintenanceMode && request.method === "POST" && url.pathname === "/rest/v1/rpc/mutate_data") {
+    const body = (await readJson(request)) as {
+      p_operation_id: string
+      p_action: string
+      p_id: string
+      p_values: Record<string, unknown>
+    }
+    if (dataReceipts.has(body.p_operation_id)) {
+      sendJson(response, 200, dataReceipts.get(body.p_operation_id))
+      return
+    }
+    let row: Record<string, unknown> | undefined
+    if (body.p_action === "vehicle.update" && vehicleExists && body.p_id === maintenanceVehicle.id) {
+      Object.assign(maintenanceVehicle, body.p_values)
+      row = maintenanceVehicle
+    } else if (body.p_action === "vehicle.delete" && vehicleExists && body.p_id === maintenanceVehicle.id) {
+      row = { ...maintenanceVehicle }
+      vehicleExists = false
+      maintenanceRecords.length = 0
+      maintenanceSchedules.length = 0
+    } else if (body.p_action === "vehicle.create") {
+      Object.assign(maintenanceVehicle, body.p_values, { id: body.p_id })
+      vehicleExists = true
+      row = maintenanceVehicle
+    } else if (body.p_action === "schedule.create") {
+      row = {
+        ...body.p_values,
+        id: body.p_id,
+        user_id: maintenanceVehicle.user_id,
+        status: "pending",
+        completed_record_id: null,
+        created_at: "2026-01-01T00:00:00Z",
+        updated_at: "2026-01-01T00:00:00Z",
+      }
+      maintenanceSchedules.push(row)
+    } else if (body.p_action === "schedule.update" || body.p_action === "schedule.cancel") {
+      row = maintenanceSchedules.find((value) => value.id === body.p_id && value.status === "pending")
+      if (row)
+        Object.assign(
+          row,
+          body.p_action === "schedule.cancel" ? { status: "cancelled", completed_record_id: null } : body.p_values
+        )
+    } else if (body.p_action === "maintenance.update" || body.p_action === "maintenance.delete") {
+      row = maintenanceRecords.find((value) => value.id === body.p_id)
+      if (row && body.p_action === "maintenance.update") Object.assign(row, body.p_values)
+      if (row && body.p_action === "maintenance.delete") maintenanceRecords.splice(maintenanceRecords.indexOf(row), 1)
+    }
+    if (!row) {
+      sendJson(response, 400, { code: "P0001", message: "No affected row" })
+      return
+    }
+    const receipt = { operation_id: body.p_operation_id, action: body.p_action, row: { ...row } }
+    dataReceipts.set(body.p_operation_id, receipt)
+    sendJson(response, 200, receipt)
+    return
+  }
   if (maintenanceMode && request.method === "POST" && url.pathname === "/rest/v1/rpc/get_maintenance_batch_operation") {
     const body = (await readJson(request)) as { p_operation_id: string }
     sendJson(
@@ -357,7 +429,11 @@ async function handleRequest(request: IncomingMessage, response: ServerResponse)
     sendJson(
       response,
       200,
-      request.headers.accept?.includes("vnd.pgrst.object") ? maintenanceVehicle : [maintenanceVehicle]
+      request.headers.accept?.includes("vnd.pgrst.object")
+        ? maintenanceVehicle
+        : vehicleExists
+          ? [maintenanceVehicle]
+          : []
     )
     return
   }

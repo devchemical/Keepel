@@ -16,6 +16,7 @@ const SCRIPTS = [
   "005_migrate_next_service_to_scheduled.sql",
   "006_drop_next_service_columns.sql",
   "007_transactional_maintenance.sql",
+  "008_confirmed_data_mutations.sql",
 ]
 
 export function assertLocalProject() {
@@ -91,21 +92,22 @@ export function replayScript(number: number) {
   executeLocalSql("NOTIFY pgrst, 'reload schema';")
 }
 
-export function prepareDatabase(through = 7) {
+export function prepareDatabase(through = 8) {
   localConnection()
   cli(["db", "reset", "--local", "--no-seed", "--yes"])
   for (let number = 1; number <= through; number++) replayScript(number)
 }
 
-export function ordinaryClient() {
+export function ordinaryClient(fetcher?: typeof fetch) {
   const { url, anonKey } = localConnection()
   return createClient(url, anonKey, {
+    global: fetcher ? { fetch: fetcher } : undefined,
     auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
   })
 }
 
-export async function createAccount(label: string) {
-  const client = ordinaryClient()
+export async function createAccount(label: string, fetcher?: typeof fetch) {
+  const client = ordinaryClient(fetcher)
   const { data, error } = await client.auth.signUp({
     email: `issue91-${label}-${randomUUID()}@example.test`,
     password: `Local-only-${randomUUID()}`,

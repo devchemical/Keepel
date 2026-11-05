@@ -1,20 +1,25 @@
 "use client"
 
-/* eslint-disable no-console, typescript/no-explicit-any, react/exhaustive-deps, react/jsx-no-constructed-context-values -- Data load failures are diagnostic; Promise.race typing and one-shot auth-load behavior are intentional pending data-layer refactor. */
+/* eslint-disable react/jsx-no-constructed-context-values -- The provider publishes a single interactive projection. */
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from "react"
-import { resolveDataAuthTransition } from "./data-auth-transition"
+import { readPendingCommands, writePendingCommands } from "@/lib/data/pending-operations"
+import { readDataSnapshot } from "@/lib/data/queries"
 import { useAuthProjection } from "./AuthProjectionContext"
 import { useSupabase } from "./SupabaseContext"
-import { AUTH_STATE_STATUS, type CurrentUser } from "@/lib/auth/contracts"
-import type { Tables, TablesUpdate } from "@/lib/supabase/database.types"
+import { AUTH_STATE_STATUS } from "@/lib/auth/contracts"
+import type { Tables } from "@/lib/supabase/database.types"
+import type { ScheduledServiceValues } from "@/lib/data/scheduled-command"
 import {
-  createScheduledService,
-  updateScheduledService,
-  cancelScheduledService,
-  type ScheduledServiceValues,
-} from "@/lib/data/scheduled-command"
-import { localToday } from "@/lib/data/calendar-day"
+  isConfirmedRejection,
+  type VehicleValues,
+  type MaintenanceValues,
+  dataCommandSchema,
+  executeDataCommand,
+  queryDataOperation,
+  type DataCommand,
+  type DataReceipt,
+} from "@/lib/data/data-command"
 import {
   maintenanceCommandSchema,
   maintenanceRpcArgs,
@@ -23,11 +28,9 @@ import {
   type MaintenanceBatchResult,
   type MaintenanceReceipt,
 } from "@/lib/data/maintenance-command"
-import { prependOptimistic, removeOptimistic, replaceOptimistic } from "@/lib/data/optimistic-list"
 
 type VehicleRow = Tables<"vehicles">
-export type Vehicle = Omit<VehicleRow, "user_id" | "license_plate" | "vin" | "color"> &
-  Partial<Pick<VehicleRow, "license_plate" | "vin" | "color">>
+export type Vehicle = Omit<VehicleRow, "user_id">
 export type MaintenanceRecord = Tables<"maintenance_records"> & {
   vehicles?: Pick<VehicleRow, "make" | "model" | "year">
 }
@@ -44,12 +47,19 @@ export type ScheduledService = Omit<
     vehicles?: Pick<VehicleRow, "make" | "model" | "year" | "license_plate" | "mileage">
   }
 
+export type PendingDataOperation = { command: DataCommand; status: "sending" | "unknown" | "checking" }
+
 interface DataContextType {
+  operationStorageError: boolean
+  pendingOperations: PendingDataOperation[]
+  reconcileDataOperation: (operationId: string) => Promise<void>
   // Data
   vehicles: Vehicle[]
   maintenanceRecords: MaintenanceRecord[]
   scheduledServices: ScheduledService[]
 
+  hasLoaded: boolean
+  loadError: string | null
   // Loading states
   isLoading: boolean
   isVehiclesLoading: boolean
@@ -63,16 +73,15 @@ interface DataContextType {
   refreshScheduledServices: () => Promise<void>
 
   // Optimistic updates - Vehicles
-  addVehicleOptimistic: (vehicle: Omit<Vehicle, "id" | "created_at" | "updated_at">) => Promise<void>
-  updateVehicleOptimistic: (id: string, updates: Partial<Vehicle>) => Promise<void>
+  addVehicleOptimistic: (vehicle: VehicleValues) => Promise<void>
+  updateVehicleOptimistic: (id: string, updates: VehicleValues) => Promise<void>
   deleteVehicleOptimistic: (id: string) => Promise<void>
 
   createMaintenanceBatch: (command: MaintenanceCommand) => Promise<MaintenanceBatchResult>
   reconcileMaintenanceBatch: (command: MaintenanceCommand) => Promise<MaintenanceBatchResult>
 
   // Optimistic updates - Maintenance
-  addMaintenanceOptimistic: (record: Omit<MaintenanceRecord, "id" | "created_at" | "updated_at">) => Promise<void>
-  updateMaintenanceOptimistic: (id: string, updates: TablesUpdate<"maintenance_records">) => Promise<void>
+  updateMaintenanceOptimistic: (id: string, updates: MaintenanceValues) => Promise<void>
   deleteMaintenanceOptimistic: (id: string) => Promise<void>
 
   addScheduledServiceOptimistic: (vehicleId: string, values: ScheduledServiceValues) => Promise<void>
@@ -89,6 +98,7 @@ interface DataProviderProps {
 export function DataProvider({ children }: DataProviderProps) {
   const authState = useAuthProjection()
   const userId = authState.status === AUTH_STATE_STATUS.AUTHENTICATED ? authState.user.id : null
+  const [dataOwner, setDataOwner] = useState(userId)
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
   const [maintenanceRecords, setMaintenanceRecords] = useState<MaintenanceRecord[]>([])
   const [scheduledServices, setScheduledServices] = useState<ScheduledService[]>([])
@@ -98,252 +108,193 @@ export function DataProvider({ children }: DataProviderProps) {
   const [isScheduledServicesLoading, setIsScheduledServicesLoading] = useState(true)
 
   const supabase = useSupabase()
+  const [pendingOperations, setPendingOperations] = useState<PendingDataOperation[]>([])
+  const deletedVehicles = React.useRef(new Set<string>())
+  const [operationStorageError, setOperationStorageError] = useState(false)
+  const pendingRef = React.useRef<PendingDataOperation[]>([])
 
-  const loadVehicles = useCallback(
-    async (currentUserId: CurrentUser["id"]) => {
-      if (!currentUserId) return
-
+  const [hasLoaded, setHasLoaded] = useState(false)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const scope = React.useRef({ userId, generation: 0, revision: 0, request: 0 })
+  if (scope.current.userId !== userId) {
+    scope.current = { userId, generation: scope.current.generation + 1, revision: 0, request: 0 }
+  }
+  const loadAllForUser = useCallback(
+    async (currentUserId: string) => {
+      if (scope.current.userId !== currentUserId) return
+      const owner = scope.current
+      const request = ++owner.request
+      const revision = owner.revision
       setIsVehiclesLoading(true)
-      try {
-        // Crear promesa con timeout de 10 segundos
-        const queryPromise = supabase
-          .from("vehicles")
-          .select("*")
-          .eq("user_id", currentUserId)
-          .order("created_at", { ascending: false })
-
-        const timeoutPromise = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error("Timeout al cargar vehículos (10s)")), 10000)
-        )
-
-        const { data, error } = (await Promise.race([queryPromise, timeoutPromise])) as any
-
-        if (error) {
-          console.error("Error loading vehicles:", error)
-          setVehicles([])
-        } else if (data) {
-          setVehicles(data)
-        } else {
-          setVehicles([])
-        }
-      } catch (error) {
-        console.error("Error loading vehicles:", error)
-        setVehicles([])
-      } finally {
-        setIsVehiclesLoading(false)
-      }
-    },
-    [supabase]
-  )
-
-  const loadMaintenanceRecords = useCallback(
-    async (currentUserId: CurrentUser["id"]) => {
-      if (!currentUserId) return
-
       setIsMaintenanceLoading(true)
-
-      try {
-        const queryPromise = supabase
-          .from("maintenance_records")
-          .select(
-            `
-          *,
-          vehicles (
-            make,
-            model,
-            year
-          )
-        `
-          )
-          .eq("user_id", currentUserId)
-          .order("service_date", { ascending: false })
-
-        const timeoutPromise = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error("Timeout al cargar registros de mantenimiento (10s)")), 10000)
-        )
-
-        const { data, error } = (await Promise.race([queryPromise, timeoutPromise])) as any
-
-        if (error) {
-          console.error("Error loading maintenance records:", error)
-          setMaintenanceRecords([])
-        } else if (data) {
-          setMaintenanceRecords([...data])
-        } else {
-          setMaintenanceRecords([])
-        }
-      } catch (error) {
-        console.error("Error loading maintenance records:", error)
-        setMaintenanceRecords([])
-      } finally {
-        setIsMaintenanceLoading(false)
-      }
-    },
-    [supabase]
-  )
-
-  const loadScheduledServices = useCallback(
-    async (currentUserId: CurrentUser["id"]) => {
-      if (!currentUserId) return
-
       setIsScheduledServicesLoading(true)
       try {
-        const { data, error } = await supabase
-          .from("scheduled_services")
-          .select(
-            `
-            *,
-            vehicles (
-              make,
-              model,
-              year,
-              license_plate,
-              mileage
-            )
-          `
-          )
-          .eq("user_id", currentUserId)
-          .eq("status", "pending")
-          .order("scheduled_date", { ascending: true, nullsFirst: true })
-
-        if (error) {
-          console.error("Error loading scheduled services:", error)
-          setScheduledServices([])
-        } else if (data) {
-          setScheduledServices(data as ScheduledService[])
-        } else {
-          setScheduledServices([])
-        }
-      } catch (error) {
-        console.error("Scheduled services load error:", error)
-        setScheduledServices([])
+        const snapshot = await readDataSnapshot(supabase, currentUserId)
+        if (scope.current !== owner || request !== owner.request || revision !== owner.revision) return
+        setVehicles(snapshot.vehicles)
+        setMaintenanceRecords(snapshot.maintenanceRecords)
+        setScheduledServices(snapshot.scheduledServices as ScheduledService[])
+        setHasLoaded(true)
+        setLoadError(null)
+      } catch {
+        if (scope.current === owner && request === owner.request)
+          setLoadError("No se pudieron cargar los datos. Se conservan los últimos datos válidos.")
       } finally {
-        setIsScheduledServicesLoading(false)
+        if (scope.current === owner && request === owner.request) {
+          setIsVehiclesLoading(false)
+          setIsMaintenanceLoading(false)
+          setIsScheduledServicesLoading(false)
+        }
       }
     },
     [supabase]
   )
-
-  const loadAllForUser = useCallback(
-    async (currentUserId: CurrentUser["id"]) => {
-      await Promise.all([
-        loadVehicles(currentUserId),
-        loadMaintenanceRecords(currentUserId),
-        loadScheduledServices(currentUserId),
-      ])
-    },
-    [loadVehicles, loadMaintenanceRecords, loadScheduledServices]
-  )
-
-  const refreshVehicles = useCallback(async () => {
-    if (userId) {
-      await loadVehicles(userId)
-    }
-  }, [userId, loadVehicles])
-
-  const refreshMaintenance = useCallback(async () => {
-    if (userId) {
-      await loadMaintenanceRecords(userId)
-    }
-  }, [userId, loadMaintenanceRecords])
-
-  const refreshScheduledServices = useCallback(async () => {
-    if (userId) {
-      await loadScheduledServices(userId)
-    }
-  }, [userId, loadScheduledServices])
-
   const refreshAll = useCallback(async () => {
-    if (userId) {
-      await loadAllForUser(userId)
-    }
+    if (userId) await loadAllForUser(userId)
   }, [userId, loadAllForUser])
+  const refreshVehicles = refreshAll
+  const refreshMaintenance = refreshAll
+  const refreshScheduledServices = refreshAll
 
-  // Optimistic update functions
-  const addVehicleOptimistic = useCallback(
-    async (vehicleData: Omit<Vehicle, "id" | "created_at" | "updated_at">) => {
-      if (!userId) return
-
-      // Create optimistic vehicle
-      const optimisticVehicle: Vehicle = {
-        id: `temp-${Date.now()}`,
-        ...vehicleData,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      }
-
-      // Add optimistically
-      setVehicles((prev) => prependOptimistic(prev, optimisticVehicle))
-
-      try {
-        const { data, error } = await supabase
-          .from("vehicles")
-          .insert({ ...vehicleData, user_id: userId })
-          .select()
-          .single()
-
-        if (error) throw error
-
-        // Replace optimistic with real data
-        setVehicles((prev) => replaceOptimistic(prev, optimisticVehicle.id, data))
-      } catch (error) {
-        // Revert optimistic update
-        setVehicles((prev) => removeOptimistic(prev, optimisticVehicle.id))
-        throw error
-      }
+  const publishPending = useCallback(
+    (operations: PendingDataOperation[]) => {
+      pendingRef.current = operations
+      setPendingOperations(operations)
+      if (userId)
+        setOperationStorageError(
+          !writePendingCommands(
+            userId,
+            operations.map((operation) => operation.command)
+          )
+        )
     },
-    [userId, supabase]
+    [userId]
   )
 
-  const updateVehicleOptimistic = useCallback(
-    async (id: string, updates: Partial<Vehicle>) => {
-      // Update optimistically
-      setVehicles((prev) =>
-        prev.map((v) => (v.id === id ? { ...v, ...updates, updated_at: new Date().toISOString() } : v))
+  const acceptDataReceipt = useCallback((receipt: DataReceipt) => {
+    scope.current.revision++
+    if ("vehicle_id" in receipt.row && deletedVehicles.current.has(receipt.row.vehicle_id)) return
+    const id = receipt.row.id
+    if (receipt.action.startsWith("vehicle.")) {
+      if (receipt.action === "vehicle.delete") {
+        deletedVehicles.current.add(id)
+        setVehicles((prev) => prev.filter((row) => row.id !== id))
+        setMaintenanceRecords((prev) => prev.filter((row) => row.vehicle_id !== id))
+        setScheduledServices((prev) => prev.filter((row) => row.vehicle_id !== id))
+      } else {
+        const row = receipt.row as VehicleRow
+        setVehicles((prev) => {
+          const current = prev.find((value) => value.id === id)
+          if (current?.updated_at && row.updated_at && current.updated_at > row.updated_at) return prev
+          return [row, ...prev.filter((value) => value.id !== id)]
+        })
+      }
+    } else if (receipt.action.startsWith("maintenance.")) {
+      const row = receipt.row as Tables<"maintenance_records">
+      setMaintenanceRecords((prev) =>
+        receipt.action === "maintenance.delete"
+          ? prev.filter((value) => value.id !== id)
+          : prev.map((value) => (value.id === id ? row : value))
       )
+    } else {
+      const row = receipt.row as ScheduledService
+      setScheduledServices((prev) =>
+        row.status === "pending"
+          ? [row, ...prev.filter((value) => value.id !== id)]
+          : prev.filter((value) => value.id !== id)
+      )
+    }
+  }, [])
 
-      try {
-        const { error } = await supabase.from("vehicles").update(updates).eq("id", id)
-
-        if (error) throw error
-
-        // Refresh to get accurate data
-        await refreshVehicles()
-      } catch (error) {
-        // Revert optimistic update
-        await refreshVehicles()
-        throw error
-      }
+  const reconcileDataOperation = useCallback(
+    async (operationId: string) => {
+      const operation = pendingRef.current.find((value) => value.command.operationId === operationId)
+      if (!operation || operation.status !== "unknown" || !userId) return
+      const owner = scope.current
+      publishPending(
+        pendingRef.current.map((value) => (value === operation ? { ...value, status: "checking" } : value))
+      )
+      const outcome = await queryDataOperation(supabase, userId, operation.command)
+      if (scope.current !== owner) return
+      if (outcome.status === "success") {
+        acceptDataReceipt(outcome.receipt)
+        publishPending(pendingRef.current.filter((value) => value.command.operationId !== operationId))
+        void refreshAll()
+      } else
+        publishPending(
+          pendingRef.current.map((value) =>
+            value.command.operationId === operationId ? { ...value, status: "unknown" } : value
+          )
+        )
     },
-    [supabase, refreshVehicles]
+    [userId, supabase, publishPending, acceptDataReceipt, refreshAll]
   )
 
+  const mutate = useCallback(
+    async (action: DataCommand["action"], id: string, values: unknown) => {
+      if (!userId || scope.current.userId !== userId) throw new Error("No hay sesión activa")
+      if (
+        pendingRef.current.some(
+          (operation) =>
+            operation.command.id === id || (operation.command.action === action && action.endsWith(".create"))
+        )
+      )
+        throw new Error("Resultado pendiente de confirmar. Comprueba la operación anterior antes de continuar.")
+      const command = dataCommandSchema.parse({ operationId: crypto.randomUUID(), action, id, values })
+      Object.freeze(command.values)
+      Object.freeze(command)
+      // Parsed payload is copied and retained; no caller may change or resend it.
+      const owner = scope.current
+      owner.revision++
+      publishPending([...pendingRef.current, { command, status: "sending" }])
+      const outcome = await executeDataCommand(supabase, userId, command)
+      if (scope.current !== owner) throw new Error("La sesión ha cambiado. No se aplicó una respuesta anterior.")
+      if (outcome.status === "unknown") {
+        publishPending(
+          pendingRef.current.map((value) =>
+            value.command.operationId === command.operationId ? { ...value, status: "unknown" } : value
+          )
+        )
+        throw new Error("Resultado pendiente de confirmar. No repitas la operación; utiliza Comprobar resultado.")
+      }
+      publishPending(pendingRef.current.filter((value) => value.command.operationId !== command.operationId))
+      if (outcome.status === "rejected") {
+        void refreshAll()
+        throw new Error(
+          "No se realizó la operación. No se confirmó ninguna fila; revisa los datos y vuelve a intentarlo."
+        )
+      }
+      acceptDataReceipt(outcome.receipt)
+      void refreshAll()
+    },
+    [userId, supabase, publishPending, acceptDataReceipt, refreshAll]
+  )
+
+  const addVehicleOptimistic = useCallback(
+    async (values: VehicleValues) => {
+      await mutate("vehicle.create", crypto.randomUUID(), values)
+    },
+    [mutate]
+  )
+  const updateVehicleOptimistic = useCallback(
+    async (id: string, values: VehicleValues) => {
+      await mutate("vehicle.update", id, values)
+    },
+    [mutate]
+  )
   const deleteVehicleOptimistic = useCallback(
     async (id: string) => {
-      const vehicleToDelete = vehicles.find((v) => v.id === id)
-
-      // Remove optimistically
-      setVehicles((prev) => removeOptimistic(prev, id))
-
-      try {
-        const { error } = await supabase.from("vehicles").delete().eq("id", id)
-
-        if (error) throw error
-      } catch (error) {
-        // Revert optimistic update
-        if (vehicleToDelete) {
-          setVehicles((prev) => prependOptimistic(prev, vehicleToDelete))
-        }
-        throw error
-      }
+      await mutate("vehicle.delete", id, {})
     },
-    [vehicles, supabase]
+    [mutate]
   )
 
   // A receipt confirms the transaction; refreshing never changes a confirmed write
   // into a failed write. This context owns all related projection refreshes.
   const acceptMaintenanceReceipt = useCallback(
     async (receipt: MaintenanceReceipt) => {
+      scope.current.revision++
+      if (deletedVehicles.current.has(receipt.vehicle.id)) return
       setMaintenanceRecords((prev) => [
         ...receipt.records.map((record) => ({ ...record, vehicles: receipt.vehicle })),
         ...prev.filter((row) => !receipt.records.some((saved) => saved.id === row.id)),
@@ -353,6 +304,10 @@ export function DataProvider({ children }: DataProviderProps) {
           vehicle.id === receipt.vehicle.id
             ? {
                 ...vehicle,
+                updated_at:
+                  receipt.vehicle.updated_at && (!vehicle.updated_at || receipt.vehicle.updated_at > vehicle.updated_at)
+                    ? receipt.vehicle.updated_at
+                    : vehicle.updated_at,
                 mileage:
                   receipt.vehicle.mileage === null
                     ? vehicle.mileage
@@ -363,18 +318,21 @@ export function DataProvider({ children }: DataProviderProps) {
       )
       if (receipt.scheduled_service)
         setScheduledServices((prev) => prev.filter((service) => service.id !== receipt.scheduled_service?.id))
-      await Promise.all([refreshMaintenance(), refreshVehicles(), refreshScheduledServices()])
+      void refreshAll()
     },
-    [refreshMaintenance, refreshVehicles, refreshScheduledServices]
+    [refreshAll]
   )
 
   const reconcileMaintenanceBatch = useCallback(
     async (command: MaintenanceCommand): Promise<MaintenanceBatchResult> => {
-      if (!userId) return { status: "rejected" }
+      if (!userId || scope.current.userId !== userId) return { status: "rejected" }
+      const owner = scope.current
       try {
         const { data, error } = await supabase
           .rpc("get_maintenance_batch_operation", { p_operation_id: command.operationId })
           .abortSignal(AbortSignal.timeout(15000))
+          .retry(false)
+        if (scope.current !== owner) return { status: "unknown" }
         const receipt = !error && readMaintenanceReceipt(data, command, userId)
         if (receipt) {
           await acceptMaintenanceReceipt(receipt)
@@ -390,12 +348,16 @@ export function DataProvider({ children }: DataProviderProps) {
 
   const createMaintenanceBatch = useCallback(
     async (input: MaintenanceCommand): Promise<MaintenanceBatchResult> => {
-      if (!userId) return { status: "rejected" }
+      if (!userId || scope.current.userId !== userId) return { status: "rejected" }
       const command = maintenanceCommandSchema.parse(input)
+      const owner = scope.current
+      owner.revision++
       try {
         const { data, error } = await supabase
           .rpc("create_maintenance_batch", maintenanceRpcArgs(command))
           .abortSignal(AbortSignal.timeout(15000))
+          .retry(false)
+        if (scope.current !== owner) return { status: "unknown" }
         const receipt = !error && readMaintenanceReceipt(data, command, userId)
         if (receipt) {
           await acceptMaintenanceReceipt(receipt)
@@ -403,7 +365,7 @@ export function DataProvider({ children }: DataProviderProps) {
         }
         // These PostgreSQL errors are definitive transaction rejection. Transport
         // failures and unexpected responses must be reconciled, never called rollback.
-        if (error && /^(22|23|42501|P0001|PGRST20[23])/.test(error.code)) return { status: "rejected" }
+        if (isConfirmedRejection(error)) return { status: "rejected" }
       } catch {
         /* Transport cancellation says nothing about database commit. */
       }
@@ -412,119 +374,101 @@ export function DataProvider({ children }: DataProviderProps) {
     [userId, supabase, acceptMaintenanceReceipt, reconcileMaintenanceBatch]
   )
 
-  const addMaintenanceOptimistic = useCallback(
-    async (recordData: Omit<MaintenanceRecord, "id" | "created_at" | "updated_at">) => {
-      const command = maintenanceCommandSchema.parse({
-        operationId: crypto.randomUUID(),
-        vehicleId: recordData.vehicle_id,
-        today: localToday(),
-        batch: { ...recordData, services: [recordData] },
-      })
-      const result = await createMaintenanceBatch(command)
-      if (result.status !== "success")
-        throw new Error(
-          result.status === "unknown"
-            ? "Resultado de mantenimiento pendiente de confirmar"
-            : "No se pudo guardar el mantenimiento"
-        )
-    },
-    [createMaintenanceBatch]
-  )
-
   const updateMaintenanceOptimistic = useCallback(
-    async (id: string, updates: TablesUpdate<"maintenance_records">) => {
-      setMaintenanceRecords((prev) =>
-        prev.map((r) => (r.id === id ? { ...r, ...updates, updated_at: new Date().toISOString() } : r))
-      )
-
-      try {
-        const { error } = await supabase.from("maintenance_records").update(updates).eq("id", id)
-
-        if (error) throw error
-
-        await refreshMaintenance()
-      } catch (error) {
-        await refreshMaintenance()
-        throw error
-      }
+    async (id: string, values: MaintenanceValues) => {
+      await mutate("maintenance.update", id, values)
     },
-    [supabase, refreshMaintenance]
+    [mutate]
   )
-
   const deleteMaintenanceOptimistic = useCallback(
     async (id: string) => {
-      const recordToDelete = maintenanceRecords.find((r) => r.id === id)
-
-      setMaintenanceRecords((prev) => removeOptimistic(prev, id))
-
-      try {
-        const { error } = await supabase.from("maintenance_records").delete().eq("id", id)
-
-        if (error) throw error
-      } catch (error) {
-        if (recordToDelete) {
-          setMaintenanceRecords((prev) => prependOptimistic(prev, recordToDelete))
-        }
-        throw error
-      }
+      await mutate("maintenance.delete", id, {})
     },
-    [maintenanceRecords, supabase]
+    [mutate]
   )
-
   const addScheduledServiceOptimistic = useCallback(
     async (vehicleId: string, values: ScheduledServiceValues) => {
-      if (!userId) throw new Error("No hay sesión activa")
-      const saved = await createScheduledService(supabase, userId, vehicleId, values)
-      setScheduledServices((prev) => prependOptimistic(prev, { ...saved, status: "pending" }))
+      await mutate("schedule.create", crypto.randomUUID(), { ...values, vehicle_id: vehicleId })
     },
-    [userId, supabase]
+    [mutate]
   )
-
   const updateScheduledServiceOptimistic = useCallback(
     async (id: string, values: ScheduledServiceValues) => {
-      if (!userId) throw new Error("No hay sesión activa")
-      const saved = await updateScheduledService(supabase, userId, id, values)
-      setScheduledServices((prev) => replaceOptimistic(prev, id, { ...saved, status: "pending" }))
+      await mutate("schedule.update", id, values)
     },
-    [userId, supabase]
+    [mutate]
   )
-
   const cancelSchedule = useCallback(
     async (id: string) => {
-      if (!userId) throw new Error("No hay sesión activa")
-      await cancelScheduledService(supabase, userId, id)
-      setScheduledServices((prev) => removeOptimistic(prev, id))
+      await mutate("schedule.cancel", id, {})
     },
-    [userId, supabase]
+    [mutate]
   )
 
-  // Load data when user changes - only once per auth state change
-  const hasLoadedRef = React.useRef(false)
-
   useEffect(() => {
-    const transition = resolveDataAuthTransition(authState, hasLoadedRef.current)
-
-    if (transition.type === "load") {
-      hasLoadedRef.current = true
-      void loadAllForUser(transition.userId)
-    } else if (transition.type === "clear") {
-      // Clear data when user logs out
-      hasLoadedRef.current = false
-      setVehicles([])
-      setMaintenanceRecords([])
-      setScheduledServices([])
-      // Reset loading states
+    deletedVehicles.current.clear()
+    setDataOwner(userId)
+    pendingRef.current = userId
+      ? readPendingCommands(userId).map((command) => ({ command, status: "unknown" as const }))
+      : []
+    setPendingOperations(pendingRef.current)
+    setOperationStorageError(false)
+    setVehicles([])
+    setMaintenanceRecords([])
+    setScheduledServices([])
+    setHasLoaded(false)
+    setLoadError(null)
+    if (userId) void loadAllForUser(userId)
+    else {
       setIsVehiclesLoading(false)
       setIsMaintenanceLoading(false)
       setIsScheduledServicesLoading(false)
     }
-  }, [authState.status, userId])
+  }, [userId, loadAllForUser, publishPending])
+
+  let visibleVehicles = vehicles
+  let visibleRecords = maintenanceRecords
+  let visibleSchedules = scheduledServices
+  for (const { command } of pendingOperations) {
+    const { id, action, values } = command
+    if (action === "vehicle.create")
+      visibleVehicles = visibleVehicles.some((row) => row.id === id)
+        ? visibleVehicles
+        : [{ ...values, id, created_at: null, updated_at: null }, ...visibleVehicles]
+    if (action === "vehicle.update")
+      visibleVehicles = visibleVehicles.map((row) => (row.id === id ? { ...row, ...values } : row))
+    if (action === "vehicle.delete") {
+      visibleVehicles = visibleVehicles.filter((row) => row.id !== id)
+      visibleRecords = visibleRecords.filter((row) => row.vehicle_id !== id)
+      visibleSchedules = visibleSchedules.filter((row) => row.vehicle_id !== id)
+    }
+    if (action === "maintenance.update")
+      visibleRecords = visibleRecords.map((row) => (row.id === id ? { ...row, ...values } : row))
+    if (action === "maintenance.delete") visibleRecords = visibleRecords.filter((row) => row.id !== id)
+    if (action === "schedule.update")
+      visibleSchedules = visibleSchedules.map((row) => (row.id === id ? { ...row, ...values } : row))
+    // Cancellation stays visible until confirmed so its recovery action remains reachable.
+  }
+  const vehicleById = new Map(visibleVehicles.map((vehicle) => [vehicle.id, vehicle]))
+  visibleRecords = visibleRecords.map((row) => ({
+    ...row,
+    vehicles: vehicleById.get(row.vehicle_id) ?? row.vehicles,
+  }))
+  visibleSchedules = visibleSchedules.map((row) => ({
+    ...row,
+    vehicles: vehicleById.get(row.vehicle_id) ?? row.vehicles,
+  }))
 
   const value: DataContextType = {
+    operationStorageError: dataOwner === userId && operationStorageError,
+    pendingOperations: dataOwner === userId ? pendingOperations : [],
+    reconcileDataOperation,
+    hasLoaded: dataOwner === userId && hasLoaded,
+    loadError: dataOwner === userId ? loadError : null,
     // Data
-    vehicles,
-    maintenanceRecords,
-    scheduledServices,
+    vehicles: dataOwner === userId ? visibleVehicles : [],
+    maintenanceRecords: dataOwner === userId ? visibleRecords : [],
+    scheduledServices: dataOwner === userId ? visibleSchedules : [],
 
     // Loading states
     isLoading: isVehiclesLoading || isMaintenanceLoading || isScheduledServicesLoading,
@@ -546,7 +490,6 @@ export function DataProvider({ children }: DataProviderProps) {
     // Optimistic updates - Maintenance
     createMaintenanceBatch,
     reconcileMaintenanceBatch,
-    addMaintenanceOptimistic,
     updateMaintenanceOptimistic,
     deleteMaintenanceOptimistic,
 

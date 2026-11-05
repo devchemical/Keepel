@@ -72,7 +72,12 @@ export function MaintenanceList({ records, vehicleId, isLoading }: MaintenanceLi
               </div>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                  <Button
+                    aria-label={`Acciones del mantenimiento ${maintenanceTypes[record.type as keyof typeof maintenanceTypes] || record.type}`}
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0"
+                  >
                     <MoreVertical className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>

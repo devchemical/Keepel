@@ -194,8 +194,18 @@ export type Database = {
         }
         Returns: Json
       }
+      get_data_operation: { Args: { p_operation_id: string }; Returns: Json }
       get_maintenance_batch_operation: {
         Args: { p_operation_id: string }
+        Returns: Json
+      }
+      mutate_data: {
+        Args: {
+          p_action: string
+          p_id: string
+          p_operation_id: string
+          p_values: Json
+        }
         Returns: Json
       }
     }

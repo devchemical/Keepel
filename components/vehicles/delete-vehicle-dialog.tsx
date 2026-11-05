@@ -1,10 +1,10 @@
 "use client"
 
-/* eslint-disable no-console, eslint/no-shadow -- Refresh failures are diagnostic only and dialog error state uses conventional naming. */
+/* eslint-disable eslint/no-shadow -- The caught error is rendered by the form error state. */
 
 import { useState } from "react"
-import { useRouter } from "next/navigation"
-import { useSupabase, useData } from "@/contexts"
+import { OperationRecovery, usePendingDataOperation } from "@/components/data/operation-recovery"
+import { useData } from "@/contexts"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { AlertTriangle, Loader2 } from "lucide-react"
@@ -26,26 +26,24 @@ export function DeleteVehicleDialog({ vehicle, open, onOpenChange }: DeleteVehic
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const supabase = useSupabase()
-  const { refreshVehicles } = useData()
-  const router = useRouter()
+  const { deleteVehicleOptimistic } = useData()
 
+  const pending = usePendingDataOperation(() => {
+    setError(null)
+    onOpenChange(false)
+  })
   const handleDelete = async () => {
     setIsLoading(true)
     setError(null)
 
     try {
-      const { error } = await supabase.from("vehicles").delete().eq("id", vehicle.id)
-
-      if (error) throw error
+      await deleteVehicleOptimistic(vehicle.id)
 
       onOpenChange(false)
     } catch (error: unknown) {
       setError(error instanceof Error ? error.message : "Error al eliminar vehículo")
     } finally {
       setIsLoading(false)
-      refreshVehicles().catch((err) => console.error("Error al refrescar:", err))
-      router.refresh()
     }
   }
 
@@ -73,8 +71,12 @@ export function DeleteVehicleDialog({ vehicle, open, onOpenChange }: DeleteVehic
           </p>
         </div>
 
+        <OperationRecovery />
         {error && (
-          <div className="text-destructive-foreground bg-destructive/10 border-destructive/20 rounded-md border p-3 text-sm">
+          <div
+            role="alert"
+            className="text-destructive-foreground bg-destructive/10 border-destructive/20 rounded-md border p-3 text-sm"
+          >
             {error}
           </div>
         )}
@@ -83,7 +85,7 @@ export function DeleteVehicleDialog({ vehicle, open, onOpenChange }: DeleteVehic
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="flex-1">
             Cancelar
           </Button>
-          <Button onClick={handleDelete} disabled={isLoading} variant="destructive" className="flex-1">
+          <Button onClick={handleDelete} disabled={isLoading || pending} variant="destructive" className="flex-1">
             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Eliminar Vehículo
           </Button>

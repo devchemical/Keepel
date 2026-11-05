@@ -15,7 +15,7 @@ interface Vehicle {
 
 interface DashboardStatsProps {
   vehicles: Vehicle[]
-  maintenanceRecords: { cost?: number }[]
+  maintenanceRecords: { cost?: number | null }[]
   reminderCount: number
   isLoading?: boolean
 }

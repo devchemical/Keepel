@@ -34,7 +34,7 @@ bun run data-api:stop
 ```
 
 `test:data-api` destroys and recreates **only this project's local test database**, then replays
-`scripts/001` through `007` by default. Historical migration tests explicitly start at `004`. Migration tests pause at `004`, seed historical records via the API,
+`scripts/001` through `008` by default. Historical migration tests explicitly start at `004`. Migration tests pause at `004`, seed historical records via the API,
 replay `005`, repeat it, and verify the result via the same ordinary client before `006` removes
 source columns. Script `003` is currently empty and is still replayed. The standard `bun run test`
 suite excludes tests requiring Docker; explicitly use `test:data-api` for these checks.
@@ -57,7 +57,8 @@ Do not claim that rerunning the corrected script recovers previously dropped dat
 rehearses local migrations; it neither changes nor deploys a hosted database.
 
 See [transactional maintenance batches](maintenance-batch.md) for script 007, operation/RPC contracts,
-generated types and form verification.
+generated types and form verification. See [interactive data ownership](data-owner.md) for script008,
+CRUD receipts, recovery, session scope and the #96 history/totals seam.
 
 Official references checked for the local harness:
 [Supabase local development](https://supabase.com/docs/guides/local-development/cli/getting-started),
