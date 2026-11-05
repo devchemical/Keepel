@@ -10,6 +10,8 @@ import { RecentActivity } from "@/components/dashboard/recent-activity"
 import { UpcomingMaintenance } from "@/components/dashboard/upcoming-maintenance"
 import { VehicleOverview } from "@/components/dashboard/vehicle-overview"
 import { DashboardSkeleton } from "@/components/skeletons/dashboard-skeleton"
+import { localToday } from "@/lib/data/calendar-day"
+import { selectScheduledServices } from "@/lib/data/scheduled-services"
 import type { ScheduledService, Vehicle } from "@/contexts"
 
 interface DashboardProps {
@@ -23,6 +25,8 @@ export function Dashboard({ vehicles, maintenanceRecords, upcomingMaintenance, i
   if (isLoading) {
     return <DashboardSkeleton />
   }
+
+  const reminders = selectScheduledServices(upcomingMaintenance, localToday())
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -52,7 +56,7 @@ export function Dashboard({ vehicles, maintenanceRecords, upcomingMaintenance, i
       <DashboardStats
         vehicles={vehicles}
         maintenanceRecords={maintenanceRecords}
-        scheduledServices={upcomingMaintenance}
+        reminderCount={reminders.length}
         isLoading={isLoading}
       />
 
@@ -66,7 +70,7 @@ export function Dashboard({ vehicles, maintenanceRecords, upcomingMaintenance, i
 
         {/* Right Column - Upcoming Maintenance */}
         <div className="space-y-8">
-          <UpcomingMaintenance upcomingMaintenance={upcomingMaintenance} isLoading={isLoading} />
+          <UpcomingMaintenance upcomingMaintenance={reminders} isLoading={isLoading} />
         </div>
       </div>
     </div>

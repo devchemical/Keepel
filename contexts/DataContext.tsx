@@ -8,6 +8,12 @@ import { useAuthProjection } from "./AuthProjectionContext"
 import { useSupabase } from "./SupabaseContext"
 import { AUTH_STATE_STATUS, type CurrentUser } from "@/lib/auth/contracts"
 import type { Tables, TablesUpdate } from "@/lib/supabase/database.types"
+import {
+  createScheduledService,
+  updateScheduledService,
+  cancelScheduledService,
+  type ScheduledServiceValues,
+} from "@/lib/data/scheduled-command"
 import { localToday } from "@/lib/data/calendar-day"
 import {
   maintenanceCommandSchema,
@@ -35,7 +41,7 @@ export type ScheduledService = Omit<
     Pick<ScheduledRow, "description" | "scheduled_date" | "scheduled_mileage" | "notes" | "completed_record_id">
   > & {
     status: ScheduledServiceStatus
-    vehicles?: Pick<VehicleRow, "make" | "model" | "year" | "license_plate">
+    vehicles?: Pick<VehicleRow, "make" | "model" | "year" | "license_plate" | "mileage">
   }
 
 interface DataContextType {
@@ -69,16 +75,9 @@ interface DataContextType {
   updateMaintenanceOptimistic: (id: string, updates: TablesUpdate<"maintenance_records">) => Promise<void>
   deleteMaintenanceOptimistic: (id: string) => Promise<void>
 
-  // Optimistic updates - Scheduled Services
-  addScheduledServiceOptimistic: (
-    service: Omit<ScheduledService, "id" | "created_at" | "updated_at" | "vehicles">
-  ) => Promise<void>
-  updateScheduledServiceOptimistic: (
-    id: string,
-    updates: TablesUpdate<"scheduled_services"> & { status?: ScheduledServiceStatus }
-  ) => Promise<void>
-  deleteScheduledServiceOptimistic: (id: string) => Promise<void>
-  completeScheduledServiceOptimistic: (id: string, completedRecordId: string) => Promise<void>
+  addScheduledServiceOptimistic: (vehicleId: string, values: ScheduledServiceValues) => Promise<void>
+  updateScheduledServiceOptimistic: (id: string, values: ScheduledServiceValues) => Promise<void>
+  cancelScheduledService: (id: string) => Promise<void>
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined)
@@ -198,7 +197,8 @@ export function DataProvider({ children }: DataProviderProps) {
               make,
               model,
               year,
-              license_plate
+              license_plate,
+              mileage
             )
           `
           )
@@ -345,7 +345,7 @@ export function DataProvider({ children }: DataProviderProps) {
   const acceptMaintenanceReceipt = useCallback(
     async (receipt: MaintenanceReceipt) => {
       setMaintenanceRecords((prev) => [
-        ...receipt.records,
+        ...receipt.records.map((record) => ({ ...record, vehicles: receipt.vehicle })),
         ...prev.filter((row) => !receipt.records.some((saved) => saved.id === row.id)),
       ])
       setVehicles((prev) =>
@@ -472,116 +472,30 @@ export function DataProvider({ children }: DataProviderProps) {
   )
 
   const addScheduledServiceOptimistic = useCallback(
-    async (serviceData: Omit<ScheduledService, "id" | "created_at" | "updated_at" | "vehicles">) => {
-      if (!userId) return
-
-      const optimisticService: ScheduledService = {
-        id: `temp-${Date.now()}`,
-        ...serviceData,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      }
-
-      setScheduledServices((prev) => prependOptimistic(prev, optimisticService))
-
-      try {
-        const { data, error } = await supabase
-          .from("scheduled_services")
-          .insert({ ...serviceData, user_id: userId })
-          .select(
-            `
-            *,
-            vehicles (
-              make,
-              model,
-              year,
-              license_plate
-            )
-          `
-          )
-          .single()
-
-        if (error) throw error
-
-        setScheduledServices((prev) => replaceOptimistic(prev, optimisticService.id, data as ScheduledService))
-      } catch (error) {
-        setScheduledServices((prev) => removeOptimistic(prev, optimisticService.id))
-        throw error
-      }
+    async (vehicleId: string, values: ScheduledServiceValues) => {
+      if (!userId) throw new Error("No hay sesión activa")
+      const saved = await createScheduledService(supabase, userId, vehicleId, values)
+      setScheduledServices((prev) => prependOptimistic(prev, { ...saved, status: "pending" }))
     },
     [userId, supabase]
   )
 
   const updateScheduledServiceOptimistic = useCallback(
-    async (id: string, updates: TablesUpdate<"scheduled_services"> & { status?: ScheduledServiceStatus }) => {
-      setScheduledServices((prev) =>
-        prev.map((s) => (s.id === id ? { ...s, ...updates, updated_at: new Date().toISOString() } : s))
-      )
-
-      try {
-        const { error } = await supabase.from("scheduled_services").update(updates).eq("id", id)
-
-        if (error) throw error
-
-        await refreshScheduledServices()
-      } catch (error) {
-        await refreshScheduledServices()
-        throw error
-      }
+    async (id: string, values: ScheduledServiceValues) => {
+      if (!userId) throw new Error("No hay sesión activa")
+      const saved = await updateScheduledService(supabase, userId, id, values)
+      setScheduledServices((prev) => replaceOptimistic(prev, id, { ...saved, status: "pending" }))
     },
-    [supabase, refreshScheduledServices]
+    [userId, supabase]
   )
 
-  const deleteScheduledServiceOptimistic = useCallback(
+  const cancelSchedule = useCallback(
     async (id: string) => {
-      const serviceToDelete = scheduledServices.find((s) => s.id === id)
-
+      if (!userId) throw new Error("No hay sesión activa")
+      await cancelScheduledService(supabase, userId, id)
       setScheduledServices((prev) => removeOptimistic(prev, id))
-
-      try {
-        const { error } = await supabase.from("scheduled_services").delete().eq("id", id)
-
-        if (error) throw error
-      } catch (error) {
-        if (serviceToDelete) {
-          setScheduledServices((prev) => prependOptimistic(prev, serviceToDelete))
-        }
-        throw error
-      }
     },
-    [scheduledServices, supabase]
-  )
-
-  const completeScheduledServiceOptimistic = useCallback(
-    async (id: string, completedRecordId: string) => {
-      setScheduledServices((prev) =>
-        prev.map((s) =>
-          s.id === id
-            ? {
-                ...s,
-                status: "completed" as ScheduledServiceStatus,
-                completed_record_id: completedRecordId,
-                updated_at: new Date().toISOString(),
-              }
-            : s
-        )
-      )
-
-      try {
-        const { error } = await supabase
-          .from("scheduled_services")
-          .update({ status: "completed", completed_record_id: completedRecordId, updated_at: new Date().toISOString() })
-          .eq("id", id)
-
-        if (error) throw error
-
-        await refreshScheduledServices()
-      } catch (error) {
-        await refreshScheduledServices()
-        throw error
-      }
-    },
-    [supabase, refreshScheduledServices]
+    [userId, supabase]
   )
 
   // Load data when user changes - only once per auth state change
@@ -639,8 +553,7 @@ export function DataProvider({ children }: DataProviderProps) {
     // Optimistic updates - Scheduled Services
     addScheduledServiceOptimistic,
     updateScheduledServiceOptimistic,
-    deleteScheduledServiceOptimistic,
-    completeScheduledServiceOptimistic,
+    cancelScheduledService: cancelSchedule,
   }
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>

@@ -17,11 +17,11 @@ export interface ScheduleClassification {
 export function classifyScheduledService(service: ScheduleCriteria, today: string): ScheduleClassification | null {
   parseCalendarDay(today)
   if (service.status !== "pending") return null
-  const daysUntil = service.scheduled_date == null ? null : calendarDaysBetween(today, service.scheduled_date)
-  const reached =
-    service.scheduled_mileage != null &&
-    service.vehicles?.mileage != null &&
-    service.vehicles.mileage >= service.scheduled_mileage
+  const scheduledDate = service.scheduled_date ?? null
+  const scheduledMileage = service.scheduled_mileage ?? null
+  const currentMileage = service.vehicles?.mileage ?? null
+  const daysUntil = scheduledDate === null ? null : calendarDaysBetween(today, scheduledDate)
+  const reached = scheduledMileage !== null && currentMileage !== null && currentMileage >= scheduledMileage
   if ((daysUntil !== null && daysUntil < 0) || reached) return { urgency: "overdue", daysUntil }
   if (daysUntil === 0) return { urgency: "today", daysUntil }
   if (daysUntil !== null && daysUntil <= SCHEDULE_HORIZON_DAYS) return { urgency: "upcoming", daysUntil }
@@ -35,7 +35,7 @@ export function selectScheduledServices<T extends ScheduleCriteria>(services: re
       const classification = classifyScheduledService(service, today)
       return classification ? [{ service, ...classification }] : []
     })
-    .sort((a, b) => {
+    .toSorted((a, b) => {
       const rank = { overdue: 0, today: 1, upcoming: 2 }
       return rank[a.urgency] - rank[b.urgency] || (a.daysUntil ?? Infinity) - (b.daysUntil ?? Infinity)
     })

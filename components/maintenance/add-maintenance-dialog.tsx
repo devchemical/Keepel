@@ -29,6 +29,7 @@ import { maintenanceCommandSchema, type MaintenanceCommand } from "@/lib/data/ma
 interface AddMaintenanceDialogProps {
   children?: React.ReactNode
   vehicleId: string
+  initialScheduledServiceId?: string
   open?: boolean
   onOpenChange?: (open: boolean) => void
 }
@@ -43,6 +44,7 @@ interface ServiceItem {
 export function AddMaintenanceDialog({
   children,
   vehicleId,
+  initialScheduledServiceId,
   open: controlledOpen,
   onOpenChange,
 }: AddMaintenanceDialogProps) {
@@ -55,7 +57,7 @@ export function AddMaintenanceDialog({
   // Usar contextos en lugar de crear cliente directamente
   const { createMaintenanceBatch, reconcileMaintenanceBatch, scheduledServices } = useData()
   const [pendingOperation, setPendingOperation] = useState<MaintenanceCommand | null>(null)
-  const [selectedSchedule, setSelectedSchedule] = useState("none")
+  const [selectedSchedule, setSelectedSchedule] = useState(initialScheduledServiceId ?? "none")
   const [completionRowId, setCompletionRowId] = useState("")
   const submitting = useRef(false)
   const pendingSchedules = scheduledServices.filter(

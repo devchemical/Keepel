@@ -76,7 +76,8 @@ test("current vehicle mileage drives reminders and explicit transactional comple
   const read = async () => {
     const result = await alice.client.from("scheduled_services").select("*,vehicles(mileage)").eq("status", "pending")
     expect(result.error).toBeNull()
-    return result.data!
+    if (result.error || !result.data) throw new Error("Could not read pending forecasts")
+    return result.data
   }
   expect(selectScheduledServices(await read(), "2026-03-08").map(({ service }) => service.id)).toEqual([sameType.id])
   const raised = await alice.client.from("vehicles").update({ mileage: 100 }).eq("id", vehicleId).select("id")

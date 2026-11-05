@@ -35,7 +35,7 @@ const maintenanceRecords: Record<string, unknown>[] = []
 const maintenanceReceipts = new Map<string, unknown>()
 const maintenanceAttempts: string[] = []
 let maintenanceAvailable = true
-let maintenanceForecast: Record<string, unknown> | null = null
+let maintenanceSchedules: Record<string, unknown>[] = []
 const maintenanceVehicle = {
   id: "00000000-0000-4000-8000-000000000093",
   user_id: "00000000-0000-4000-8000-000000000051",
@@ -179,13 +179,16 @@ async function handleRequest(request: IncomingMessage, response: ServerResponse)
       maintenance?: unknown
       maintenanceResponse?: unknown
       maintenanceSchedule?: unknown
+      schedules?: Record<string, unknown>[]
+      vehicleMileage?: number
     } | null
     maintenanceMode = body?.maintenance === true
     maintenanceRecords.length = 0
     maintenanceReceipts.clear()
     maintenanceAttempts.length = 0
     maintenanceAvailable = body?.maintenanceResponse !== "unavailable"
-    maintenanceForecast =
+    maintenanceVehicle.mileage = body?.vehicleMileage ?? 0
+    const initialForecast =
       body?.maintenanceSchedule === true
         ? {
             id: "00000000-0000-4000-8000-000000000094",
@@ -202,6 +205,7 @@ async function handleRequest(request: IncomingMessage, response: ServerResponse)
             updated_at: "2026-01-01T00:00:00Z",
           }
         : null
+    maintenanceSchedules = body?.schedules ?? (initialForecast ? [initialForecast] : [])
     sessions.clear()
     analyticsEvents.length = 0
     sessionSequence = 0
@@ -327,7 +331,8 @@ async function handleRequest(request: IncomingMessage, response: ServerResponse)
     sendJson(response, 200, {
       records: maintenanceRecords,
       attempts: maintenanceAttempts,
-      forecast: maintenanceForecast,
+      forecast: maintenanceSchedules[0] ?? null,
+      schedules: maintenanceSchedules,
     })
     return
   }
@@ -357,11 +362,47 @@ async function handleRequest(request: IncomingMessage, response: ServerResponse)
     return
   }
   if (maintenanceMode && request.method === "GET" && url.pathname === "/rest/v1/scheduled_services") {
-    sendJson(response, 200, maintenanceForecast?.status === "pending" ? [maintenanceForecast] : [])
+    sendJson(
+      response,
+      200,
+      maintenanceSchedules
+        .filter((row) => row.status === "pending")
+        .map((row) => ({ ...row, vehicles: maintenanceVehicle }))
+    )
+    return
+  }
+  if (maintenanceMode && url.pathname === "/rest/v1/scheduled_services" && request.method === "POST") {
+    const body = (await readJson(request)) as Record<string, unknown>
+    const row = {
+      ...body,
+      id: crypto.randomUUID(),
+      completed_record_id: null,
+      created_at: "2026-01-01T00:00:00Z",
+      updated_at: "2026-01-01T00:00:00Z",
+    }
+    maintenanceSchedules.push(row)
+    sendJson(response, 201, { ...row, vehicles: maintenanceVehicle })
+    return
+  }
+  if (maintenanceMode && url.pathname === "/rest/v1/scheduled_services" && request.method === "PATCH") {
+    const body = (await readJson(request)) as Record<string, unknown>
+    const row = maintenanceSchedules.find(
+      (item) => `eq.${item.id}` === url.searchParams.get("id") && item.status === "pending"
+    )
+    if (!row) {
+      sendJson(response, 406, { code: "PGRST116", message: "No pending row" })
+      return
+    }
+    Object.assign(row, body)
+    sendJson(response, 200, { ...row, vehicles: maintenanceVehicle })
     return
   }
   if (maintenanceMode && request.method === "GET" && url.pathname === "/rest/v1/maintenance_records") {
-    sendJson(response, 200, maintenanceRecords)
+    sendJson(
+      response,
+      200,
+      maintenanceRecords.map((row) => ({ ...row, vehicles: maintenanceVehicle }))
+    )
     return
   }
   if (maintenanceMode && request.method === "POST" && url.pathname === "/rest/v1/rpc/create_maintenance_batch") {
@@ -392,18 +433,15 @@ async function handleRequest(request: IncomingMessage, response: ServerResponse)
       updated_at: "2026-01-01T00:00:00Z",
     }))
     maintenanceRecords.push(...rows)
-    if (body.p_completion && maintenanceForecast) {
-      maintenanceForecast = {
-        ...maintenanceForecast,
-        status: "completed",
-        completed_record_id: rows[body.p_completion.service_index]?.id,
-      }
+    const forecast = maintenanceSchedules.find((row) => row.id === body.p_completion?.scheduled_service_id)
+    if (body.p_completion && forecast) {
+      Object.assign(forecast, { status: "completed", completed_record_id: rows[body.p_completion.service_index]?.id })
     }
     const receipt = {
       operation_id: body.p_operation_id,
       records: rows,
       vehicle: maintenanceVehicle,
-      scheduled_service: body.p_completion ? maintenanceForecast : null,
+      scheduled_service: body.p_completion ? forecast : null,
     }
     maintenanceReceipts.set(body.p_operation_id, receipt)
     sendJson(

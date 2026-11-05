@@ -1,11 +1,11 @@
 "use client"
 
-/* eslint-disable eslint/no-shadow, typescript/no-non-null-assertion -- Form error state uses conventional naming and numeric guards validate parsed values. */
+/* eslint-disable eslint/no-shadow -- Form error state uses conventional naming. */
 
 import type React from "react"
 
 import { useState } from "react"
-import { useAuthProjection, useSupabase, useData } from "@/contexts"
+import { useData } from "@/contexts"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -20,7 +20,9 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Calendar, Loader2 } from "lucide-react"
-import { AUTH_STATE_STATUS } from "@/lib/auth/contracts"
+
+import { MAINTENANCE_TYPES as maintenanceTypes } from "@/lib/data/maintenance-types"
+import { scheduledServiceSchema } from "@/lib/data/scheduled-command"
 
 interface ScheduleServiceDialogProps {
   children?: React.ReactNode
@@ -28,22 +30,6 @@ interface ScheduleServiceDialogProps {
   open?: boolean
   onOpenChange?: (open: boolean) => void
 }
-
-const maintenanceTypes = [
-  { value: "oil_change", label: "Cambio de Aceite" },
-  { value: "tire_rotation", label: "Rotación de Llantas" },
-  { value: "brake_service", label: "Servicio de Frenos" },
-  { value: "transmission", label: "Transmisión" },
-  { value: "engine_tune", label: "Afinación del Motor" },
-  { value: "battery", label: "Batería" },
-  { value: "air_filter", label: "Filtro de Aire" },
-  { value: "coolant", label: "Refrigerante" },
-  { value: "spark_plugs", label: "Bujías" },
-  { value: "belts_hoses", label: "Correas y Mangueras" },
-  { value: "suspension", label: "Suspensión" },
-  { value: "exhaust", label: "Sistema de Escape" },
-  { value: "other", label: "Otro" },
-]
 
 export function ScheduleServiceDialog({
   children,
@@ -57,9 +43,7 @@ export function ScheduleServiceDialog({
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const authState = useAuthProjection()
-  const { refreshScheduledServices } = useData()
-  const supabase = useSupabase()
+  const { addScheduledServiceOptimistic } = useData()
 
   const [formData, setFormData] = useState({
     type: "",
@@ -79,43 +63,10 @@ export function ScheduleServiceDialog({
         throw new Error("ID del vehículo no válido")
       }
 
-      if (!formData.type) {
-        throw new Error("Debe seleccionar un tipo de servicio")
-      }
-
-      if (!formData.scheduled_date && !formData.scheduled_mileage) {
-        throw new Error("Debe indicar al menos una fecha o un kilometraje programado")
-      }
-
-      if (authState.status !== AUTH_STATE_STATUS.AUTHENTICATED) {
-        throw new Error("No hay sesión activa. Por favor, inicia sesión.")
-      }
-
-      const userId = authState.user.id
-      const scheduledMileage = formData.scheduled_mileage ? parseInt(formData.scheduled_mileage, 10) : null
-
-      if (formData.scheduled_mileage && (isNaN(scheduledMileage!) || scheduledMileage! < 0)) {
-        throw new Error("El kilometraje programado debe ser un número válido mayor o igual a 0")
-      }
-
-      const insertData = {
-        vehicle_id: vehicleId,
-        user_id: userId,
-        type: formData.type,
-        description: formData.description?.trim() || null,
-        scheduled_date: formData.scheduled_date || null,
-        scheduled_mileage: scheduledMileage,
-        status: "pending" as const,
-        notes: formData.notes?.trim() || null,
-      }
-
-      const { error: insertError } = await supabase.from("scheduled_services").insert(insertData)
-
-      if (insertError) {
-        throw new Error(`Error al programar servicio: ${insertError.message}`)
-      }
-
-      await refreshScheduledServices()
+      const parsed = scheduledServiceSchema.safeParse(formData)
+      if (!parsed.success)
+        throw new Error("Indica un tipo válido y al menos una fecha o un kilometraje válido mayor o igual a 0.")
+      await addScheduledServiceOptimistic(vehicleId, parsed.data)
 
       setFormData({
         type: "",
@@ -151,7 +102,7 @@ export function ScheduleServiceDialog({
               Tipo de Servicio *
             </Label>
             <Select value={formData.type} onValueChange={(value) => setFormData({ ...formData, type: value })}>
-              <SelectTrigger className="h-10">
+              <SelectTrigger id="type" className="h-10">
                 <SelectValue placeholder="Seleccionar tipo" />
               </SelectTrigger>
               <SelectContent>
@@ -228,7 +179,10 @@ export function ScheduleServiceDialog({
           </div>
 
           {error && (
-            <div className="text-destructive-foreground bg-destructive/10 border-destructive/20 rounded-md border p-2.5 text-xs sm:text-sm">
+            <div
+              role="alert"
+              className="text-destructive-foreground bg-destructive/10 border-destructive/20 rounded-md border p-2.5 text-xs sm:text-sm"
+            >
               {error}
             </div>
           )}

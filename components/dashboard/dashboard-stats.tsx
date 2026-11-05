@@ -5,7 +5,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Car, Wrench, DollarSign, Calendar } from "lucide-react"
-import type { ScheduledService } from "@/contexts"
 
 interface Vehicle {
   id: string
@@ -17,11 +16,11 @@ interface Vehicle {
 interface DashboardStatsProps {
   vehicles: Vehicle[]
   maintenanceRecords: { cost?: number }[]
-  scheduledServices: ScheduledService[]
+  reminderCount: number
   isLoading?: boolean
 }
 
-export function DashboardStats({ vehicles, maintenanceRecords, scheduledServices, isLoading }: DashboardStatsProps) {
+export function DashboardStats({ vehicles, maintenanceRecords, reminderCount, isLoading }: DashboardStatsProps) {
   if (isLoading) {
     return (
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
@@ -47,13 +46,7 @@ export function DashboardStats({ vehicles, maintenanceRecords, scheduledServices
     return sum + (record.cost || 0)
   }, 0)
 
-  const upcomingServices = scheduledServices.filter((service) => {
-    if (!service.scheduled_date) return false
-    const scheduledDate = new Date(service.scheduled_date)
-    const today = new Date()
-    const thirtyDaysFromNow = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000)
-    return scheduledDate >= today && scheduledDate <= thirtyDaysFromNow
-  }).length
+  const upcomingServices = reminderCount
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("es-ES", {
@@ -88,7 +81,7 @@ export function DashboardStats({ vehicles, maintenanceRecords, scheduledServices
       title: "Próximos Servicios",
       value: upcomingServices.toString(),
       icon: Calendar,
-      description: "En los próximos 30 días",
+      description: "Vencidos y próximos 30 días",
       color: upcomingServices > 0 ? "text-amber-600" : "text-muted-foreground",
     },
   ]
