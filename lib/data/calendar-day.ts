@@ -40,7 +40,9 @@ export function compareCalendarDays(left: string, right: string): -1 | 0 | 1 {
 
 /** Signed count from start to end; unaffected by DST or the host timezone. */
 export function calendarDaysBetween(start: string, end: string): number {
-  return (Date.parse(`${parseCalendarDay(end)}T00:00:00Z`) - Date.parse(`${parseCalendarDay(start)}T00:00:00Z`)) / 86_400_000
+  return (
+    (Date.parse(`${parseCalendarDay(end)}T00:00:00Z`) - Date.parse(`${parseCalendarDay(start)}T00:00:00Z`)) / 86_400_000
+  )
 }
 
 /** Call in the user's timezone, or pass the user's validated day to server commands. */

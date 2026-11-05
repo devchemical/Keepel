@@ -9,8 +9,8 @@ import { formatCalendarDay } from "@/lib/data/calendar-day"
  * @param value - Number to format
  * @returns Formatted string with Spanish locale (dots as thousands separators)
  */
-export function formatNumber(value: number): string {
-  return value.toLocaleString("es-ES")
+export function formatNumber(value: number | null): string {
+  return value === null ? "—" : value.toLocaleString("es-ES")
 }
 
 /**
@@ -18,8 +18,8 @@ export function formatNumber(value: number): string {
  * @param mileage - Number representing kilometers
  * @returns Formatted string with "km" suffix
  */
-export function formatMileage(mileage: number): string {
-  return `${formatNumber(mileage)} km`
+export function formatMileage(mileage: number | null): string {
+  return mileage === null ? "—" : `${formatNumber(mileage)} km`
 }
 
 /**
@@ -28,7 +28,8 @@ export function formatMileage(mileage: number): string {
  * @param currency - Currency code (default: 'EUR')
  * @returns Formatted currency string
  */
-export function formatCurrency(amount: number, currency: string = "EUR"): string {
+export function formatCurrency(amount: number | null, currency: string = "EUR"): string {
+  if (amount === null) return "—"
   return new Intl.NumberFormat("es-ES", {
     style: "currency",
     currency: currency,
@@ -37,7 +38,7 @@ export function formatCurrency(amount: number, currency: string = "EUR"): string
 
 /**
  * Format date with consistent Spanish locale
- * @param dateString - Date string to format
+ * @param dateString - Valid YYYY-MM-DD calendar day (timestamps are rejected)
  * @returns Formatted date string
  */
 export function formatDate(dateString: string): string {
@@ -50,7 +51,7 @@ export function formatDate(dateString: string): string {
 
 /**
  * Format short date with consistent Spanish locale
- * @param dateString - Date string to format
+ * @param dateString - Valid YYYY-MM-DD calendar day (timestamps are rejected)
  * @returns Formatted short date string
  */
 export function formatShortDate(dateString: string): string {
