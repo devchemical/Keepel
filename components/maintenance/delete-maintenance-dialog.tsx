@@ -1,5 +1,7 @@
 "use client"
 
+import { MAINTENANCE_TYPES } from "@/lib/data/maintenance-types"
+
 /* eslint-disable eslint/no-shadow -- The caught error is rendered by the form error state. */
 
 import { formatDate } from "@/lib/formatters"
@@ -20,22 +22,6 @@ interface DeleteMaintenanceDialogProps {
   record: MaintenanceRecord
   open: boolean
   onOpenChange: (open: boolean) => void
-}
-
-const maintenanceTypes = {
-  oil_change: "Cambio de Aceite",
-  tire_rotation: "Rotación de Llantas",
-  brake_service: "Servicio de Frenos",
-  transmission: "Transmisión",
-  engine_tune: "Afinación del Motor",
-  battery: "Batería",
-  air_filter: "Filtro de Aire",
-  coolant: "Refrigerante",
-  spark_plugs: "Bujías",
-  belts_hoses: "Correas y Mangueras",
-  suspension: "Suspensión",
-  exhaust: "Sistema de Escape",
-  other: "Otro",
 }
 
 export function DeleteMaintenanceDialog({ record, open, onOpenChange }: DeleteMaintenanceDialogProps) {
@@ -75,7 +61,7 @@ export function DeleteMaintenanceDialog({ record, open, onOpenChange }: DeleteMa
           <DialogDescription>
             ¿Estás seguro de que deseas eliminar el registro de{" "}
             <span className="font-semibold">
-              {maintenanceTypes[record.type as keyof typeof maintenanceTypes] || record.type}
+              {MAINTENANCE_TYPES.find((type) => type.value === record.type)?.label ?? record.type}
             </span>{" "}
             del {formatDate(record.service_date)}?
           </DialogDescription>

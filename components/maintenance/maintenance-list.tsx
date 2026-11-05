@@ -1,5 +1,7 @@
 "use client"
 
+import { MAINTENANCE_TYPES } from "@/lib/data/maintenance-types"
+
 /* eslint-disable unicorn/consistent-function-scoping -- Formatters stay inside the component to keep display logic local. */
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -29,22 +31,6 @@ interface MaintenanceListProps {
   isLoading?: boolean
 }
 
-const maintenanceTypes = {
-  oil_change: "Cambio de Aceite",
-  tire_rotation: "Rotación de Llantas",
-  brake_service: "Servicio de Frenos",
-  transmission: "Transmisión",
-  engine_tune: "Afinación del Motor",
-  battery: "Batería",
-  air_filter: "Filtro de Aire",
-  coolant: "Refrigerante",
-  spark_plugs: "Bujías",
-  belts_hoses: "Correas y Mangueras",
-  suspension: "Suspensión",
-  exhaust: "Sistema de Escape",
-  other: "Otro",
-}
-
 export function MaintenanceList({ records, vehicleId, isLoading }: MaintenanceListProps) {
   const [editingRecord, setEditingRecord] = useState<MaintenanceRecord | null>(null)
   const [deletingRecord, setDeletingRecord] = useState<MaintenanceRecord | null>(null)
@@ -65,7 +51,7 @@ export function MaintenanceList({ records, vehicleId, isLoading }: MaintenanceLi
                 </div>
                 <div>
                   <CardTitle className="text-foreground text-lg">
-                    {maintenanceTypes[record.type as keyof typeof maintenanceTypes] || record.type}
+                    {MAINTENANCE_TYPES.find((type) => type.value === record.type)?.label ?? record.type}
                   </CardTitle>
                   <p className="text-muted-foreground text-sm">{formatDate(record.service_date)}</p>
                 </div>
@@ -73,7 +59,7 @@ export function MaintenanceList({ records, vehicleId, isLoading }: MaintenanceLi
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button
-                    aria-label={`Acciones del mantenimiento ${maintenanceTypes[record.type as keyof typeof maintenanceTypes] || record.type}`}
+                    aria-label={`Acciones del mantenimiento ${MAINTENANCE_TYPES.find((type) => type.value === record.type)?.label ?? record.type}`}
                     variant="ghost"
                     size="sm"
                     className="h-8 w-8 p-0"
@@ -101,18 +87,14 @@ export function MaintenanceList({ records, vehicleId, isLoading }: MaintenanceLi
             {record.description && <p className="text-foreground text-sm">{record.description}</p>}
 
             <div className="flex flex-wrap gap-4 text-sm">
-              {record.cost !== null && record.cost !== undefined && (
-                <div className="flex items-center gap-2">
-                  <DollarSign className="text-muted-foreground h-4 w-4" />
-                  <span className="text-foreground font-medium">{formatCurrency(record.cost)}</span>
-                </div>
-              )}
-              {record.mileage !== null && record.mileage !== undefined && (
-                <div className="flex items-center gap-2">
-                  <Gauge className="text-muted-foreground h-4 w-4" />
-                  <span className="text-muted-foreground">{formatMileage(record.mileage)}</span>
-                </div>
-              )}
+              <div className="flex items-center gap-2">
+                <DollarSign className="text-muted-foreground h-4 w-4" />
+                <span className="text-foreground font-medium">{formatCurrency(record.cost ?? null)}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Gauge className="text-muted-foreground h-4 w-4" />
+                <span className="text-muted-foreground">{formatMileage(record.mileage ?? null)}</span>
+              </div>
             </div>
 
             {record.notes && (

@@ -1,5 +1,7 @@
 "use client"
 
+import { MAINTENANCE_TYPES as maintenanceTypes } from "@/lib/data/maintenance-types"
+
 /* eslint-disable eslint/no-shadow -- The caught error is rendered by the form error state. */
 
 import { maintenanceValuesSchema } from "@/lib/data/data-command"
@@ -32,22 +34,6 @@ interface EditMaintenanceDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
 }
-
-const maintenanceTypes = [
-  { value: "oil_change", label: "Cambio de Aceite" },
-  { value: "tire_rotation", label: "Rotación de Llantas" },
-  { value: "brake_service", label: "Servicio de Frenos" },
-  { value: "transmission", label: "Transmisión" },
-  { value: "engine_tune", label: "Afinación del Motor" },
-  { value: "battery", label: "Batería" },
-  { value: "air_filter", label: "Filtro de Aire" },
-  { value: "coolant", label: "Refrigerante" },
-  { value: "spark_plugs", label: "Bujías" },
-  { value: "belts_hoses", label: "Correas y Mangueras" },
-  { value: "suspension", label: "Suspensión" },
-  { value: "exhaust", label: "Sistema de Escape" },
-  { value: "other", label: "Otro" },
-]
 
 export function EditMaintenanceDialog({ record, vehicleId, open, onOpenChange }: EditMaintenanceDialogProps) {
   const [isLoading, setIsLoading] = useState(false)

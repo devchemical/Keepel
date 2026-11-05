@@ -97,3 +97,35 @@ test("confirmed edits invalidate a later page and totals even when refresh fails
   await expect(page.getByText("Gasto total: 114,00", { exact: false })).toBeVisible()
   await expect(page.getByText("53 registro(s) de mantenimiento", { exact: true })).toBeVisible()
 })
+
+for (const timezoneId of ["America/Los_Angeles", "Pacific/Kiritimati"]) {
+  test(`recent activity preserves calendar days and distinguishes zero from missing cost in ${timezoneId}`, async ({
+    browser,
+    request,
+  }) => {
+    await request.post(`${CONTROLLED_SERVICES_URL}/__test__/reset`, {
+      data: {
+        maintenance: true,
+        records: [
+          { ...records[0], cost: 0, service_date: "2026-03-08" },
+          { ...records[1], cost: null, mileage: null, service_date: "2026-03-07" },
+        ],
+      },
+    })
+    const context = await browser.newContext({ timezoneId })
+    const page = await context.newPage()
+    await loginWithPassword(page)
+    const recent = page
+      .locator('[data-slot="card"]')
+      .filter({ has: page.getByText("Actividad Reciente", { exact: true }) })
+    await expect(recent.getByText("0,00 €", { exact: true })).toBeVisible()
+    await expect(recent.getByText("—", { exact: true })).toBeVisible()
+    await expect(recent.getByText("8 mar 2026", { exact: true })).toBeVisible()
+    await expect(recent.getByText("7 mar 2026", { exact: true })).toBeVisible()
+    await page.goto(`/vehicles/${vehicleId}/maintenance`)
+    await expect(page.getByText("0,00 €", { exact: true })).toBeVisible()
+    await expect(page.getByText("0 km", { exact: true })).toHaveCount(2)
+    await expect(page.getByText("—", { exact: true })).toHaveCount(2)
+    await context.close()
+  })
+}
