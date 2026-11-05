@@ -1,3 +1,5 @@
+import { formatCalendarDay } from "@/lib/data/calendar-day"
+
 /**
  * Utility functions for consistent formatting across server and client
  */
@@ -39,7 +41,7 @@ export function formatCurrency(amount: number, currency: string = "EUR"): string
  * @returns Formatted date string
  */
 export function formatDate(dateString: string): string {
-  return new Date(dateString).toLocaleDateString("es-ES", {
+  return formatCalendarDay(dateString, {
     year: "numeric",
     month: "long",
     day: "numeric",
@@ -52,7 +54,7 @@ export function formatDate(dateString: string): string {
  * @returns Formatted short date string
  */
 export function formatShortDate(dateString: string): string {
-  return new Date(dateString).toLocaleDateString("es-ES", {
+  return formatCalendarDay(dateString, {
     year: "numeric",
     month: "short",
     day: "numeric",
