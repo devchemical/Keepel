@@ -10,7 +10,7 @@ DO $$
 DECLARE c record;
 BEGIN
   FOR c IN SELECT * FROM (VALUES
-    ('vehicles', 'vehicles_identity_nonempty', 'CHECK (length(btrim(make)) > 0 AND length(btrim(model)) > 0)'),
+    ('vehicles', 'vehicles_identity_nonempty', 'CHECK (make ~ ''[^[:space:]]'' AND model ~ ''[^[:space:]]'')'),
     ('vehicles', 'vehicles_year_range', 'CHECK (year BETWEEN 1 AND 9999)'),
     ('vehicles', 'vehicles_mileage_nonnegative', 'CHECK (mileage >= 0)'),
     ('vehicles', 'vehicles_id_user_unique', 'UNIQUE (id, user_id)'),

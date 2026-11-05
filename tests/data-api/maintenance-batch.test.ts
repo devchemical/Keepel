@@ -216,6 +216,7 @@ test("API and constraints reject malformed numbers, types, dates, and invalid co
   }
   expect((await alice.client.from("vehicles").update({ year: -1 }).eq("id", vehicleId)).error).not.toBeNull()
   expect((await alice.client.from("vehicles").update({ make: " " }).eq("id", vehicleId)).error).not.toBeNull()
+  expect((await alice.client.from("vehicles").update({ model: "\t\n" }).eq("id", vehicleId)).error).not.toBeNull()
   expect(
     (
       await alice.client
