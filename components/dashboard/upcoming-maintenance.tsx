@@ -15,16 +15,16 @@ import { EditScheduledServiceDialog } from "@/components/maintenance/edit-schedu
 interface UpcomingMaintenanceRecord {
   id: string
   type: string
-  description?: string
-  scheduled_date?: string
-  scheduled_mileage?: number
+  description?: string | null
+  scheduled_date?: string | null
+  scheduled_mileage?: number | null
   status: string
-  notes?: string
+  notes?: string | null
   vehicles?: {
     make: string
     model: string
     year: number
-    license_plate?: string
+    license_plate?: string | null
   }
 }
 

@@ -4,10 +4,11 @@
 
 import React, { createContext, useContext } from "react"
 import { createClient } from "@/lib/supabase/client"
+import type { Database } from "@/lib/supabase/database.types"
 import type { SupabaseClient } from "@supabase/supabase-js"
 
 interface SupabaseContextType {
-  supabase: SupabaseClient
+  supabase: SupabaseClient<Database>
 }
 
 const SupabaseContext = createContext<SupabaseContextType | undefined>(undefined)
@@ -26,7 +27,7 @@ export function SupabaseProvider({ children }: SupabaseProviderProps) {
   return <SupabaseContext.Provider value={value}>{children}</SupabaseContext.Provider>
 }
 
-export function useSupabase(): SupabaseClient {
+export function useSupabase(): SupabaseClient<Database> {
   const context = useContext(SupabaseContext)
   if (context === undefined) {
     throw new Error("useSupabase must be used within a SupabaseProvider")

@@ -9,17 +9,18 @@ import { Calendar, DollarSign, Gauge, MoreVertical, Edit, Trash2 } from "lucide-
 import { EditMaintenanceDialog } from "./edit-maintenance-dialog"
 import { DeleteMaintenanceDialog } from "./delete-maintenance-dialog"
 import { useState } from "react"
+import { formatDate, formatCurrency, formatMileage } from "@/lib/formatters"
 import { MaintenanceSkeleton } from "@/components/skeletons/maintenance-skeleton"
 
 interface MaintenanceRecord {
   id: string
   type: string
-  description?: string
-  cost?: number
-  mileage?: number
+  description?: string | null
+  cost?: number | null
+  mileage?: number | null
   service_date: string
-  notes?: string
-  created_at: string
+  notes?: string | null
+  created_at: string | null
 }
 
 interface MaintenanceListProps {
@@ -50,21 +51,6 @@ export function MaintenanceList({ records, vehicleId, isLoading }: MaintenanceLi
 
   if (isLoading) {
     return <MaintenanceSkeleton />
-  }
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("es-ES", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    })
-  }
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("es-ES", {
-      style: "currency",
-      currency: "EUR",
-    }).format(amount)
   }
 
   return (
@@ -110,16 +96,16 @@ export function MaintenanceList({ records, vehicleId, isLoading }: MaintenanceLi
             {record.description && <p className="text-foreground text-sm">{record.description}</p>}
 
             <div className="flex flex-wrap gap-4 text-sm">
-              {record.cost && (
+              {record.cost !== null && record.cost !== undefined && (
                 <div className="flex items-center gap-2">
                   <DollarSign className="text-muted-foreground h-4 w-4" />
                   <span className="text-foreground font-medium">{formatCurrency(record.cost)}</span>
                 </div>
               )}
-              {record.mileage && (
+              {record.mileage !== null && record.mileage !== undefined && (
                 <div className="flex items-center gap-2">
                   <Gauge className="text-muted-foreground h-4 w-4" />
-                  <span className="text-muted-foreground">{record.mileage.toLocaleString("es-ES")} km</span>
+                  <span className="text-muted-foreground">{formatMileage(record.mileage)}</span>
                 </div>
               )}
             </div>

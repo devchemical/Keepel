@@ -10,20 +10,7 @@ import { RecentActivity } from "@/components/dashboard/recent-activity"
 import { UpcomingMaintenance } from "@/components/dashboard/upcoming-maintenance"
 import { VehicleOverview } from "@/components/dashboard/vehicle-overview"
 import { DashboardSkeleton } from "@/components/skeletons/dashboard-skeleton"
-import type { ScheduledService } from "@/contexts"
-
-interface Vehicle {
-  id: string
-  make: string
-  model: string
-  year: number
-  license_plate?: string
-  vin?: string
-  color?: string
-  mileage: number
-  created_at: string
-  updated_at: string
-}
+import type { ScheduledService, Vehicle } from "@/contexts"
 
 interface DashboardProps {
   vehicles: Vehicle[]

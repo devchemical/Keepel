@@ -7,62 +7,36 @@ import { resolveDataAuthTransition } from "./data-auth-transition"
 import { useAuthProjection } from "./AuthProjectionContext"
 import { useSupabase } from "./SupabaseContext"
 import { AUTH_STATE_STATUS, type CurrentUser } from "@/lib/auth/contracts"
+import type { Tables, TablesUpdate } from "@/lib/supabase/database.types"
+import { localToday } from "@/lib/data/calendar-day"
+import {
+  maintenanceCommandSchema,
+  maintenanceRpcArgs,
+  readMaintenanceReceipt,
+  type MaintenanceCommand,
+  type MaintenanceBatchResult,
+  type MaintenanceReceipt,
+} from "@/lib/data/maintenance-command"
 import { prependOptimistic, removeOptimistic, replaceOptimistic } from "@/lib/data/optimistic-list"
 
-export interface Vehicle {
-  id: string
-  make: string
-  model: string
-  year: number
-  license_plate?: string
-  vin?: string
-  color?: string
-  mileage: number
-  created_at: string
-  updated_at: string
+type VehicleRow = Tables<"vehicles">
+export type Vehicle = Omit<VehicleRow, "user_id" | "license_plate" | "vin" | "color"> &
+  Partial<Pick<VehicleRow, "license_plate" | "vin" | "color">>
+export type MaintenanceRecord = Tables<"maintenance_records"> & {
+  vehicles?: Pick<VehicleRow, "make" | "model" | "year">
 }
-
-export interface MaintenanceRecord {
-  id: string
-  vehicle_id: string
-  user_id: string
-  type: string
-  description?: string
-  cost: number
-  service_date: string
-  mileage: number
-  notes?: string
-  created_at: string
-  updated_at: string
-  vehicles?: {
-    make: string
-    model: string
-    year: number
-  }
-}
-
 export type ScheduledServiceStatus = "pending" | "completed" | "cancelled"
-
-export interface ScheduledService {
-  id: string
-  vehicle_id: string
-  user_id: string
-  type: string
-  description?: string
-  scheduled_date?: string
-  scheduled_mileage?: number
-  status: ScheduledServiceStatus
-  notes?: string
-  completed_record_id?: string
-  created_at: string
-  updated_at: string
-  vehicles?: {
-    make: string
-    model: string
-    year: number
-    license_plate?: string
+type ScheduledRow = Tables<"scheduled_services">
+export type ScheduledService = Omit<
+  ScheduledRow,
+  "status" | "description" | "scheduled_date" | "scheduled_mileage" | "notes" | "completed_record_id"
+> &
+  Partial<
+    Pick<ScheduledRow, "description" | "scheduled_date" | "scheduled_mileage" | "notes" | "completed_record_id">
+  > & {
+    status: ScheduledServiceStatus
+    vehicles?: Pick<VehicleRow, "make" | "model" | "year" | "license_plate">
   }
-}
 
 interface DataContextType {
   // Data
@@ -87,16 +61,22 @@ interface DataContextType {
   updateVehicleOptimistic: (id: string, updates: Partial<Vehicle>) => Promise<void>
   deleteVehicleOptimistic: (id: string) => Promise<void>
 
+  createMaintenanceBatch: (command: MaintenanceCommand) => Promise<MaintenanceBatchResult>
+  reconcileMaintenanceBatch: (command: MaintenanceCommand) => Promise<MaintenanceBatchResult>
+
   // Optimistic updates - Maintenance
   addMaintenanceOptimistic: (record: Omit<MaintenanceRecord, "id" | "created_at" | "updated_at">) => Promise<void>
-  updateMaintenanceOptimistic: (id: string, updates: Partial<MaintenanceRecord>) => Promise<void>
+  updateMaintenanceOptimistic: (id: string, updates: TablesUpdate<"maintenance_records">) => Promise<void>
   deleteMaintenanceOptimistic: (id: string) => Promise<void>
 
   // Optimistic updates - Scheduled Services
   addScheduledServiceOptimistic: (
     service: Omit<ScheduledService, "id" | "created_at" | "updated_at" | "vehicles">
   ) => Promise<void>
-  updateScheduledServiceOptimistic: (id: string, updates: Partial<ScheduledService>) => Promise<void>
+  updateScheduledServiceOptimistic: (
+    id: string,
+    updates: TablesUpdate<"scheduled_services"> & { status?: ScheduledServiceStatus }
+  ) => Promise<void>
   deleteScheduledServiceOptimistic: (id: string) => Promise<void>
   completeScheduledServiceOptimistic: (id: string, completedRecordId: string) => Promise<void>
 }
@@ -360,39 +340,99 @@ export function DataProvider({ children }: DataProviderProps) {
     [vehicles, supabase]
   )
 
-  const addMaintenanceOptimistic = useCallback(
-    async (recordData: Omit<MaintenanceRecord, "id" | "created_at" | "updated_at">) => {
-      if (!userId) return
+  // A receipt confirms the transaction; refreshing never changes a confirmed write
+  // into a failed write. This context owns all related projection refreshes.
+  const acceptMaintenanceReceipt = useCallback(
+    async (receipt: MaintenanceReceipt) => {
+      setMaintenanceRecords((prev) => [
+        ...receipt.records,
+        ...prev.filter((row) => !receipt.records.some((saved) => saved.id === row.id)),
+      ])
+      setVehicles((prev) =>
+        prev.map((vehicle) =>
+          vehicle.id === receipt.vehicle.id
+            ? {
+                ...vehicle,
+                mileage:
+                  receipt.vehicle.mileage === null
+                    ? vehicle.mileage
+                    : Math.max(vehicle.mileage ?? 0, receipt.vehicle.mileage),
+              }
+            : vehicle
+        )
+      )
+      if (receipt.scheduled_service)
+        setScheduledServices((prev) => prev.filter((service) => service.id !== receipt.scheduled_service?.id))
+      await Promise.all([refreshMaintenance(), refreshVehicles(), refreshScheduledServices()])
+    },
+    [refreshMaintenance, refreshVehicles, refreshScheduledServices]
+  )
 
-      const optimisticRecord: MaintenanceRecord = {
-        id: `temp-${Date.now()}`,
-        ...recordData,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      }
-
-      setMaintenanceRecords((prev) => prependOptimistic(prev, optimisticRecord))
-
+  const reconcileMaintenanceBatch = useCallback(
+    async (command: MaintenanceCommand): Promise<MaintenanceBatchResult> => {
+      if (!userId) return { status: "rejected" }
       try {
         const { data, error } = await supabase
-          .from("maintenance_records")
-          .insert({ ...recordData, user_id: userId })
-          .select()
-          .single()
-
-        if (error) throw error
-
-        setMaintenanceRecords((prev) => replaceOptimistic(prev, optimisticRecord.id, data))
-      } catch (error) {
-        setMaintenanceRecords((prev) => removeOptimistic(prev, optimisticRecord.id))
-        throw error
+          .rpc("get_maintenance_batch_operation", { p_operation_id: command.operationId })
+          .abortSignal(AbortSignal.timeout(15000))
+        const receipt = !error && readMaintenanceReceipt(data, command, userId)
+        if (receipt) {
+          await acceptMaintenanceReceipt(receipt)
+          return { status: "success" }
+        }
+      } catch {
+        /* A failed lookup cannot prove rollback. Keep the operation identity. */
       }
+      return { status: "unknown" }
     },
-    [userId, supabase]
+    [userId, supabase, acceptMaintenanceReceipt]
+  )
+
+  const createMaintenanceBatch = useCallback(
+    async (input: MaintenanceCommand): Promise<MaintenanceBatchResult> => {
+      if (!userId) return { status: "rejected" }
+      const command = maintenanceCommandSchema.parse(input)
+      try {
+        const { data, error } = await supabase
+          .rpc("create_maintenance_batch", maintenanceRpcArgs(command))
+          .abortSignal(AbortSignal.timeout(15000))
+        const receipt = !error && readMaintenanceReceipt(data, command, userId)
+        if (receipt) {
+          await acceptMaintenanceReceipt(receipt)
+          return { status: "success" }
+        }
+        // These PostgreSQL errors are definitive transaction rejection. Transport
+        // failures and unexpected responses must be reconciled, never called rollback.
+        if (error && /^(22|23|42501|P0001|PGRST20[23])/.test(error.code)) return { status: "rejected" }
+      } catch {
+        /* Transport cancellation says nothing about database commit. */
+      }
+      return reconcileMaintenanceBatch(command)
+    },
+    [userId, supabase, acceptMaintenanceReceipt, reconcileMaintenanceBatch]
+  )
+
+  const addMaintenanceOptimistic = useCallback(
+    async (recordData: Omit<MaintenanceRecord, "id" | "created_at" | "updated_at">) => {
+      const command = maintenanceCommandSchema.parse({
+        operationId: crypto.randomUUID(),
+        vehicleId: recordData.vehicle_id,
+        today: localToday(),
+        batch: { ...recordData, services: [recordData] },
+      })
+      const result = await createMaintenanceBatch(command)
+      if (result.status !== "success")
+        throw new Error(
+          result.status === "unknown"
+            ? "Resultado de mantenimiento pendiente de confirmar"
+            : "No se pudo guardar el mantenimiento"
+        )
+    },
+    [createMaintenanceBatch]
   )
 
   const updateMaintenanceOptimistic = useCallback(
-    async (id: string, updates: Partial<MaintenanceRecord>) => {
+    async (id: string, updates: TablesUpdate<"maintenance_records">) => {
       setMaintenanceRecords((prev) =>
         prev.map((r) => (r.id === id ? { ...r, ...updates, updated_at: new Date().toISOString() } : r))
       )
@@ -473,7 +513,7 @@ export function DataProvider({ children }: DataProviderProps) {
   )
 
   const updateScheduledServiceOptimistic = useCallback(
-    async (id: string, updates: Partial<ScheduledService>) => {
+    async (id: string, updates: TablesUpdate<"scheduled_services"> & { status?: ScheduledServiceStatus }) => {
       setScheduledServices((prev) =>
         prev.map((s) => (s.id === id ? { ...s, ...updates, updated_at: new Date().toISOString() } : s))
       )
@@ -590,6 +630,8 @@ export function DataProvider({ children }: DataProviderProps) {
     deleteVehicleOptimistic,
 
     // Optimistic updates - Maintenance
+    createMaintenanceBatch,
+    reconcileMaintenanceBatch,
     addMaintenanceOptimistic,
     updateMaintenanceOptimistic,
     deleteMaintenanceOptimistic,

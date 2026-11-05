@@ -18,11 +18,11 @@ import { Wrench, Loader2 } from "lucide-react"
 interface MaintenanceRecord {
   id: string
   type: string
-  description?: string
-  cost?: number
-  mileage?: number
+  description?: string | null
+  cost?: number | null
+  mileage?: number | null
   service_date: string
-  notes?: string
+  notes?: string | null
 }
 
 interface EditMaintenanceDialogProps {

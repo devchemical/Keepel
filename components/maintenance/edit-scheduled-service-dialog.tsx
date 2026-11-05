@@ -18,10 +18,10 @@ import { toast } from "sonner"
 interface EditableScheduledService {
   id: string
   type: string
-  description?: string
-  scheduled_date?: string
-  scheduled_mileage?: number
-  notes?: string
+  description?: string | null
+  scheduled_date?: string | null
+  scheduled_mileage?: number | null
+  notes?: string | null
 }
 
 interface EditScheduledServiceDialogProps {

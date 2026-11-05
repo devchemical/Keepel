@@ -30,6 +30,25 @@ interface ControlledUser {
 
 const sessions = new Map<string, ControlledUser>()
 const analyticsEvents: unknown[] = []
+let maintenanceMode = false
+const maintenanceRecords: Record<string, unknown>[] = []
+const maintenanceReceipts = new Map<string, unknown>()
+const maintenanceAttempts: string[] = []
+let maintenanceAvailable = true
+let maintenanceForecast: Record<string, unknown> | null = null
+const maintenanceVehicle = {
+  id: "00000000-0000-4000-8000-000000000093",
+  user_id: "00000000-0000-4000-8000-000000000051",
+  make: "Synthetic",
+  model: "Maintenance",
+  year: 2020,
+  mileage: 0,
+  license_plate: null,
+  vin: null,
+  color: null,
+  created_at: "2026-01-01T00:00:00Z",
+  updated_at: "2026-01-01T00:00:00Z",
+}
 let sessionSequence = 0
 let oauthMode: ControlledOAuthMode = "success"
 let rateLimitMode: ControlledRateLimitMode = "success"
@@ -154,7 +173,35 @@ async function handleRequest(request: IncomingMessage, response: ServerResponse)
   }
 
   if (request.method === "POST" && url.pathname === "/__test__/reset") {
-    const body = (await readJson(request)) as { oauthMode?: unknown; rateLimitMode?: unknown } | null
+    const body = (await readJson(request)) as {
+      oauthMode?: unknown
+      rateLimitMode?: unknown
+      maintenance?: unknown
+      maintenanceResponse?: unknown
+      maintenanceSchedule?: unknown
+    } | null
+    maintenanceMode = body?.maintenance === true
+    maintenanceRecords.length = 0
+    maintenanceReceipts.clear()
+    maintenanceAttempts.length = 0
+    maintenanceAvailable = body?.maintenanceResponse !== "unavailable"
+    maintenanceForecast =
+      body?.maintenanceSchedule === true
+        ? {
+            id: "00000000-0000-4000-8000-000000000094",
+            vehicle_id: maintenanceVehicle.id,
+            user_id: maintenanceVehicle.user_id,
+            type: "oil_change",
+            description: null,
+            scheduled_date: "2026-01-01",
+            scheduled_mileage: null,
+            status: "pending",
+            notes: null,
+            completed_record_id: null,
+            created_at: "2026-01-01T00:00:00Z",
+            updated_at: "2026-01-01T00:00:00Z",
+          }
+        : null
     sessions.clear()
     analyticsEvents.length = 0
     sessionSequence = 0
@@ -276,6 +323,96 @@ async function handleRequest(request: IncomingMessage, response: ServerResponse)
     return
   }
 
+  if (request.method === "GET" && url.pathname === "/__test__/maintenance") {
+    sendJson(response, 200, {
+      records: maintenanceRecords,
+      attempts: maintenanceAttempts,
+      forecast: maintenanceForecast,
+    })
+    return
+  }
+  if (request.method === "POST" && url.pathname === "/__test__/maintenance-response") {
+    const body = (await readJson(request)) as { available?: boolean }
+    maintenanceAvailable = body.available === true
+    sendJson(response, 200, { ok: true })
+    return
+  }
+  if (maintenanceMode && request.method === "POST" && url.pathname === "/rest/v1/rpc/get_maintenance_batch_operation") {
+    const body = (await readJson(request)) as { p_operation_id: string }
+    sendJson(
+      response,
+      maintenanceAvailable ? 200 : 503,
+      maintenanceAvailable
+        ? (maintenanceReceipts.get(body.p_operation_id) ?? null)
+        : { message: "Controlled unavailable response" }
+    )
+    return
+  }
+  if (maintenanceMode && request.method === "GET" && url.pathname === "/rest/v1/vehicles") {
+    sendJson(
+      response,
+      200,
+      request.headers.accept?.includes("vnd.pgrst.object") ? maintenanceVehicle : [maintenanceVehicle]
+    )
+    return
+  }
+  if (maintenanceMode && request.method === "GET" && url.pathname === "/rest/v1/scheduled_services") {
+    sendJson(response, 200, maintenanceForecast?.status === "pending" ? [maintenanceForecast] : [])
+    return
+  }
+  if (maintenanceMode && request.method === "GET" && url.pathname === "/rest/v1/maintenance_records") {
+    sendJson(response, 200, maintenanceRecords)
+    return
+  }
+  if (maintenanceMode && request.method === "POST" && url.pathname === "/rest/v1/rpc/create_maintenance_batch") {
+    const body = (await readJson(request)) as {
+      p_operation_id: string
+      p_completion: { scheduled_service_id: string; service_index: number } | null
+      p_batch: {
+        services: Record<string, unknown>[]
+        service_date: string
+        mileage: number | null
+        notes: string | null
+      }
+    }
+    maintenanceAttempts.push(body.p_operation_id)
+    if (maintenanceReceipts.has(body.p_operation_id)) {
+      sendJson(response, 200, maintenanceReceipts.get(body.p_operation_id))
+      return
+    }
+    const rows = body.p_batch.services.map((service, index) => ({
+      ...service,
+      id: `00000000-0000-4000-8000-${String(index + 100).padStart(12, "0")}`,
+      vehicle_id: maintenanceVehicle.id,
+      user_id: maintenanceVehicle.user_id,
+      service_date: body.p_batch.service_date,
+      mileage: body.p_batch.mileage,
+      notes: body.p_batch.notes,
+      created_at: "2026-01-01T00:00:00Z",
+      updated_at: "2026-01-01T00:00:00Z",
+    }))
+    maintenanceRecords.push(...rows)
+    if (body.p_completion && maintenanceForecast) {
+      maintenanceForecast = {
+        ...maintenanceForecast,
+        status: "completed",
+        completed_record_id: rows[body.p_completion.service_index]?.id,
+      }
+    }
+    const receipt = {
+      operation_id: body.p_operation_id,
+      records: rows,
+      vehicle: maintenanceVehicle,
+      scheduled_service: body.p_completion ? maintenanceForecast : null,
+    }
+    maintenanceReceipts.set(body.p_operation_id, receipt)
+    sendJson(
+      response,
+      maintenanceAvailable ? 200 : 503,
+      maintenanceAvailable ? receipt : { message: "Controlled lost response" }
+    )
+    return
+  }
   if (request.method === "GET" && url.pathname.startsWith("/rest/v1/")) {
     sendJson(response, 200, [], { "content-range": "0-0/0" })
     return

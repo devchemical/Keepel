@@ -15,9 +15,9 @@ interface Vehicle {
   make: string
   model: string
   year: number
-  license_plate?: string
-  color?: string
-  mileage: number
+  license_plate?: string | null
+  color?: string | null
+  mileage: number | null
 }
 
 interface VehicleOverviewProps {
