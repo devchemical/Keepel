@@ -18,6 +18,7 @@ const SCRIPTS = [
   "007_transactional_maintenance.sql",
   "008_confirmed_data_mutations.sql",
   "009_history_pages_and_totals.sql",
+  "010_scheduled_service_criterion.sql",
 ]
 
 export function assertLocalProject() {
@@ -93,7 +94,7 @@ export function replayScript(number: number) {
   executeLocalSql("NOTIFY pgrst, 'reload schema';")
 }
 
-export function prepareDatabase(through = 9) {
+export function prepareDatabase(through = 10) {
   localConnection()
   cli(["db", "reset", "--local", "--no-seed", "--yes"])
   for (let number = 1; number <= through; number++) replayScript(number)

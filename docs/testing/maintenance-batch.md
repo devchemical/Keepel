@@ -49,9 +49,19 @@ identity/payload/day, and announces success only after a matching receipt. A 15-
 abort is a transport limit, not database rollback evidence. No automatic resend, cache, extra
 data owner, server auth endpoint or CRUD analytics is introduced.
 
-An unresolved form operation is retained for the current mounted dialog, including closing
-attempts (blocked until resolution). Durable recovery across navigation/browser restart is not
-provided by this ticket; callers integrating the command must retain their operation identity.
+Unresolved batches belong to DataContext's existing per-tab, per-account session journal.
+The immutable command is saved **before** submission, including its operation UUID, payload,
+original local day and normalized completion index. Reload, navigation and auth invalidation
+restore it as unknown only for the same account; another account never receives its recovery UI.
+Recovery is available on the dashboard, vehicle list and history, with original-command details,
+explicit receipt lookup and explicit idempotent replay. Neither restoration nor a missing receipt
+resends a batch. A pending original blocks replacement by a fresh operation. Native SQL rejection
+releases the command and editor. A new batch is not sent if session storage fails; the UI reports
+that failure. Already unresolved commands remain in memory if a later journal write fails.
+
+This is a session journal, not durable cross-tab/browser-restart storage or an authentication
+source. Closing the tab, clearing site data, or unavailable/corrupt session storage can remove
+recovery evidence. It contains command data only, never sessions, tokens or credentials.
 
 ## Contracts and local verification
 

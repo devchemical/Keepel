@@ -28,7 +28,7 @@ API tests prove persistence, SQL atomicity, ownership and constraints independen
 | 18 complete history        | UI tied53 rows/page failures/navigation/reset; API >1000 cap; `real-api-e2e/history.spec.ts` traverses1007 IDs/41pages exactly once                                                                                                                             |
 | 19 complete totals         | Same suites verify totals independent of page/recent5, full account/vehicle scope, CRUD invalidation                                                                                                                                                            |
 | 20 one owner               | DataContext owns reads/writes/invalidation; UI old-session read suppression and receipt recovery, no new cache/client/auth authority                                                                                                                            |
-| 21 shared contracts        | `test:schema` compares real public schema001–009 to generated types; shared calendar/numeric/schedule/type modules consumed by add/edit forms and command boundaries                                                                                            |
+| 21 shared contracts        | `test:schema` compares real public schema001–010 to generated types; shared calendar/numeric/schedule/type modules consumed by add/edit forms and command boundaries                                                                                            |
 | 22 regression coverage     | All unit/integration, controlled UI, ordinary real API and real-browser suites required by CI                                                                                                                                                                   |
 | 23 mandatory quality       | CI frozen install, full format/lint/types, all suites, generated schema check, configured build with TypeScript enabled                                                                                                                                         |
 | 24 analytics               | **Scoped exception explicitly chosen by user:** retain ADR0002. Defer CRUD attempt/success/error events and all resource IDs. Existing consented property-free server auth success allowlist stays; `unit/analytics`, `unit/privacy`, UI privacy tests guard it |
@@ -40,13 +40,13 @@ API tests prove persistence, SQL atomicity, ownership and constraints independen
   The old spec's “no tests/ADRs” audit describes its starting point, not current source.
 - Explicit pending/completed/cancelled schedules, local-day OR reached-mileage selection,
   30-day date horizon, transactional completion/odometer and null semantics are implemented.
-- SQL001–009 rehearsed serially. Migration tests pause at004, seed ordinary accounts, run005
+- SQL001–010 rehearsed serially. Migration tests pause at004, seed ordinary accounts, run005
   twice, preserve zero/mileage-only/date-only/mixed forecasts, then006. Dropped legacy columns
   cannot be recovered without a verified pre-drop source. No hosted migration is performed.
 - Query projections/keyset pagination and independent totals are exercised beyond the1000-row
   response cap. Index plans were rehearsed against100k synthetic rows in #96; see
   [history-pagination.md](history-pagination.md). No SQL/index change in #97, so that destructive
-  comparison rehearsal is not unnecessarily repeated. `test:schema` restores canonical009.
+  comparison rehearsal is not unnecessarily repeated. `test:schema` restores canonical010.
 - Security follow-up remains private; public acceptance uses two ordinary synthetic accounts.
   No production data/credentials, new auth authority, cache/framework or visual redesign.
 - Retired after repository-wide consumer search: `add-vehicle-dialog-context.tsx` (alternative
@@ -55,7 +55,7 @@ API tests prove persistence, SQL atomicity, ownership and constraints independen
   remain used and intact. Shared maintenance labels replace duplicated active dictionaries.
 - Existing tests use Vitest plus Playwright; adding a third framework is unnecessary.
 
-## Verification evidence
+## Ticket97 verification evidence (historical)
 
 Verified in ticket #97's checkout on 2026-11-06, Node 22.22.3, Bun 1.3.12 and
 Supabase CLI 2.75.0. CI pins Node 22/Bun 1.3.9/CLI 2.75.0; frozen install was also
@@ -89,7 +89,52 @@ reproduce CI. The disposable stack remains local; no hosted migration was perfor
 - A failed refresh retains context where valid; confirmed mutation followed by read failure
   marks affected history/totals unavailable rather than presenting known-stale totals as current.
 - Cancelling transport does not cancel SQL; unknown writes require immutable operation lookup
-  or explicit same-identity replay. Mounted-owner/session recovery boundaries remain documented
+  or explicit same-identity replay. Per-tab/account session-journal recovery boundaries remain documented
   in [data-owner.md](data-owner.md) and [maintenance-batch.md](maintenance-batch.md).
 - Workflow enforcement is checked in; marking its status required is a GitHub branch-protection
   setting owned by the maintainer. This ticket does not change remote repository settings.
+
+## Final review corrections (standards and spec axes)
+
+- Shared finding (standards P1/spec P2): unresolved maintenance batches now register in
+  DataContext's account-scoped session journal **before** submission. Reload, navigation and
+  auth invalidation restore the same UUID, payload, original day and completion mapping.
+  Recovery cards on dashboard/vehicles/history allow explicit lookup or identical replay;
+  absent receipts stay unknown, and new operations cannot replace the original. Storage
+  failures are visible; unreadable journals block replacement until recovery.
+- Spec P2: script010 enforces a date or mileage on ordinary table insert/update, with zero
+  valid. The real migration rehearsal preserves invalid rows on preflight failure, applies
+  after explicit repair, replays and rejects invalid updates afterward.
+- Standards P2: complete editor schemas reject absent/undefined properties while accepting
+  explicitly supplied null/blank clears. Batch optional inputs retain their existing contract.
+  Public schema and real command/SQL tests prove sparse updates cannot clear stored fields.
+- Regression evidence: the new reload journey fails against integration180e0b7 at the missing
+  original-reference assertion. Corrected browser journeys cover account isolation, native
+  rejection, storage denial and journal-read recovery. The real SQL browser journey holds
+  the transaction with an advisory lock, loses submit and lookup responses, reloads while
+  SQL is blocked, sees an absent receipt remain unknown, then confirms exactly one batch
+  and the selected completion row. Original1007-row browser and API invariants are retained.
+- ADR0001/0002 preserved; no CRUD analytics, new cache, generic recovery framework or auth authority.
+
+Current final rerun results and exact logs are recorded in
+`/tmp/keepel-issue90-review-fixes-notes.md`; earlier #97 results above remain historical evidence.
+
+### Final review-fix gate (2026-11-06)
+
+Verified in the isolated `t3/issue90-review-fixes` checkout, Node22.22.3/Bun1.3.12/CLI2.75.0:
+
+- 229 Vitest tests /44 files,25 real Data API tests /7 files,51 controlled browser journeys,
+  and2 real browser journeys pass. The latter includes actual in-flight SQL/reload recovery and
+  the unchanged1007-row/41-page history journey with exact totals and CRUD/cascade checks.
+- Canonical001–010 is restored; actual generated public types match the checked-in file.
+  The new CHECK changes no TypeScript row/function shape. Configured local build passes with
+  TypeScript errors enabled. Frozen install, full formatting, lint and type checks pass.
+- The first full controlled attempt passed48/51; three existing timing/navigation checks failed.
+  Unchanged focused diagnostics passed4/4 (including both timezone variants); the full unchanged
+  rerun passed51/51 in2.9min. The15-second transport deadline was visible in the trace.
+  Initial setup/login deadlines and migration-fixture corrections are retained in the handoff.
+  Shared-machine pressure is a possible contributor, not a proven root cause. No assertion,
+  locator, timeout, force-click or automatic retry was relaxed to obtain the passing run.
+- Exact commands/logs, both review axes, red-regression evidence and environment limits are in
+  `/tmp/keepel-issue90-review-fixes-notes.md`; final raw logs use `/tmp/keepel-fixes-final-*.log`.
+  CI executes the same serial package commands. No production or hosted migration was performed.

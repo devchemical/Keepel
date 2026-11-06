@@ -3,7 +3,12 @@
 /* eslint-disable react/jsx-no-constructed-context-values -- The provider publishes a single interactive projection. */
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from "react"
-import { readPendingCommands, writePendingCommands } from "@/lib/data/pending-operations"
+import {
+  readPendingCommands,
+  writePendingCommands,
+  freezePendingCommand,
+  type PendingCommand,
+} from "@/lib/data/pending-operations"
 import {
   readDataSnapshot,
   maintenanceHistoryQuery,
@@ -54,7 +59,7 @@ export type ScheduledService = Omit<
     vehicles?: Pick<VehicleRow, "make" | "model" | "year" | "license_plate" | "mileage">
   }
 
-export type PendingDataOperation = { command: DataCommand; status: "sending" | "unknown" | "checking" }
+export type PendingDataOperation = { command: PendingCommand; status: "sending" | "unknown" | "checking" }
 
 interface DataContextType {
   totals: MaintenanceTotals | null
@@ -133,6 +138,7 @@ export function DataProvider({ children }: DataProviderProps) {
   const deletedVehicles = React.useRef(new Set<string>())
   const [operationStorageError, setOperationStorageError] = useState(false)
   const pendingRef = React.useRef<PendingDataOperation[]>([])
+  const journalUnreadable = React.useRef(false)
 
   const [hasLoaded, setHasLoaded] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
@@ -242,13 +248,15 @@ export function DataProvider({ children }: DataProviderProps) {
     (operations: PendingDataOperation[]) => {
       pendingRef.current = operations
       setPendingOperations(operations)
-      if (userId)
-        setOperationStorageError(
-          !writePendingCommands(
-            userId,
-            operations.map((operation) => operation.command)
-          )
+      const stored =
+        !journalUnreadable.current &&
+        !!userId &&
+        writePendingCommands(
+          userId,
+          operations.map((operation) => operation.command)
         )
+      setOperationStorageError(!stored)
+      return stored
     },
     [userId]
   )
@@ -295,7 +303,8 @@ export function DataProvider({ children }: DataProviderProps) {
   const reconcileDataOperation = useCallback(
     async (operationId: string) => {
       const operation = pendingRef.current.find((value) => value.command.operationId === operationId)
-      if (!operation || operation.status !== "unknown" || !userId) return
+      if (!operation || operation.command.action === "maintenance.batch" || operation.status !== "unknown" || !userId)
+        return
       const owner = scope.current
       publishPending(
         pendingRef.current.map((value) => (value === operation ? { ...value, status: "checking" } : value))
@@ -319,10 +328,15 @@ export function DataProvider({ children }: DataProviderProps) {
   const mutate = useCallback(
     async (action: DataCommand["action"], id: string, values: unknown) => {
       if (!userId || scope.current.userId !== userId) throw new Error("No hay sesión activa")
+      if (journalUnreadable.current)
+        throw new Error(
+          "No se pudieron recuperar las referencias pendientes. Recarga cuando el almacenamiento esté disponible."
+        )
       if (
         pendingRef.current.some(
           (operation) =>
-            operation.command.id === id || (operation.command.action === action && action.endsWith(".create"))
+            ("id" in operation.command && operation.command.id === id) ||
+            (operation.command.action === action && action.endsWith(".create"))
         )
       )
         throw new Error("Resultado pendiente de confirmar. Comprueba la operación anterior antes de continuar.")
@@ -378,7 +392,7 @@ export function DataProvider({ children }: DataProviderProps) {
   // A receipt confirms the transaction; refreshing never changes a confirmed write
   // into a failed write. This context owns all related projection refreshes.
   const acceptMaintenanceReceipt = useCallback(
-    async (receipt: MaintenanceReceipt) => {
+    (receipt: MaintenanceReceipt) => {
       scope.current.revision++
       invalidateHistory()
       if (deletedVehicles.current.has(receipt.vehicle.id)) return
@@ -415,9 +429,16 @@ export function DataProvider({ children }: DataProviderProps) {
   )
 
   const reconcileMaintenanceBatch = useCallback(
-    async (command: MaintenanceCommand): Promise<MaintenanceBatchResult> => {
-      if (!userId || scope.current.userId !== userId) return { status: "rejected" }
+    async (input: MaintenanceCommand): Promise<MaintenanceBatchResult> => {
+      if (!userId || scope.current.userId !== userId || journalUnreadable.current) return { status: "rejected" }
+      const operation = pendingRef.current.find((value) => value.command.operationId === input.operationId)
+      if (!operation || operation.command.action !== "maintenance.batch" || operation.status !== "unknown")
+        return { status: "unknown" }
+      const command = operation.command
       const owner = scope.current
+      publishPending(
+        pendingRef.current.map((value) => (value === operation ? { ...value, status: "checking" } : value))
+      )
       try {
         const { data, error } = await supabase
           .rpc("get_maintenance_batch_operation", { p_operation_id: command.operationId })
@@ -426,22 +447,56 @@ export function DataProvider({ children }: DataProviderProps) {
         if (scope.current !== owner) return { status: "unknown" }
         const receipt = !error && readMaintenanceReceipt(data, command, userId)
         if (receipt) {
-          await acceptMaintenanceReceipt(receipt)
+          acceptMaintenanceReceipt(receipt)
+          publishPending(pendingRef.current.filter((value) => value.command.operationId !== command.operationId))
           return { status: "success" }
         }
       } catch {
         /* A failed lookup cannot prove rollback. Keep the operation identity. */
       }
+      if (scope.current === owner)
+        publishPending(
+          pendingRef.current.map((value) =>
+            value === operation || value.command.operationId === command.operationId
+              ? { ...value, status: "unknown" }
+              : value
+          )
+        )
       return { status: "unknown" }
     },
-    [userId, supabase, acceptMaintenanceReceipt]
+    [userId, supabase, acceptMaintenanceReceipt, publishPending]
   )
 
   const createMaintenanceBatch = useCallback(
     async (input: MaintenanceCommand): Promise<MaintenanceBatchResult> => {
-      if (!userId || scope.current.userId !== userId) return { status: "rejected" }
-      const command = maintenanceCommandSchema.parse(input)
+      if (!userId || scope.current.userId !== userId || journalUnreadable.current) return { status: "rejected" }
+      const existing = pendingRef.current.find((value) => value.command.action === "maintenance.batch")
+      // Only an explicit replay of the retained original is allowed. The caller
+      // cannot replace its payload, calendar day, completion mapping or identity.
+      if (existing && (existing.command.operationId !== input.operationId || existing.status !== "unknown"))
+        return { status: "unknown" }
+      const command =
+        existing?.command.action === "maintenance.batch"
+          ? existing.command
+          : freezePendingCommand({ ...maintenanceCommandSchema.parse(input), action: "maintenance.batch" as const })
+      if (command.action !== "maintenance.batch") return { status: "rejected" }
       const owner = scope.current
+      const stored = publishPending([
+        ...pendingRef.current.filter((value) => value !== existing),
+        { command, status: "sending" },
+      ])
+      if (!stored) {
+        // Never send a new batch that cannot survive navigation/session loss.
+        publishPending(
+          existing
+            ? pendingRef.current.map((value) =>
+                value.command.operationId === command.operationId ? { ...value, status: "unknown" } : value
+              )
+            : pendingRef.current.filter((value) => value.command.operationId !== command.operationId)
+        )
+        setOperationStorageError(true)
+        return { status: "rejected" }
+      }
       owner.revision++
       try {
         const { data, error } = await supabase
@@ -450,19 +505,24 @@ export function DataProvider({ children }: DataProviderProps) {
           .retry(false)
         if (scope.current !== owner) return { status: "unknown" }
         const receipt = !error && readMaintenanceReceipt(data, command, userId)
-        if (receipt) {
-          await acceptMaintenanceReceipt(receipt)
+        if (receipt || isConfirmedRejection(error)) {
+          publishPending(pendingRef.current.filter((value) => value.command.operationId !== command.operationId))
+          if (!receipt) return { status: "rejected" }
+          acceptMaintenanceReceipt(receipt)
           return { status: "success" }
         }
-        // These PostgreSQL errors are definitive transaction rejection. Transport
-        // failures and unexpected responses must be reconciled, never called rollback.
-        if (isConfirmedRejection(error)) return { status: "rejected" }
       } catch {
         /* Transport cancellation says nothing about database commit. */
       }
+      if (scope.current !== owner) return { status: "unknown" }
+      publishPending(
+        pendingRef.current.map((value) =>
+          value.command.operationId === command.operationId ? { ...value, status: "unknown" } : value
+        )
+      )
       return reconcileMaintenanceBatch(command)
     },
-    [userId, supabase, acceptMaintenanceReceipt, reconcileMaintenanceBatch]
+    [userId, supabase, acceptMaintenanceReceipt, reconcileMaintenanceBatch, publishPending]
   )
 
   const updateMaintenanceOptimistic = useCallback(
@@ -499,11 +559,17 @@ export function DataProvider({ children }: DataProviderProps) {
   useEffect(() => {
     deletedVehicles.current.clear()
     setDataOwner(userId)
-    pendingRef.current = userId
-      ? readPendingCommands(userId).map((command) => ({ command, status: "unknown" as const }))
-      : []
+    journalUnreadable.current = false
+    try {
+      pendingRef.current = userId
+        ? readPendingCommands(userId).map((command) => ({ command, status: "unknown" as const }))
+        : []
+    } catch {
+      pendingRef.current = []
+      journalUnreadable.current = true
+    }
     setPendingOperations(pendingRef.current)
-    setOperationStorageError(false)
+    setOperationStorageError(journalUnreadable.current)
     setTotals(null)
     setHistory(null)
     if (historyRequest.current)
@@ -525,6 +591,7 @@ export function DataProvider({ children }: DataProviderProps) {
   let visibleRecords = maintenanceRecords
   let visibleSchedules = scheduledServices
   for (const { command } of pendingOperations) {
+    if (command.action === "maintenance.batch") continue
     const { id, action, values } = command
     if (action === "vehicle.create")
       visibleVehicles = visibleVehicles.some((row) => row.id === id)

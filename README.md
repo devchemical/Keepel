@@ -273,7 +273,7 @@ Las credenciales de OpenPanel son exclusivamente de servidor. Keepel no utiliza 
 
 #### 4. Configurar Base de Datos
 
-Para una base nueva, ejecute todos los scripts canónicos `scripts/001`–`009` en orden.
+Para una base nueva, ejecute todos los scripts canónicos `scripts/001`–`010` en orden.
 Lea [Configuración de Base de Datos](#️-configuración-de-base-de-datos) y el
 [contrato de migraciones](docs/testing/data-api.md) antes de actualizar una base existente.
 Los scripts de este repositorio no se aplican mediante `supabase db push`.
@@ -293,9 +293,9 @@ bun start
 </details>
 ### 🗄️ Configuración de Base de Datos
 
-Los contratos actuales requieren ejecutar los scripts canónicos `scripts/001`–`009` en orden
+Los contratos actuales requieren ejecutar los scripts canónicos `scripts/001`–`010` en orden
 en una base nueva. No copie fragmentos antiguos del README: `004` crea previsiones explícitas,
-`005` migra los campos heredados **antes** de que `006` los elimine; `007`–`009` añaden
+`005` migra los campos heredados **antes** de que `006` los elimine; `007`–`010` añaden
 transacciones, confirmaciones y totales completos. Una base existente requiere revisar su
 versión y respaldos antes de migrar. Esta aceptación solo ensaya una base local desechable.
 Véase [contrato de migraciones](docs/testing/data-api.md).
@@ -325,7 +325,7 @@ bun run data-api:stop
 `bun run test` invoca Vitest; el comando nativo `bun test` no sustituye esta suite.
 `test:data-api` ensaya SQL real con dos cuentas ordinarias y reinicia exclusivamente la pila
 local guardada. `test:data-browser` recorre 1007 registros con Auth/PostgREST/RLS reales.
-`test:schema` restaura 001–009, genera tipos del esquema real y exige coincidencia.
+`test:schema` restaura 001–010, genera tipos del esquema real y exige coincidencia.
 `build:local` usa claves públicas de esa pila en memoria y marcadores sintéticos para las
 variables obligatorias de Redis, HMAC y consentimiento; no necesita secretos alojados.
 Los E2E controlados configuran sus propios servicios y secretos sintéticos.
@@ -429,7 +429,7 @@ Keepel/
 │   ├── 001_create_tables.sql        # Creación de tablas
 │   ├── 002_create_profile_trigger.sql # Triggers de perfiles
 │   ├── 003_maintenance_function.sql # Compatibilidad histórica
-│   └── 004–009                      # Previsiones, migración, transacciones y totales
+│   └── 004–010                      # Previsiones, migración, transacciones y totales
 ├── 📁 styles/                       # Estilos adicionales
 ├── 📁 public/                       # Archivos estáticos
 │   ├── keepel_logo.svg              # Logo del proyecto

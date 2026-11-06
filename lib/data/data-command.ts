@@ -7,6 +7,7 @@ import {
   nullableMileageSchema,
   nullableTextSchema,
   maintenanceTypeSchema,
+  requiredEditorField,
 } from "./maintenance-validation"
 import { recordSchema, vehicleSchema, scheduledSchema } from "./maintenance-command"
 import { scheduledServiceSchema, scheduledServiceValuesSchema, hasScheduleCriterion } from "./scheduled-command"
@@ -19,21 +20,21 @@ export const vehicleValuesSchema = z
       (value) => (typeof value === "string" && /^\d+$/.test(value) ? Number(value) : value),
       z.number().int().min(1).max(9999)
     ),
-    mileage: nullableMileageSchema,
-    license_plate: nullableTextSchema,
-    vin: nullableTextSchema,
-    color: nullableTextSchema,
+    mileage: requiredEditorField(nullableMileageSchema),
+    license_plate: requiredEditorField(nullableTextSchema),
+    vin: requiredEditorField(nullableTextSchema),
+    color: requiredEditorField(nullableTextSchema),
   })
   .strict()
 export type VehicleValues = z.output<typeof vehicleValuesSchema>
 export const maintenanceValuesSchema = z
   .object({
     type: maintenanceTypeSchema,
-    description: nullableTextSchema,
-    cost: nullableCostSchema,
-    mileage: nullableMileageSchema,
+    description: requiredEditorField(nullableTextSchema),
+    cost: requiredEditorField(nullableCostSchema),
+    mileage: requiredEditorField(nullableMileageSchema),
     service_date: calendarDaySchema,
-    notes: nullableTextSchema,
+    notes: requiredEditorField(nullableTextSchema),
   })
   .strict()
 export type MaintenanceValues = z.output<typeof maintenanceValuesSchema>

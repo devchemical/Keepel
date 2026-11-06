@@ -1,6 +1,7 @@
 import { z } from "zod"
 import {
   maintenanceTypeSchema,
+  requiredEditorField,
   nullableTextSchema,
   nullableCalendarDaySchema,
   nullableMileageSchema,
@@ -10,10 +11,10 @@ import {
 export const scheduledServiceValuesSchema = z
   .object({
     type: maintenanceTypeSchema,
-    description: nullableTextSchema,
-    scheduled_date: nullableCalendarDaySchema,
-    scheduled_mileage: nullableMileageSchema,
-    notes: nullableTextSchema,
+    description: requiredEditorField(nullableTextSchema),
+    scheduled_date: requiredEditorField(nullableCalendarDaySchema),
+    scheduled_mileage: requiredEditorField(nullableMileageSchema),
+    notes: requiredEditorField(nullableTextSchema),
   })
   .strict()
 export const hasScheduleCriterion = (value: { scheduled_date: string | null; scheduled_mileage: number | null }) =>

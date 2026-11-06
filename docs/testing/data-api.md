@@ -35,7 +35,7 @@ bun run data-api:stop
 ```
 
 `test:data-api` destroys and recreates **only this project's local test database**, then replays
-`scripts/001` through `009` by default. Historical migration tests explicitly start at `004`. Migration tests pause at `004`, seed historical records via the API,
+`scripts/001` through `010` by default. Historical migration tests explicitly start at `004`. Migration tests pause at `004`, seed historical records via the API,
 replay `005`, repeat it, and verify the result via the same ordinary client before `006` removes
 source columns. Script `003` is currently empty and is still replayed. The standard `bun run test`
 suite excludes tests requiring Docker; explicitly use `test:data-api` for these checks.

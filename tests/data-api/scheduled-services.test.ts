@@ -74,6 +74,8 @@ test("schedule commands persist zero and NULL clears, reject empty criteria and 
     type: "oil_change",
     scheduled_date: "2026-03-08",
     scheduled_mileage: "",
+    description: null,
+    notes: null,
   })
   expect(clearedMileage).toMatchObject({ scheduled_date: "2026-03-08", scheduled_mileage: null })
   await expect(updateScheduledService(alice.client, alice.id, row.id, { type: "oil_change" })).rejects.toThrow()
@@ -85,7 +87,13 @@ test("schedule commands persist zero and NULL clears, reject empty criteria and 
   )
   await cancelScheduledService(alice.client, alice.id, row.id)
   await expect(
-    updateScheduledService(alice.client, alice.id, row.id, { type: "other", scheduled_mileage: 0 })
+    updateScheduledService(alice.client, alice.id, row.id, {
+      type: "other",
+      scheduled_mileage: 0,
+      scheduled_date: null,
+      description: null,
+      notes: null,
+    })
   ).rejects.toThrow()
   expect((await alice.client.from("scheduled_services").select("id").eq("status", "pending")).data).toEqual([])
 })
@@ -95,10 +103,16 @@ test("current vehicle mileage drives reminders and explicit transactional comple
   const forecast = await createScheduledService(alice.client, alice.id, vehicleId, {
     type: "oil_change",
     scheduled_mileage: 100,
+    scheduled_date: null,
+    description: null,
+    notes: null,
   })
   const sameType = await createScheduledService(alice.client, alice.id, vehicleId, {
     type: "oil_change",
     scheduled_date: "2026-03-08",
+    scheduled_mileage: null,
+    description: null,
+    notes: null,
   })
   const read = async () => {
     const result = await alice.client.from("scheduled_services").select("*,vehicles(mileage)").eq("status", "pending")
@@ -138,4 +152,36 @@ test("current vehicle mileage drives reminders and explicit transactional comple
   await expect(cancelScheduledService(alice.client, alice.id, forecast.id)).rejects.toThrow()
   await cancelScheduledService(alice.client, alice.id, sameType.id)
   expect(await read()).toEqual([])
+})
+
+test("ordinary table inserts and updates require a date or mileage, including zero", async () => {
+  const base = {
+    user_id: alice.id,
+    vehicle_id: vehicleId,
+    type: "other",
+    scheduled_date: null,
+    scheduled_mileage: null,
+  }
+  const invalid = await alice.client.from("scheduled_services").insert(base).select()
+  expect(invalid.error?.code).toBe("23514")
+  expect(invalid.data).toBeNull()
+  for (const criterion of [{ scheduled_mileage: 0 }, { scheduled_date: "2026-11-06" }]) {
+    const saved = await alice.client
+      .from("scheduled_services")
+      .insert({ ...base, ...criterion })
+      .select()
+      .single()
+    expect(saved.error).toBeNull()
+    if (!saved.data) throw new Error("Expected valid criterion")
+    expect(saved.data).toMatchObject(criterion)
+    const cleared = await alice.client
+      .from("scheduled_services")
+      .update({ scheduled_date: null, scheduled_mileage: null })
+      .eq("id", saved.data.id)
+      .select()
+    expect(cleared.error?.code).toBe("23514")
+    expect((await alice.client.from("scheduled_services").select().eq("id", saved.data.id).single()).data).toEqual(
+      saved.data
+    )
+  }
 })

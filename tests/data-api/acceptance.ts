@@ -18,7 +18,7 @@ if (process.argv[2] === "types") {
     if (readFileSync(generated, "utf8") !== readFileSync(`${ROOT}/lib/supabase/database.types.ts`, "utf8")) {
       throw new Error("Generated public schema differs from lib/supabase/database.types.ts")
     }
-    process.stdout.write("Actual local schema001–009 matches checked-in public types\n")
+    process.stdout.write("Actual local schema001–010 matches checked-in public types\n")
   } finally {
     rmSync(directory, { recursive: true, force: true })
   }

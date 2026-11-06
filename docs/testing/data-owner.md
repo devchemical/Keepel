@@ -57,7 +57,7 @@ reload, with status unknown and only a status query. It never restores authentic
 The journal is removed on confirmation/rejection or tab closure; it contains no credentials and sends
 no telemetry. Other accounts do not see it. A storage failure keeps the in-memory command and displays
 a request to keep the tab open. Private receipts remain queryable while that account exists. #93's
-batch modal retains its original immutable operation, explicit read and user-requested idempotent replay.
+batch command is retained in the shared account journal, with recovery across navigation, reload and same-account return.
 
 ## Complete history and deliberate limits (#96)
 
@@ -87,3 +87,12 @@ suites retain migration, ownership, batch, odometer, completion and cascade chec
 cascade/totals, native rejection, lost responses, cancelled schedule writes, delayed create, session
 transitions and reload recovery. The controlled services are only transport/UI evidence; real API tests
 are the integrity evidence. Existing maintenance/schedule/auth/privacy suites remain in the full run.
+
+## Final review corrections (#90)
+
+Both review axes identified batch recovery outside the shared owner; the spec axis also found
+the missing forecast table constraint, and the standards axis found sparse complete editors.
+Batches now use this same account/session journal before submission (see maintenance-batch.md).
+All complete editor properties must be supplied; explicit null/blank clears remain valid, and
+batch optional input semantics remain unchanged. Public parsing and real command/SQL tests reject
+sparse updates without clearing stored values. Script010 enforces forecast criteria on direct writes.

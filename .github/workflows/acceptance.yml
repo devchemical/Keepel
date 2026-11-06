@@ -33,6 +33,7 @@ jobs:
       - run: bun type-check
       - run: bun run test
       - run: bun run data-api:start
+      # API/schema harness replays canonical SQL001–010.
       # Resetting consumers and Next's .next consumers must remain serial.
       - run: bun run test:data-api
       - run: bun run test:e2e

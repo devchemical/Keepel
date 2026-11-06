@@ -54,8 +54,17 @@ export function AddMaintenanceDialog({
   const [error, setError] = useState<string | null>(null)
 
   // Usar contextos en lugar de crear cliente directamente
-  const { createMaintenanceBatch, reconcileMaintenanceBatch, scheduledServices } = useData()
-  const [pendingOperation, setPendingOperation] = useState<MaintenanceCommand | null>(null)
+  const {
+    createMaintenanceBatch,
+    reconcileMaintenanceBatch,
+    scheduledServices,
+    pendingOperations,
+    operationStorageError,
+  } = useData()
+  const pendingOperation = pendingOperations.find(
+    (operation) => operation.command.action === "maintenance.batch"
+  )?.command
+  const pendingBatch = pendingOperation?.action === "maintenance.batch" ? pendingOperation : null
   const [selectedSchedule, setSelectedSchedule] = useState(initialScheduledServiceId ?? "none")
   const [completionRowId, setCompletionRowId] = useState("")
   const submitting = useRef(false)
@@ -77,6 +86,27 @@ export function AddMaintenanceDialog({
     notes: "",
   })
 
+  const displayedForm = pendingBatch
+    ? {
+        service_date: pendingBatch.batch.service_date,
+        mileage: pendingBatch.batch.mileage === null ? "" : String(pendingBatch.batch.mileage),
+        notes: pendingBatch.batch.notes ?? "",
+      }
+    : formData
+  const displayedServices = pendingBatch
+    ? pendingBatch.batch.services.map((row, index) => ({
+        id: `pending-${index}`,
+        type: row.type,
+        description: row.description ?? "",
+        cost: row.cost === null ? "" : String(row.cost),
+      }))
+    : services
+
+  const displayedSchedule = pendingBatch ? (pendingBatch.completion?.scheduled_service_id ?? "none") : selectedSchedule
+  const displayedCompletionRow = pendingBatch?.completion
+    ? `pending-${pendingBatch.completion.service_index}`
+    : completionRowId || services.find((row) => row.type)?.id || ""
+
   // Funciones para manejar múltiples servicios
   const addService = () => {
     setServices([...services, { id: generateTempId(), type: "", description: "", cost: "" }])
@@ -95,7 +125,7 @@ export function AddMaintenanceDialog({
   const save = async (reconcileOnly = false) => {
     if (submitting.current) return
     setError(null)
-    let command = pendingOperation
+    let command: MaintenanceCommand | null = pendingBatch
     if (!command) {
       const parsed = maintenanceBatchSchema.safeParse({ ...formData, services })
       if (!parsed.success) {
@@ -134,18 +164,15 @@ export function AddMaintenanceDialog({
     }
     submitting.current = true
     setIsLoading(true)
-    setPendingOperation(command)
     try {
       const result = await (reconcileOnly ? reconcileMaintenanceBatch(command) : createMaintenanceBatch(command))
       if (result.status === "success") {
-        setPendingOperation(null)
         setServices([{ id: generateTempId(), type: "", description: "", cost: "" }])
         setFormData({ mileage: "", service_date: localToday(), notes: "" })
         setSelectedSchedule("none")
         setCompletionRowId("")
         setOpen(false)
-      } else if (result.status === "rejected" && !pendingOperation) {
-        setPendingOperation(null)
+      } else if (result.status === "rejected") {
         setError("No se pudo guardar el mantenimiento. Revisa los datos y la sesión e inténtalo de nuevo.")
       } else {
         setError(
@@ -169,7 +196,7 @@ export function AddMaintenanceDialog({
     <Dialog
       open={open}
       onOpenChange={(next) => {
-        if (!pendingOperation && !isLoading) setOpen(next)
+        if (!isLoading) setOpen(next)
       }}
     >
       {children && <DialogTrigger asChild>{children}</DialogTrigger>}
@@ -184,8 +211,13 @@ export function AddMaintenanceDialog({
           </DialogDescription>
         </DialogHeader>
 
+        {pendingBatch && (
+          <p role="status" className="text-sm">
+            Operación original pendiente. Vehículo: {pendingBatch.vehicleId}. Referencia: {pendingBatch.operationId}
+          </p>
+        )}
         <form onSubmit={handleSubmit} className="space-y-4">
-          <fieldset disabled={isLoading || pendingOperation !== null} className="contents">
+          <fieldset disabled={isLoading || !!pendingBatch} className="contents">
             {/* Información general */}
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
@@ -195,7 +227,7 @@ export function AddMaintenanceDialog({
                 <Input
                   id="service_date"
                   type="date"
-                  value={formData.service_date}
+                  value={displayedForm.service_date}
                   onChange={(e) => setFormData({ ...formData, service_date: e.target.value })}
                   required
                   className="h-10"
@@ -209,7 +241,7 @@ export function AddMaintenanceDialog({
                   id="mileage"
                   type="number"
                   placeholder="50000"
-                  value={formData.mileage}
+                  value={displayedForm.mileage}
                   onChange={(e) => setFormData({ ...formData, mileage: e.target.value })}
                   className="h-10"
                 />
@@ -229,12 +261,12 @@ export function AddMaintenanceDialog({
                 </Button>
               </div>
 
-              {services.map((service, index) => (
+              {displayedServices.map((service, index) => (
                 <div
                   key={service.id}
                   className="border-border bg-background relative space-y-2.5 rounded-md border p-3"
                 >
-                  {services.length > 1 && (
+                  {displayedServices.length > 1 && (
                     <Button
                       type="button"
                       size="sm"
@@ -248,7 +280,7 @@ export function AddMaintenanceDialog({
 
                   <div className="space-y-1.5">
                     <Label htmlFor={`service-type-${service.id}`} className="text-xs font-medium">
-                      Tipo {services.length > 1 ? `#${index + 1}` : ""} *
+                      Tipo {displayedServices.length > 1 ? `#${index + 1}` : ""} *
                     </Label>
                     <Select value={service.type} onValueChange={(value) => updateService(service.id, "type", value)}>
                       <SelectTrigger id={`service-type-${service.id}`} className="h-9 text-sm">
@@ -297,7 +329,7 @@ export function AddMaintenanceDialog({
               <Textarea
                 id="notes"
                 placeholder="Información adicional..."
-                value={formData.notes}
+                value={displayedForm.notes}
                 onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                 rows={3}
                 className="resize-none text-sm"
@@ -311,7 +343,7 @@ export function AddMaintenanceDialog({
             {pendingSchedules.length > 0 && (
               <div className="space-y-2">
                 <Label htmlFor="completion-schedule">Resolver una previsión (opcional)</Label>
-                <Select value={selectedSchedule} onValueChange={setSelectedSchedule}>
+                <Select value={displayedSchedule} onValueChange={setSelectedSchedule}>
                   <SelectTrigger id="completion-schedule">
                     <SelectValue />
                   </SelectTrigger>
@@ -328,18 +360,15 @@ export function AddMaintenanceDialog({
                     ))}
                   </SelectContent>
                 </Select>
-                {selectedSchedule !== "none" && (
+                {displayedSchedule !== "none" && (
                   <>
                     <Label htmlFor="completion-row">Vincular al servicio</Label>
-                    <Select
-                      value={completionRowId || services.find((row) => row.type)?.id || ""}
-                      onValueChange={setCompletionRowId}
-                    >
+                    <Select value={displayedCompletionRow} onValueChange={setCompletionRowId}>
                       <SelectTrigger id="completion-row">
                         <SelectValue placeholder="Seleccionar servicio" />
                       </SelectTrigger>
                       <SelectContent>
-                        {services.map((row, index) =>
+                        {displayedServices.map((row, index) =>
                           row.type ? (
                             <SelectItem key={row.id} value={row.id}>
                               Servicio #{index + 1}: {maintenanceTypes.find((type) => type.value === row.type)?.label}
@@ -353,6 +382,12 @@ export function AddMaintenanceDialog({
               </div>
             )}
           </fieldset>
+          {operationStorageError && (
+            <p role="alert">
+              No se pudo guardar la referencia o recuperar las referencias pendientes en esta pestaña. No se ha enviado
+              un lote nuevo. Revisa el almacenamiento antes de continuar.
+            </p>
+          )}
           {error && (
             <div
               role="alert"
@@ -371,7 +406,7 @@ export function AddMaintenanceDialog({
           <div className="border-border flex flex-col-reverse gap-2 border-t pt-3 sm:flex-row sm:gap-3">
             <Button
               type="button"
-              disabled={isLoading || pendingOperation !== null}
+              disabled={isLoading}
               variant="outline"
               onClick={() => setOpen(false)}
               className="h-10 flex-1 sm:h-11"

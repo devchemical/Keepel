@@ -3,6 +3,14 @@ import { isCalendarDay } from "@/lib/data/calendar-day"
 import { isMaintenanceType } from "@/lib/data/maintenance-types"
 import type { MaintenanceType } from "@/lib/data/maintenance-types"
 
+/** Complete editors must supply each property; only explicit values may clear it. */
+export function requiredEditorField<T extends z.ZodTypeAny>(schema: T) {
+  return z
+    .unknown()
+    .refine((value) => value !== undefined, "Required editor property")
+    .pipe(schema)
+}
+
 function normalizeOptionalNumber(value: unknown): unknown {
   if (value === null || value === undefined) return null
   if (typeof value !== "string") return value

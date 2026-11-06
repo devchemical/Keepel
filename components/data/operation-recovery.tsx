@@ -4,6 +4,7 @@ import { useData } from "@/contexts"
 import { Button } from "@/components/ui/button"
 
 const labels = {
+  "maintenance.batch": "Alta múltiple de mantenimiento",
   "vehicle.create": "Alta de vehículo",
   "vehicle.update": "Edición de vehículo",
   "vehicle.delete": "Eliminación de vehículo",
@@ -14,12 +15,20 @@ const labels = {
   "schedule.cancel": "Cancelación de previsión",
 }
 export function OperationRecovery() {
-  const { pendingOperations, reconcileDataOperation, operationStorageError } = useData()
+  const {
+    pendingOperations,
+    reconcileDataOperation,
+    reconcileMaintenanceBatch,
+    createMaintenanceBatch,
+    operationStorageError,
+  } = useData()
   return (
     <>
-      {operationStorageError && pendingOperations.length > 0 && (
+      {operationStorageError && (
         <p role="alert">
-          No se pudo conservar la referencia en esta pestaña. Mantén esta página abierta hasta comprobar el resultado.
+          No se pudieron conservar o recuperar las referencias en esta pestaña. Recarga cuando el almacenamiento esté
+          disponible. No se enviará un lote nuevo sin guardarla. Mantén esta página abierta si hay una operación
+          pendiente.
         </p>
       )}
       {pendingOperations.map(({ command, status }) => (
@@ -31,14 +40,58 @@ export function OperationRecovery() {
               : "Comprobando operación…"}
           </p>
           <p className="text-muted-foreground text-xs">Referencia: {command.operationId}</p>
+          {command.action === "maintenance.batch" && (
+            <p className="text-sm">
+              Fecha: {command.batch.service_date} · {command.batch.services.length} servicio(s)
+            </p>
+          )}
+          {command.action === "maintenance.batch" && (
+            <details>
+              <summary>Datos de la operación original</summary>
+              <p>
+                Vehículo: {command.vehicleId} · Día de referencia: {command.today}
+              </p>
+              <p>
+                Kilometraje: {command.batch.mileage ?? "Sin informar"} · Notas: {command.batch.notes ?? "Sin informar"}
+              </p>
+              <p>
+                {command.batch.services
+                  .map(
+                    (row, index) =>
+                      `${index + 1}. ${row.type} · ${row.description ?? "Sin descripción"} · ${row.cost ?? "Sin costo"}`
+                  )
+                  .join("; ")}
+              </p>
+              {command.completion && (
+                <p>
+                  Previsión: {command.completion.scheduled_service_id} · Servicio #
+                  {command.completion.service_index + 1}
+                </p>
+              )}
+            </details>
+          )}
           {status !== "sending" && (
             <Button
               type="button"
               variant="outline"
               disabled={status === "checking"}
-              onClick={() => void reconcileDataOperation(command.operationId)}
+              onClick={() =>
+                void (command.action === "maintenance.batch"
+                  ? reconcileMaintenanceBatch(command)
+                  : reconcileDataOperation(command.operationId))
+              }
             >
               Comprobar resultado
+            </Button>
+          )}
+          {command.action === "maintenance.batch" && status !== "sending" && (
+            <Button
+              type="button"
+              variant="outline"
+              disabled={status === "checking"}
+              onClick={() => void createMaintenanceBatch(command)}
+            >
+              Reintentar misma operación
             </Button>
           )}
         </div>

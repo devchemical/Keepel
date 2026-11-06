@@ -1,5 +1,6 @@
 import { beforeAll, expect, test } from "vitest"
 import { randomUUID } from "node:crypto"
+import type { DataCommand } from "../../lib/data/data-command"
 import { createAccount, prepareDatabase } from "./support"
 
 let alice: Awaited<ReturnType<typeof createAccount>>
@@ -215,4 +216,76 @@ test("maintenance edits and deletion use confirmed receipts and deletion restore
     (await alice.client.from("scheduled_services").select("status,completed_record_id").eq("id", scheduledId).single())
       .data
   ).toEqual({ status: "pending", completed_record_id: null })
+})
+
+test("sparse complete updates fail at the command boundary and SQL guard without clearing stored fields", async () => {
+  const { executeDataCommand } = await import("../../lib/data/data-command")
+  const vehicle = await alice.client
+    .from("vehicles")
+    .insert({ user_id: alice.id, make: "Before", model: "Sparse", year: 2020, mileage: 42, color: "blue" })
+    .select()
+    .single()
+  if (!vehicle.data) throw new Error("Missing fixture")
+  const record = await alice.client
+    .from("maintenance_records")
+    .insert({
+      user_id: alice.id,
+      vehicle_id: vehicle.data.id,
+      type: "other",
+      service_date: "2026-11-06",
+      notes: "retain",
+      cost: 42,
+    })
+    .select()
+    .single()
+  const schedule = await alice.client
+    .from("scheduled_services")
+    .insert({
+      user_id: alice.id,
+      vehicle_id: vehicle.data.id,
+      type: "other",
+      scheduled_date: "2026-11-06",
+      notes: "retain",
+      scheduled_mileage: 42,
+    })
+    .select()
+    .single()
+  if (!record.data || !schedule.data) throw new Error("Missing fixture")
+  const cases = [
+    { action: "vehicle.update", table: "vehicles", row: vehicle.data, values: { make: "A", model: "B", year: 2020 } },
+    {
+      action: "maintenance.update",
+      table: "maintenance_records",
+      row: record.data,
+      values: { type: "other", service_date: "2026-11-06" },
+    },
+    {
+      action: "schedule.update",
+      table: "scheduled_services",
+      row: schedule.data,
+      values: { type: "other", scheduled_date: "2026-11-06" },
+    },
+  ] as const
+  for (const { action, table, row, values } of cases) {
+    const operationId = randomUUID()
+    await expect(
+      executeDataCommand(alice.client, alice.id, {
+        operationId,
+        action,
+        id: row.id,
+        values,
+      } as unknown as DataCommand)
+    ).rejects.toThrow()
+    expect(
+      (
+        await alice.client.rpc("mutate_data", {
+          p_operation_id: operationId,
+          p_action: action,
+          p_id: row.id,
+          p_values: values,
+        })
+      ).error
+    ).not.toBeNull()
+    expect((await alice.client.from(table).select().eq("id", row.id).single()).data).toEqual(row)
+  }
 })

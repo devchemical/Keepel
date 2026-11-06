@@ -29,7 +29,13 @@ existing lookup/replay behavior; see [maintenance-batch.md](maintenance-batch.md
 The receipt's vehicle identity is included in immediate history projections so dashboard Recent
 Activity can render safely before the joined refresh finishes.
 
-No schema change is needed beyond canonical script 007. Generated database types remain unchanged.
+Canonical script010 adds `scheduled_services_requires_criterion` at the exposed table boundary:
+`scheduled_date IS NOT NULL OR scheduled_mileage IS NOT NULL`. It is transactional and replayable,
+locks the table while checking existing rows, and fails explicitly if legacy rows lack both criteria.
+Before applying, inspect `SELECT id FROM public.scheduled_services WHERE scheduled_date IS NULL AND scheduled_mileage IS NULL`.
+Repair those rows only from verified user intent, then rerun; no row is silently changed/deleted.
+Ordinary authenticated inserts and updates are constrained too; zero mileage and a date alone remain valid.
+The actual generated public types are checked after canonical001–010; CHECK adds no TypeScript shape change.
 Auth and analytics boundaries are unchanged. Broader loading/error convergence and unknown-outcome
 handling for ordinary CRUD remain #95; schedule commands never claim success without affected-row
 confirmation and never automatically retry.

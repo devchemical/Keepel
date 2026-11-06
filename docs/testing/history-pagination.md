@@ -43,7 +43,7 @@ an explicit error retaining the previous valid projection, never a truncated suc
 
 ## Reproduction
 
-The guarded harness replays canonical scripts 001–009. No hosted connection or service-role client
+The guarded harness replays canonical scripts 001–010. No hosted connection or service-role client
 is used. Run these commands serially from the checkout owning the disposable stack:
 
 ```bash
