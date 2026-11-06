@@ -13,5 +13,7 @@ export default defineConfig({
   test: {
     environment: "node",
     include: ["tests/**/*.test.ts"],
+    exclude: process.env.KEEPEL_DATA_API_TEST === "1" ? [] : ["tests/data-api/**"],
+    fileParallelism: process.env.KEEPEL_DATA_API_TEST !== "1",
   },
 })

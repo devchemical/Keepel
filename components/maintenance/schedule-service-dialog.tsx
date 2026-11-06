@@ -1,11 +1,12 @@
 "use client"
 
-/* eslint-disable eslint/no-shadow, typescript/no-non-null-assertion -- Form error state uses conventional naming and numeric guards validate parsed values. */
+/* eslint-disable eslint/no-shadow -- Form error state uses conventional naming. */
 
 import type React from "react"
 
 import { useState } from "react"
-import { useAuthProjection, useSupabase, useData } from "@/contexts"
+import { OperationRecovery, usePendingDataOperation } from "@/components/data/operation-recovery"
+import { useData } from "@/contexts"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -20,7 +21,9 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Calendar, Loader2 } from "lucide-react"
-import { AUTH_STATE_STATUS } from "@/lib/auth/contracts"
+
+import { MAINTENANCE_TYPES as maintenanceTypes } from "@/lib/data/maintenance-types"
+import { scheduledServiceSchema } from "@/lib/data/scheduled-command"
 
 interface ScheduleServiceDialogProps {
   children?: React.ReactNode
@@ -28,22 +31,6 @@ interface ScheduleServiceDialogProps {
   open?: boolean
   onOpenChange?: (open: boolean) => void
 }
-
-const maintenanceTypes = [
-  { value: "oil_change", label: "Cambio de Aceite" },
-  { value: "tire_rotation", label: "Rotación de Llantas" },
-  { value: "brake_service", label: "Servicio de Frenos" },
-  { value: "transmission", label: "Transmisión" },
-  { value: "engine_tune", label: "Afinación del Motor" },
-  { value: "battery", label: "Batería" },
-  { value: "air_filter", label: "Filtro de Aire" },
-  { value: "coolant", label: "Refrigerante" },
-  { value: "spark_plugs", label: "Bujías" },
-  { value: "belts_hoses", label: "Correas y Mangueras" },
-  { value: "suspension", label: "Suspensión" },
-  { value: "exhaust", label: "Sistema de Escape" },
-  { value: "other", label: "Otro" },
-]
 
 export function ScheduleServiceDialog({
   children,
@@ -57,9 +44,7 @@ export function ScheduleServiceDialog({
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const authState = useAuthProjection()
-  const { refreshScheduledServices } = useData()
-  const supabase = useSupabase()
+  const { addScheduledServiceOptimistic } = useData()
 
   const [formData, setFormData] = useState({
     type: "",
@@ -69,6 +54,19 @@ export function ScheduleServiceDialog({
     notes: "",
   })
 
+  const resetConfirmedForm = () => {
+    setError(null)
+    setFormData({
+      type: "",
+      description: "",
+      scheduled_date: "",
+      scheduled_mileage: "",
+      notes: "",
+    })
+    setOpen(false)
+  }
+
+  const pending = usePendingDataOperation(resetConfirmedForm)
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
@@ -79,52 +77,12 @@ export function ScheduleServiceDialog({
         throw new Error("ID del vehículo no válido")
       }
 
-      if (!formData.type) {
-        throw new Error("Debe seleccionar un tipo de servicio")
-      }
+      const parsed = scheduledServiceSchema.safeParse(formData)
+      if (!parsed.success)
+        throw new Error("Indica un tipo válido y al menos una fecha o un kilometraje válido mayor o igual a 0.")
+      await addScheduledServiceOptimistic(vehicleId, parsed.data)
 
-      if (!formData.scheduled_date && !formData.scheduled_mileage) {
-        throw new Error("Debe indicar al menos una fecha o un kilometraje programado")
-      }
-
-      if (authState.status !== AUTH_STATE_STATUS.AUTHENTICATED) {
-        throw new Error("No hay sesión activa. Por favor, inicia sesión.")
-      }
-
-      const userId = authState.user.id
-      const scheduledMileage = formData.scheduled_mileage ? parseInt(formData.scheduled_mileage, 10) : null
-
-      if (formData.scheduled_mileage && (isNaN(scheduledMileage!) || scheduledMileage! < 0)) {
-        throw new Error("El kilometraje programado debe ser un número válido mayor o igual a 0")
-      }
-
-      const insertData = {
-        vehicle_id: vehicleId,
-        user_id: userId,
-        type: formData.type,
-        description: formData.description?.trim() || null,
-        scheduled_date: formData.scheduled_date || null,
-        scheduled_mileage: scheduledMileage,
-        status: "pending" as const,
-        notes: formData.notes?.trim() || null,
-      }
-
-      const { error: insertError } = await supabase.from("scheduled_services").insert(insertData)
-
-      if (insertError) {
-        throw new Error(`Error al programar servicio: ${insertError.message}`)
-      }
-
-      await refreshScheduledServices()
-
-      setFormData({
-        type: "",
-        description: "",
-        scheduled_date: "",
-        scheduled_mileage: "",
-        notes: "",
-      })
-      setOpen(false)
+      resetConfirmedForm()
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : "Error desconocido al programar servicio"
       setError(errorMessage)
@@ -146,112 +104,118 @@ export function ScheduleServiceDialog({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="type" className="text-sm font-medium">
-              Tipo de Servicio *
-            </Label>
-            <Select value={formData.type} onValueChange={(value) => setFormData({ ...formData, type: value })}>
-              <SelectTrigger className="h-10">
-                <SelectValue placeholder="Seleccionar tipo" />
-              </SelectTrigger>
-              <SelectContent>
-                {maintenanceTypes.map((type) => (
-                  <SelectItem key={type.value} value={type.value}>
-                    {type.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="description" className="text-sm font-medium">
-              Descripción
-            </Label>
-            <Input
-              id="description"
-              placeholder="Detalles adicionales del servicio..."
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              className="h-10"
-            />
-          </div>
-
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <OperationRecovery />
+          <fieldset disabled={pending || isLoading} className="space-y-4">
             <div className="space-y-1.5">
-              <Label htmlFor="scheduled_date" className="text-sm font-medium">
-                Fecha Programada
+              <Label htmlFor="type" className="text-sm font-medium">
+                Tipo de Servicio *
+              </Label>
+              <Select value={formData.type} onValueChange={(value) => setFormData({ ...formData, type: value })}>
+                <SelectTrigger disabled={pending || isLoading} id="type" className="h-10">
+                  <SelectValue placeholder="Seleccionar tipo" />
+                </SelectTrigger>
+                <SelectContent>
+                  {maintenanceTypes.map((type) => (
+                    <SelectItem key={type.value} value={type.value}>
+                      {type.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="description" className="text-sm font-medium">
+                Descripción
               </Label>
               <Input
-                id="scheduled_date"
-                type="date"
-                value={formData.scheduled_date}
-                onChange={(e) => setFormData({ ...formData, scheduled_date: e.target.value })}
+                id="description"
+                placeholder="Detalles adicionales del servicio..."
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 className="h-10"
               />
             </div>
+
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="scheduled_date" className="text-sm font-medium">
+                  Fecha Programada
+                </Label>
+                <Input
+                  id="scheduled_date"
+                  type="date"
+                  value={formData.scheduled_date}
+                  onChange={(e) => setFormData({ ...formData, scheduled_date: e.target.value })}
+                  className="h-10"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="scheduled_mileage" className="text-sm font-medium">
+                  Kilometraje Programado
+                </Label>
+                <Input
+                  id="scheduled_mileage"
+                  type="number"
+                  placeholder="55000"
+                  value={formData.scheduled_mileage}
+                  onChange={(e) => setFormData({ ...formData, scheduled_mileage: e.target.value })}
+                  className="h-10"
+                />
+              </div>
+            </div>
+
+            <div className="border-border bg-muted/30 text-muted-foreground rounded-md p-2 text-xs">
+              Indica al menos una fecha o un kilometraje para programar el servicio.
+            </div>
+
             <div className="space-y-1.5">
-              <Label htmlFor="scheduled_mileage" className="text-sm font-medium">
-                Kilometraje Programado
+              <Label htmlFor="notes" className="text-sm font-medium">
+                Notas
               </Label>
-              <Input
-                id="scheduled_mileage"
-                type="number"
-                placeholder="55000"
-                value={formData.scheduled_mileage}
-                onChange={(e) => setFormData({ ...formData, scheduled_mileage: e.target.value })}
-                className="h-10"
+              <Textarea
+                id="notes"
+                placeholder="Información adicional..."
+                value={formData.notes}
+                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                rows={3}
+                className="resize-none text-sm"
               />
+              <p className="text-muted-foreground text-xs leading-5">
+                Incluye solo información necesaria del vehículo. No introduzcas datos sensibles ni datos personales de
+                terceras personas.
+              </p>
             </div>
-          </div>
 
-          <div className="border-border bg-muted/30 text-muted-foreground rounded-md p-2 text-xs">
-            Indica al menos una fecha o un kilometraje para programar el servicio.
-          </div>
+            {error && (
+              <div
+                role="alert"
+                className="text-destructive-foreground bg-destructive/10 border-destructive/20 rounded-md border p-2.5 text-xs sm:text-sm"
+              >
+                {error}
+              </div>
+            )}
 
-          <div className="space-y-1.5">
-            <Label htmlFor="notes" className="text-sm font-medium">
-              Notas
-            </Label>
-            <Textarea
-              id="notes"
-              placeholder="Información adicional..."
-              value={formData.notes}
-              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-              rows={3}
-              className="resize-none text-sm"
-            />
-            <p className="text-muted-foreground text-xs leading-5">
-              Incluye solo información necesaria del vehículo. No introduzcas datos sensibles ni datos personales de
-              terceras personas.
-            </p>
-          </div>
-
-          {error && (
-            <div className="text-destructive-foreground bg-destructive/10 border-destructive/20 rounded-md border p-2.5 text-xs sm:text-sm">
-              {error}
+            <div className="border-border flex flex-col-reverse gap-2 border-t pt-3 sm:flex-row sm:gap-3">
+              <Button type="button" variant="outline" onClick={() => setOpen(false)} className="h-10 flex-1 sm:h-11">
+                Cancelar
+              </Button>
+              <Button
+                type="submit"
+                disabled={isLoading || !formData.type}
+                className="bg-primary hover:bg-primary/90 h-10 flex-1 font-medium sm:h-11"
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Programando...
+                  </>
+                ) : (
+                  "Programar Servicio"
+                )}
+              </Button>
             </div>
-          )}
-
-          <div className="border-border flex flex-col-reverse gap-2 border-t pt-3 sm:flex-row sm:gap-3">
-            <Button type="button" variant="outline" onClick={() => setOpen(false)} className="h-10 flex-1 sm:h-11">
-              Cancelar
-            </Button>
-            <Button
-              type="submit"
-              disabled={isLoading || !formData.type}
-              className="bg-primary hover:bg-primary/90 h-10 flex-1 font-medium sm:h-11"
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Programando...
-                </>
-              ) : (
-                "Programar Servicio"
-              )}
-            </Button>
-          </div>
+          </fieldset>
         </form>
       </DialogContent>
     </Dialog>

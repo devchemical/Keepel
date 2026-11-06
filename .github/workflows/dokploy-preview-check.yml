@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   check-preview-ready:
-    name: Validate Preview URL
+    name: Dokploy Preview Ready
     runs-on: ubuntu-latest
     timeout-minutes: 12
     steps:

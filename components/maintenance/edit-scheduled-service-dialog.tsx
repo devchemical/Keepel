@@ -1,10 +1,9 @@
 "use client"
 
-/* eslint-disable typescript/no-non-null-assertion -- Numeric guards validate parsed scheduled mileage before use. */
-
 import type React from "react"
 
 import { useState, useEffect } from "react"
+import { OperationRecovery, usePendingDataOperation } from "@/components/data/operation-recovery"
 import { useData } from "@/contexts"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -15,13 +14,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Calendar, Loader2 } from "lucide-react"
 import { toast } from "sonner"
 
+import { MAINTENANCE_TYPES as maintenanceTypes } from "@/lib/data/maintenance-types"
+import { scheduledServiceSchema } from "@/lib/data/scheduled-command"
+
 interface EditableScheduledService {
   id: string
   type: string
-  description?: string
-  scheduled_date?: string
-  scheduled_mileage?: number
-  notes?: string
+  description?: string | null
+  scheduled_date?: string | null
+  scheduled_mileage?: number | null
+  notes?: string | null
 }
 
 interface EditScheduledServiceDialogProps {
@@ -29,22 +31,6 @@ interface EditScheduledServiceDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
 }
-
-const maintenanceTypes = [
-  { value: "oil_change", label: "Cambio de Aceite" },
-  { value: "tire_rotation", label: "Rotación de Llantas" },
-  { value: "brake_service", label: "Servicio de Frenos" },
-  { value: "transmission", label: "Transmisión" },
-  { value: "engine_tune", label: "Afinación del Motor" },
-  { value: "battery", label: "Batería" },
-  { value: "air_filter", label: "Filtro de Aire" },
-  { value: "coolant", label: "Refrigerante" },
-  { value: "spark_plugs", label: "Bujías" },
-  { value: "belts_hoses", label: "Correas y Mangueras" },
-  { value: "suspension", label: "Suspensión" },
-  { value: "exhaust", label: "Sistema de Escape" },
-  { value: "other", label: "Otro" },
-]
 
 export function EditScheduledServiceDialog({ service, open, onOpenChange }: EditScheduledServiceDialogProps) {
   const [isLoading, setIsLoading] = useState(false)
@@ -70,6 +56,10 @@ export function EditScheduledServiceDialog({ service, open, onOpenChange }: Edit
     })
   }, [service])
 
+  const pending = usePendingDataOperation(() => {
+    setError(null)
+    onOpenChange(false)
+  })
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
@@ -80,30 +70,10 @@ export function EditScheduledServiceDialog({ service, open, onOpenChange }: Edit
         throw new Error("ID del servicio no válido")
       }
 
-      if (!formData.type) {
-        throw new Error("Debe seleccionar un tipo de servicio")
-      }
-
-      if (!formData.scheduled_date && !formData.scheduled_mileage) {
-        throw new Error("Debe indicar al menos una fecha o un kilometraje programado")
-      }
-
-      const scheduledMileage = formData.scheduled_mileage ? parseInt(formData.scheduled_mileage, 10) : null
-
-      if (formData.scheduled_mileage && (isNaN(scheduledMileage!) || scheduledMileage! < 0)) {
-        throw new Error("El kilometraje programado debe ser un número válido mayor o igual a 0")
-      }
-
-      const updates = {
-        type: formData.type,
-        description: formData.description?.trim() || undefined,
-        scheduled_date: formData.scheduled_date || undefined,
-        scheduled_mileage: scheduledMileage ?? undefined,
-        notes: formData.notes?.trim() || undefined,
-        updated_at: new Date().toISOString(),
-      }
-
-      await updateScheduledServiceOptimistic(service.id, updates)
+      const parsed = scheduledServiceSchema.safeParse(formData)
+      if (!parsed.success)
+        throw new Error("Indica un tipo válido y al menos una fecha o un kilometraje válido mayor o igual a 0.")
+      await updateScheduledServiceOptimistic(service.id, parsed.data)
       toast.success("Servicio actualizado correctamente")
       onOpenChange(false)
     } catch (err: unknown) {
@@ -127,108 +97,119 @@ export function EditScheduledServiceDialog({ service, open, onOpenChange }: Edit
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="type" className="text-sm font-medium">
-              Tipo de Servicio *
-            </Label>
-            <Select value={formData.type} onValueChange={(value) => setFormData({ ...formData, type: value })}>
-              <SelectTrigger className="h-10">
-                <SelectValue placeholder="Seleccionar tipo" />
-              </SelectTrigger>
-              <SelectContent>
-                {maintenanceTypes.map((type) => (
-                  <SelectItem key={type.value} value={type.value}>
-                    {type.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="description" className="text-sm font-medium">
-              Descripción
-            </Label>
-            <Input
-              id="description"
-              placeholder="Detalles adicionales del servicio..."
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              className="h-10"
-            />
-          </div>
-
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <OperationRecovery />
+          <fieldset disabled={pending || isLoading} className="space-y-4">
             <div className="space-y-1.5">
-              <Label htmlFor="scheduled_date" className="text-sm font-medium">
-                Fecha Programada
+              <Label htmlFor="type" className="text-sm font-medium">
+                Tipo de Servicio *
+              </Label>
+              <Select value={formData.type} onValueChange={(value) => setFormData({ ...formData, type: value })}>
+                <SelectTrigger disabled={pending || isLoading} id="type" className="h-10">
+                  <SelectValue placeholder="Seleccionar tipo" />
+                </SelectTrigger>
+                <SelectContent>
+                  {maintenanceTypes.map((type) => (
+                    <SelectItem key={type.value} value={type.value}>
+                      {type.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="description" className="text-sm font-medium">
+                Descripción
               </Label>
               <Input
-                id="scheduled_date"
-                type="date"
-                value={formData.scheduled_date}
-                onChange={(e) => setFormData({ ...formData, scheduled_date: e.target.value })}
+                id="description"
+                placeholder="Detalles adicionales del servicio..."
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 className="h-10"
               />
             </div>
+
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="scheduled_date" className="text-sm font-medium">
+                  Fecha Programada
+                </Label>
+                <Input
+                  id="scheduled_date"
+                  type="date"
+                  value={formData.scheduled_date}
+                  onChange={(e) => setFormData({ ...formData, scheduled_date: e.target.value })}
+                  className="h-10"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="scheduled_mileage" className="text-sm font-medium">
+                  Kilometraje Programado
+                </Label>
+                <Input
+                  id="scheduled_mileage"
+                  type="number"
+                  placeholder="55000"
+                  value={formData.scheduled_mileage}
+                  onChange={(e) => setFormData({ ...formData, scheduled_mileage: e.target.value })}
+                  className="h-10"
+                />
+              </div>
+            </div>
+
+            <div className="border-border bg-muted/30 text-muted-foreground rounded-md p-2 text-xs">
+              Indica al menos una fecha o un kilometraje para programar el servicio.
+            </div>
+
             <div className="space-y-1.5">
-              <Label htmlFor="scheduled_mileage" className="text-sm font-medium">
-                Kilometraje Programado
+              <Label htmlFor="notes" className="text-sm font-medium">
+                Notas
               </Label>
-              <Input
-                id="scheduled_mileage"
-                type="number"
-                placeholder="55000"
-                value={formData.scheduled_mileage}
-                onChange={(e) => setFormData({ ...formData, scheduled_mileage: e.target.value })}
-                className="h-10"
+              <Textarea
+                id="notes"
+                placeholder="Información adicional..."
+                value={formData.notes}
+                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                rows={3}
+                className="resize-none text-sm"
               />
             </div>
-          </div>
 
-          <div className="border-border bg-muted/30 text-muted-foreground rounded-md p-2 text-xs">
-            Indica al menos una fecha o un kilometraje para programar el servicio.
-          </div>
+            {error && (
+              <div
+                role="alert"
+                className="text-destructive-foreground bg-destructive/10 border-destructive/20 rounded-md border p-2.5 text-xs sm:text-sm"
+              >
+                {error}
+              </div>
+            )}
 
-          <div className="space-y-1.5">
-            <Label htmlFor="notes" className="text-sm font-medium">
-              Notas
-            </Label>
-            <Textarea
-              id="notes"
-              placeholder="Información adicional..."
-              value={formData.notes}
-              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-              rows={3}
-              className="resize-none text-sm"
-            />
-          </div>
-
-          {error && (
-            <div className="text-destructive-foreground bg-destructive/10 border-destructive/20 rounded-md border p-2.5 text-xs sm:text-sm">
-              {error}
+            <div className="border-border flex flex-col-reverse gap-2 border-t pt-3 sm:flex-row sm:gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+                className="h-10 flex-1 sm:h-11"
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="submit"
+                disabled={isLoading || !formData.type}
+                className="bg-primary hover:bg-primary/90 h-10 flex-1 font-medium sm:h-11"
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Actualizando...
+                  </>
+                ) : (
+                  "Guardar Cambios"
+                )}
+              </Button>
             </div>
-          )}
-
-          <div className="border-border flex flex-col-reverse gap-2 border-t pt-3 sm:flex-row sm:gap-3">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="h-10 flex-1 sm:h-11">
-              Cancelar
-            </Button>
-            <Button
-              type="submit"
-              disabled={isLoading || !formData.type}
-              className="bg-primary hover:bg-primary/90 h-10 flex-1 font-medium sm:h-11"
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Actualizando...
-                </>
-              ) : (
-                "Guardar Cambios"
-              )}
-            </Button>
-          </div>
+          </fieldset>
         </form>
       </DialogContent>
     </Dialog>

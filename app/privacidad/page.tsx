@@ -297,6 +297,11 @@ export default function PrivacyPage() {
               Las cookies necesarias funcionan sin consentimiento porque permiten prestar y proteger el servicio. La
               analítica permanece desactivada hasta que la aceptas expresamente.
             </p>
+            <p className={paragraphClassName}>
+              Para comprobar operaciones de datos pendientes después de recargar, esta pestaña conserva temporalmente su
+              referencia y los valores enviados en sessionStorage, separados por cuenta. Se eliminan al confirmar el
+              resultado o el rechazo de la operación, o al cerrar la pestaña.
+            </p>
             <div className="overflow-x-auto">
               <table className="border-border w-full min-w-[760px] border-collapse overflow-hidden rounded-lg border text-left text-sm">
                 <thead className="bg-muted/60">

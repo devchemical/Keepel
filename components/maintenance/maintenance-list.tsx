@@ -1,5 +1,7 @@
 "use client"
 
+import { MAINTENANCE_TYPES } from "@/lib/data/maintenance-types"
+
 /* eslint-disable unicorn/consistent-function-scoping -- Formatters stay inside the component to keep display logic local. */
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -9,17 +11,18 @@ import { Calendar, DollarSign, Gauge, MoreVertical, Edit, Trash2 } from "lucide-
 import { EditMaintenanceDialog } from "./edit-maintenance-dialog"
 import { DeleteMaintenanceDialog } from "./delete-maintenance-dialog"
 import { useState } from "react"
+import { formatDate, formatCurrency, formatMileage } from "@/lib/formatters"
 import { MaintenanceSkeleton } from "@/components/skeletons/maintenance-skeleton"
 
 interface MaintenanceRecord {
   id: string
   type: string
-  description?: string
-  cost?: number
-  mileage?: number
+  description?: string | null
+  cost?: number | null
+  mileage?: number | null
   service_date: string
-  notes?: string
-  created_at: string
+  notes?: string | null
+  created_at: string | null
 }
 
 interface MaintenanceListProps {
@@ -28,43 +31,12 @@ interface MaintenanceListProps {
   isLoading?: boolean
 }
 
-const maintenanceTypes = {
-  oil_change: "Cambio de Aceite",
-  tire_rotation: "Rotación de Llantas",
-  brake_service: "Servicio de Frenos",
-  transmission: "Transmisión",
-  engine_tune: "Afinación del Motor",
-  battery: "Batería",
-  air_filter: "Filtro de Aire",
-  coolant: "Refrigerante",
-  spark_plugs: "Bujías",
-  belts_hoses: "Correas y Mangueras",
-  suspension: "Suspensión",
-  exhaust: "Sistema de Escape",
-  other: "Otro",
-}
-
 export function MaintenanceList({ records, vehicleId, isLoading }: MaintenanceListProps) {
   const [editingRecord, setEditingRecord] = useState<MaintenanceRecord | null>(null)
   const [deletingRecord, setDeletingRecord] = useState<MaintenanceRecord | null>(null)
 
   if (isLoading) {
     return <MaintenanceSkeleton />
-  }
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("es-ES", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    })
-  }
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("es-ES", {
-      style: "currency",
-      currency: "EUR",
-    }).format(amount)
   }
 
   return (
@@ -79,14 +51,19 @@ export function MaintenanceList({ records, vehicleId, isLoading }: MaintenanceLi
                 </div>
                 <div>
                   <CardTitle className="text-foreground text-lg">
-                    {maintenanceTypes[record.type as keyof typeof maintenanceTypes] || record.type}
+                    {MAINTENANCE_TYPES.find((type) => type.value === record.type)?.label ?? record.type}
                   </CardTitle>
                   <p className="text-muted-foreground text-sm">{formatDate(record.service_date)}</p>
                 </div>
               </div>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                  <Button
+                    aria-label={`Acciones del mantenimiento ${MAINTENANCE_TYPES.find((type) => type.value === record.type)?.label ?? record.type}`}
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0"
+                  >
                     <MoreVertical className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
@@ -110,18 +87,14 @@ export function MaintenanceList({ records, vehicleId, isLoading }: MaintenanceLi
             {record.description && <p className="text-foreground text-sm">{record.description}</p>}
 
             <div className="flex flex-wrap gap-4 text-sm">
-              {record.cost && (
-                <div className="flex items-center gap-2">
-                  <DollarSign className="text-muted-foreground h-4 w-4" />
-                  <span className="text-foreground font-medium">{formatCurrency(record.cost)}</span>
-                </div>
-              )}
-              {record.mileage && (
-                <div className="flex items-center gap-2">
-                  <Gauge className="text-muted-foreground h-4 w-4" />
-                  <span className="text-muted-foreground">{record.mileage.toLocaleString("es-ES")} km</span>
-                </div>
-              )}
+              <div className="flex items-center gap-2">
+                <DollarSign className="text-muted-foreground h-4 w-4" />
+                <span className="text-foreground font-medium">{formatCurrency(record.cost ?? null)}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Gauge className="text-muted-foreground h-4 w-4" />
+                <span className="text-muted-foreground">{formatMileage(record.mileage ?? null)}</span>
+              </div>
             </div>
 
             {record.notes && (

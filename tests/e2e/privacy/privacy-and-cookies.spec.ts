@@ -103,11 +103,30 @@ test.describe("privacy and cookies", () => {
 
   test("allows changing privacy preferences from the global control", async ({ page }) => {
     await page.goto("/")
+    let releaseSave!: () => void
+    let capturedSave!: () => void
+    const saveCaptured = new Promise<void>((resolve) => {
+      capturedSave = resolve
+    })
+    const saveReleased = new Promise<void>((resolve) => {
+      releaseSave = resolve
+    })
+    await page.route("**/*", async (route) => {
+      if (!route.request().headers()["next-action"]) return route.continue()
+      const response = await route.fetch()
+      capturedSave()
+      await saveReleased
+      await route.fulfill({ response })
+    })
     await page.getByRole("button", { name: "Rechazar analítica" }).click()
+    await saveCaptured
 
     await page.getByRole("button", { name: "Configurar cookies" }).click()
     await expect(page.getByRole("heading", { name: "Preferencias de privacidad" })).toBeVisible()
     expect(await page.evaluate(() => document.activeElement?.closest('[role="dialog"]') !== null)).toBe(true)
+    releaseSave()
+    await expect(page.getByRole("button", { name: "Permitir analítica" })).toBeEnabled()
+    await page.unroute("**/*")
     await page.getByRole("button", { name: "Permitir analítica" }).click()
     await expect(page.getByRole("heading", { name: "Preferencias de privacidad" })).toBeHidden()
   })

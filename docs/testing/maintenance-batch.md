@@ -1,0 +1,88 @@
+# Transactional maintenance batches (issue #93)
+
+Apply canonical `scripts/007_transactional_maintenance.sql` after scripts 001–006. It is
+transactional and replayable. Invalid existing rows stop migration for explicit repair;
+there is no automatic data deletion or silent correction. Rehearse against the disposable
+local stack, never production. Script 007 replaces redundant vehicle foreign keys with
+owner-aware composite keys and preserves the existing PostgREST vehicle relation names.
+
+## Command and operation identity
+
+`create_maintenance_batch` is an authenticated Data API RPC with these arguments:
+
+- `p_operation_id`: caller-generated UUID, retained unchanged until the outcome is confirmed.
+- `p_vehicle_id`: owned vehicle UUID. The caller never supplies a user ID.
+- `p_today`: strict `YYYY-MM-DD` from the browser's local calendar day, not server-local today.
+- `p_batch`: `{ service_date, mileage, notes, services: [{ type, description, cost }] }`.
+  This is normalized output from the shared #92 `maintenanceBatchSchema`; only completely
+  empty form rows are omitted. Nonempty partial rows are rejected with their original index.
+  The RPC accepts 1–100 normalized services, numeric numbers (no numeric strings), known types,
+  nonnegative integer mileage in PostgreSQL's integer range, and nullable optional fields.
+  Costs retain the original range (0–99999999.99) and exact cent precision. Numeric storage
+  validates before rounding, so even a small negative cost is rejected.
+- `p_completion`: optional/null `{ scheduled_service_id, service_index }`; the index is zero-based
+  in the normalized batch. The selected pending forecast must belong to the same vehicle and
+  user; completion requires a nonfuture performed day. A type match never completes a forecast
+  automatically. The UI explicitly selects the forecast and intervention row.
+
+The result is `{ operation_id, records, vehicle, scheduled_service }`, with complete persisted
+rows (or null for an unrequested completion). Inserts, odometer elevation, optional forecast
+completion, and the operation receipt commit in one transaction. The vehicle row lock and SQL
+`greatest` prevent concurrent/historical batches from reducing mileage. Future records and
+missing mileage do not elevate it. Editing or deleting records does not change the odometer.
+Deleting a completed intervention clears its link and restores that forecast to pending;
+deleting a vehicle still cascades both history and forecasts.
+
+A successful operation retains an immutable receipt in an unexposed private schema. The exposed
+RPCs are invoker wrappers; private definer implementations authenticate and check ownership,
+use an empty search path, and have restricted execute grants. Clients have no table privileges
+or RLS policies granting access to private receipts. Each `(user, operation_id)` serializes:
+identical retries return the original receipt; a different request with the same identity fails.
+Receipts remain historical commit evidence even if the records/vehicle are later edited/deleted;
+replay never recreates deleted data. Refresh canonical data after accepting a receipt.
+
+`get_maintenance_batch_operation(p_operation_id)` returns that user's receipt or null. Null or
+an unavailable lookup does **not** prove an in-flight transaction rolled back. DataContext owns
+submission, reconciliation, receipt validation and refreshes of vehicles/history/forecasts.
+The form freezes an unresolved command, offers an explicit lookup or replay with the identical
+identity/payload/day, and announces success only after a matching receipt. A 15-second client
+abort is a transport limit, not database rollback evidence. No automatic resend, cache, extra
+data owner, server auth endpoint or CRUD analytics is introduced.
+
+Unresolved batches belong to DataContext's existing per-tab, per-account session journal.
+The immutable command is saved **before** submission, including its operation UUID, payload,
+original local day and normalized completion index. Reload, navigation and auth invalidation
+restore it as unknown only for the same account; another account never receives its recovery UI.
+Recovery is available on the dashboard, vehicle list and history, with original-command details,
+explicit receipt lookup and explicit idempotent replay. Neither restoration nor a missing receipt
+resends a batch. A pending original blocks replacement by a fresh operation. Native SQL rejection
+releases the command and editor. A new batch is not sent if session storage fails; the UI reports
+that failure. Already unresolved commands remain in memory if a later journal write fails.
+
+This is a session journal, not durable cross-tab/browser-restart storage or an authentication
+source. Closing the tab, clearing site data, or unavailable/corrupt session storage can remove
+recovery evidence. It contains command data only, never sessions, tokens or credentials.
+
+## Contracts and local verification
+
+`lib/supabase/database.types.ts` is generated by the installed Supabase CLI **2.75.0** from the
+actual local public schema after script 007. Browser Supabase and DataContext projections use
+these contracts; command/receipt boundary validation is in `lib/data/maintenance-command.ts`.
+
+```bash
+bun run test:data-api tests/data-api/maintenance-batch.test.ts
+# With this checkout owning the local stack and the test above completed:
+supabase gen types --local --schema public --workdir "$PWD" > lib/supabase/database.types.ts
+bunx oxfmt lib/supabase/database.types.ts
+bun run test:data-api
+bun run test:e2e tests/e2e/maintenance-batch.spec.ts
+```
+
+Data API tests use real authenticated ordinary clients and observable reads for rollback,
+zero/nulls, malformed inputs, operation reconciliation/replay, concurrent writes, calendar-day
+mileage rules, explicit completion, nested reads, and cascades. Controlled E2E tests verify
+partial rows and unknown-result UI behavior; the controlled service does not replace real SQL
+integrity tests. Standard unit tests continue covering the shared validators/calendar zones.
+
+References: [Supabase database functions](https://supabase.com/docs/guides/database/functions),
+[generated API types](https://supabase.com/docs/guides/api/rest/generating-types).

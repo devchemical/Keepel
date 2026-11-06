@@ -24,7 +24,7 @@ export function ConsentProvider({ children, initialConsent }: ConsentProviderPro
   const [isPending, setIsPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const saveChoice = useCallback(async (choice: PrivacyConsentChoice) => {
+  const saveChoice = useCallback(async (choice: PrivacyConsentChoice, closePreferences = false) => {
     setIsPending(true)
     setError(null)
 
@@ -37,7 +37,7 @@ export function ConsentProvider({ children, initialConsent }: ConsentProviderPro
       }
 
       setConsent(result.consent)
-      setIsPreferencesOpen(false)
+      if (closePreferences) setIsPreferencesOpen(false)
     } catch {
       setError("No hemos podido guardar tu elección. Inténtalo de nuevo.")
     } finally {
@@ -68,10 +68,10 @@ export function ConsentProvider({ children, initialConsent }: ConsentProviderPro
         isOpen={isPreferencesOpen}
         isPending={isPending}
         preference={consent.preference}
-        onAccept={() => void saveChoice("accepted")}
+        onAccept={() => void saveChoice("accepted", true)}
         onClose={() => setIsPreferencesOpen(false)}
         onOpenChange={setIsPreferencesOpen}
-        onReject={() => void saveChoice("rejected")}
+        onReject={() => void saveChoice("rejected", true)}
       />
     </PrivacyConsentContext.Provider>
   )

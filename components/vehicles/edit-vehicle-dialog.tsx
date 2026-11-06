@@ -1,12 +1,13 @@
 "use client"
 
-/* eslint-disable no-console, eslint/no-shadow -- Refresh failures are diagnostic only and form error state uses conventional naming. */
+/* eslint-disable eslint/no-shadow -- The caught error is rendered by the form error state. */
 
+import { vehicleValuesSchema } from "@/lib/data/data-command"
 import type React from "react"
 
 import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
-import { useSupabase, useData } from "@/contexts"
+import { OperationRecovery, usePendingDataOperation } from "@/components/data/operation-recovery"
+import { useData } from "@/contexts"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
@@ -14,16 +15,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Car, Loader2 } from "lucide-react"
 
-interface Vehicle {
-  id: string
-  make: string
-  model: string
-  year: number
-  license_plate?: string
-  vin?: string
-  color?: string
-  mileage: number
-}
+import type { Vehicle } from "@/contexts/DataContext"
 
 interface EditVehicleDialogProps {
   vehicle: Vehicle
@@ -53,9 +45,7 @@ export function EditVehicleDialog({ vehicle, open, onOpenChange }: EditVehicleDi
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const supabase = useSupabase()
-  const { refreshVehicles } = useData()
-  const router = useRouter()
+  const { updateVehicleOptimistic } = useData()
 
   const [formData, setFormData] = useState({
     make: vehicle.make,
@@ -64,7 +54,7 @@ export function EditVehicleDialog({ vehicle, open, onOpenChange }: EditVehicleDi
     license_plate: vehicle.license_plate || "",
     vin: vehicle.vin || "",
     color: vehicle.color || "",
-    mileage: vehicle.mileage.toString(),
+    mileage: vehicle.mileage?.toString() ?? "",
   })
 
   useEffect(() => {
@@ -75,39 +65,30 @@ export function EditVehicleDialog({ vehicle, open, onOpenChange }: EditVehicleDi
       license_plate: vehicle.license_plate || "",
       vin: vehicle.vin || "",
       color: vehicle.color || "",
-      mileage: vehicle.mileage.toString(),
+      mileage: vehicle.mileage?.toString() ?? "",
     })
   }, [vehicle])
 
+  const pending = usePendingDataOperation(() => {
+    setError(null)
+    onOpenChange(false)
+  })
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
     setError(null)
 
     try {
-      const { error } = await supabase
-        .from("vehicles")
-        .update({
-          make: formData.make,
-          model: formData.model,
-          year: Number.parseInt(formData.year),
-          license_plate: formData.license_plate || null,
-          vin: formData.vin || null,
-          color: formData.color || null,
-          mileage: Number.parseInt(formData.mileage) || 0,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", vehicle.id)
-
-      if (error) throw error
+      const parsed = vehicleValuesSchema.safeParse(formData)
+      if (!parsed.success)
+        throw new Error("Indica marca, modelo, un año válido y kilometraje entero mayor o igual a 0.")
+      await updateVehicleOptimistic(vehicle.id, parsed.data)
 
       onOpenChange(false)
     } catch (error: unknown) {
       setError(error instanceof Error ? error.message : "Error al actualizar vehículo")
     } finally {
       setIsLoading(false)
-      refreshVehicles().catch((err) => console.error("Error al refrescar:", err))
-      router.refresh()
     }
   }
 
@@ -123,108 +104,114 @@ export function EditVehicleDialog({ vehicle, open, onOpenChange }: EditVehicleDi
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <OperationRecovery />
+          <fieldset disabled={pending || isLoading} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="make">Marca *</Label>
+                <Input
+                  id="make"
+                  placeholder="Toyota, Honda, Ford..."
+                  value={formData.make}
+                  onChange={(e) => setFormData({ ...formData, make: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="model">Modelo *</Label>
+                <Input
+                  id="model"
+                  placeholder="Corolla, Civic, Focus..."
+                  value={formData.model}
+                  onChange={(e) => setFormData({ ...formData, model: e.target.value })}
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="year">Año *</Label>
+                <Select value={formData.year} onValueChange={(value) => setFormData({ ...formData, year: value })}>
+                  <SelectTrigger id="year" disabled={pending || isLoading}>
+                    <SelectValue placeholder="Seleccionar año" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {years.map((year) => (
+                      <SelectItem key={year} value={year.toString()}>
+                        {year}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="color">Color</Label>
+                <Select value={formData.color} onValueChange={(value) => setFormData({ ...formData, color: value })}>
+                  <SelectTrigger id="color" disabled={pending || isLoading}>
+                    <SelectValue placeholder="Seleccionar color" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {colors.map((color) => (
+                      <SelectItem key={color} value={color}>
+                        {color}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
             <div className="space-y-2">
-              <Label htmlFor="make">Marca *</Label>
+              <Label htmlFor="license_plate">Placa</Label>
               <Input
-                id="make"
-                placeholder="Toyota, Honda, Ford..."
-                value={formData.make}
-                onChange={(e) => setFormData({ ...formData, make: e.target.value })}
-                required
+                id="license_plate"
+                placeholder="ABC-123"
+                value={formData.license_plate}
+                onChange={(e) => setFormData({ ...formData, license_plate: e.target.value })}
               />
             </div>
+
             <div className="space-y-2">
-              <Label htmlFor="model">Modelo *</Label>
+              <Label htmlFor="mileage">Kilometraje Actual</Label>
               <Input
-                id="model"
-                placeholder="Corolla, Civic, Focus..."
-                value={formData.model}
-                onChange={(e) => setFormData({ ...formData, model: e.target.value })}
-                required
+                id="mileage"
+                type="number"
+                placeholder="50000"
+                value={formData.mileage}
+                onChange={(e) => setFormData({ ...formData, mileage: e.target.value })}
               />
             </div>
-          </div>
 
-          <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="year">Año *</Label>
-              <Select value={formData.year} onValueChange={(value) => setFormData({ ...formData, year: value })}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Seleccionar año" />
-                </SelectTrigger>
-                <SelectContent>
-                  {years.map((year) => (
-                    <SelectItem key={year} value={year.toString()}>
-                      {year}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label htmlFor="vin">VIN (Opcional)</Label>
+              <Input
+                id="vin"
+                placeholder="1HGBH41JXMN109186"
+                value={formData.vin}
+                onChange={(e) => setFormData({ ...formData, vin: e.target.value })}
+              />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="color">Color</Label>
-              <Select value={formData.color} onValueChange={(value) => setFormData({ ...formData, color: value })}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Seleccionar color" />
-                </SelectTrigger>
-                <SelectContent>
-                  {colors.map((color) => (
-                    <SelectItem key={color} value={color}>
-                      {color}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+
+            {error && (
+              <div
+                role="alert"
+                className="text-destructive-foreground bg-destructive/10 border-destructive/20 rounded-md border p-3 text-sm"
+              >
+                {error}
+              </div>
+            )}
+
+            <div className="flex gap-2 pt-4">
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="flex-1">
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={isLoading} className="bg-primary hover:bg-primary/90 flex-1">
+                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Actualizar Vehículo
+              </Button>
             </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="license_plate">Placa</Label>
-            <Input
-              id="license_plate"
-              placeholder="ABC-123"
-              value={formData.license_plate}
-              onChange={(e) => setFormData({ ...formData, license_plate: e.target.value })}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="mileage">Kilometraje Actual</Label>
-            <Input
-              id="mileage"
-              type="number"
-              placeholder="50000"
-              value={formData.mileage}
-              onChange={(e) => setFormData({ ...formData, mileage: e.target.value })}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="vin">VIN (Opcional)</Label>
-            <Input
-              id="vin"
-              placeholder="1HGBH41JXMN109186"
-              value={formData.vin}
-              onChange={(e) => setFormData({ ...formData, vin: e.target.value })}
-            />
-          </div>
-
-          {error && (
-            <div className="text-destructive-foreground bg-destructive/10 border-destructive/20 rounded-md border p-3 text-sm">
-              {error}
-            </div>
-          )}
-
-          <div className="flex gap-2 pt-4">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="flex-1">
-              Cancelar
-            </Button>
-            <Button type="submit" disabled={isLoading} className="bg-primary hover:bg-primary/90 flex-1">
-              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Actualizar Vehículo
-            </Button>
-          </div>
+          </fieldset>
         </form>
       </DialogContent>
     </Dialog>

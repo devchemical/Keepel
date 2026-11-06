@@ -2,10 +2,10 @@
 
 /* eslint-disable react/no-array-index-key, unicorn/consistent-function-scoping -- Static skeleton placeholders have no ids; formatter stays near usage for readability. */
 
+import { useData } from "@/contexts"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Car, Wrench, DollarSign, Calendar } from "lucide-react"
-import type { ScheduledService } from "@/contexts"
 
 interface Vehicle {
   id: string
@@ -16,12 +16,12 @@ interface Vehicle {
 
 interface DashboardStatsProps {
   vehicles: Vehicle[]
-  maintenanceRecords: { cost?: number }[]
-  scheduledServices: ScheduledService[]
+  reminderCount: number
   isLoading?: boolean
 }
 
-export function DashboardStats({ vehicles, maintenanceRecords, scheduledServices, isLoading }: DashboardStatsProps) {
+export function DashboardStats({ vehicles, reminderCount, isLoading }: DashboardStatsProps) {
+  const { totals } = useData()
   if (isLoading) {
     return (
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
@@ -41,19 +41,10 @@ export function DashboardStats({ vehicles, maintenanceRecords, scheduledServices
     )
   }
   const totalVehicles = vehicles.length
-  const totalMaintenanceRecords = maintenanceRecords.length
+  const totalMaintenanceRecords = totals?.record_count
+  const totalCost = totals?.total_cost
 
-  const totalCost = maintenanceRecords.reduce((sum, record) => {
-    return sum + (record.cost || 0)
-  }, 0)
-
-  const upcomingServices = scheduledServices.filter((service) => {
-    if (!service.scheduled_date) return false
-    const scheduledDate = new Date(service.scheduled_date)
-    const today = new Date()
-    const thirtyDaysFromNow = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000)
-    return scheduledDate >= today && scheduledDate <= thirtyDaysFromNow
-  }).length
+  const upcomingServices = reminderCount
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("es-ES", {
@@ -72,14 +63,14 @@ export function DashboardStats({ vehicles, maintenanceRecords, scheduledServices
     },
     {
       title: "Mantenimientos",
-      value: totalMaintenanceRecords.toString(),
+      value: totalMaintenanceRecords?.toString() ?? "—",
       icon: Wrench,
       description: "Servicios realizados",
       color: "text-blue-600",
     },
     {
       title: "Gasto Total",
-      value: formatCurrency(totalCost),
+      value: totalCost === undefined ? "—" : formatCurrency(totalCost),
       icon: DollarSign,
       description: "En mantenimientos",
       color: "text-green-700",
@@ -88,7 +79,7 @@ export function DashboardStats({ vehicles, maintenanceRecords, scheduledServices
       title: "Próximos Servicios",
       value: upcomingServices.toString(),
       icon: Calendar,
-      description: "En los próximos 30 días",
+      description: "Vencidos y próximos 30 días",
       color: upcomingServices > 0 ? "text-amber-600" : "text-muted-foreground",
     },
   ]

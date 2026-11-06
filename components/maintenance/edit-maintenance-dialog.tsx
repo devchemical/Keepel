@@ -1,12 +1,15 @@
 "use client"
 
-/* eslint-disable no-console, eslint/no-shadow, typescript/no-explicit-any, typescript/no-non-null-assertion -- Refresh errors are diagnostic only; Supabase timeout race typing and numeric guards are intentionally local. */
+import { MAINTENANCE_TYPES as maintenanceTypes } from "@/lib/data/maintenance-types"
 
+/* eslint-disable eslint/no-shadow -- The caught error is rendered by the form error state. */
+
+import { maintenanceValuesSchema } from "@/lib/data/data-command"
 import type React from "react"
 
 import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
-import { useSupabase, useData } from "@/contexts"
+import { OperationRecovery, usePendingDataOperation } from "@/components/data/operation-recovery"
+import { useData } from "@/contexts"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
@@ -18,11 +21,11 @@ import { Wrench, Loader2 } from "lucide-react"
 interface MaintenanceRecord {
   id: string
   type: string
-  description?: string
-  cost?: number
-  mileage?: number
+  description?: string | null
+  cost?: number | null
+  mileage?: number | null
   service_date: string
-  notes?: string
+  notes?: string | null
 }
 
 interface EditMaintenanceDialogProps {
@@ -32,29 +35,11 @@ interface EditMaintenanceDialogProps {
   onOpenChange: (open: boolean) => void
 }
 
-const maintenanceTypes = [
-  { value: "oil_change", label: "Cambio de Aceite" },
-  { value: "tire_rotation", label: "Rotación de Llantas" },
-  { value: "brake_service", label: "Servicio de Frenos" },
-  { value: "transmission", label: "Transmisión" },
-  { value: "engine_tune", label: "Afinación del Motor" },
-  { value: "battery", label: "Batería" },
-  { value: "air_filter", label: "Filtro de Aire" },
-  { value: "coolant", label: "Refrigerante" },
-  { value: "spark_plugs", label: "Bujías" },
-  { value: "belts_hoses", label: "Correas y Mangueras" },
-  { value: "suspension", label: "Suspensión" },
-  { value: "exhaust", label: "Sistema de Escape" },
-  { value: "other", label: "Otro" },
-]
-
 export function EditMaintenanceDialog({ record, vehicleId, open, onOpenChange }: EditMaintenanceDialogProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const supabase = useSupabase()
-  const { refreshMaintenance } = useData()
-  const router = useRouter()
+  const { updateMaintenanceOptimistic } = useData()
 
   const [formData, setFormData] = useState({
     type: record.type,
@@ -76,62 +61,23 @@ export function EditMaintenanceDialog({ record, vehicleId, open, onOpenChange }:
     })
   }, [record])
 
+  const pending = usePendingDataOperation(() => {
+    setError(null)
+    onOpenChange(false)
+  })
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
     setError(null)
 
     try {
-      // Validaciones básicas
-      if (!record?.id) {
-        throw new Error("ID del registro no válido")
-      }
-
-      if (!vehicleId) {
-        throw new Error("ID del vehículo no válido")
-      }
-
-      if (!formData.type) {
-        throw new Error("Debe seleccionar un tipo de mantenimiento")
-      }
-
-      // RLS se encarga de verificar permisos automáticamente
-
-      // Preparar datos para actualización con validación de números
-      const cost = formData.cost ? parseFloat(formData.cost) : null
-      const mileage = formData.mileage ? parseInt(formData.mileage, 10) : null
-
-      // Verificar que los números sean válidos si se proporcionaron
-      if (formData.cost && (isNaN(cost!) || cost! < 0)) {
-        throw new Error("El costo debe ser un número válido mayor o igual a 0")
-      }
-
-      if (formData.mileage && (isNaN(mileage!) || mileage! < 0)) {
-        throw new Error("El kilometraje debe ser un número válido mayor o igual a 0")
-      }
-
-      const updateData = {
-        type: formData.type,
-        description: formData.description?.trim() || null,
-        cost,
-        mileage,
-        service_date: formData.service_date,
-        notes: formData.notes?.trim() || null,
-        updated_at: new Date().toISOString(),
-      }
-
-      // Actualizar el registro con timeout
-      const updatePromise = supabase.from("maintenance_records").update(updateData).eq("id", record.id)
-
-      const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error("La operación tardó demasiado tiempo. Inténtalo de nuevo.")), 10000)
-      })
-
-      const { error: updateError } = (await Promise.race([updatePromise, timeoutPromise])) as any
-
-      if (updateError) {
-        throw new Error(`Error al actualizar: ${updateError.message}`)
-      }
+      if (!vehicleId) throw new Error("Vehículo no válido")
+      const parsed = maintenanceValuesSchema.safeParse(formData)
+      if (!parsed.success)
+        throw new Error(
+          "Revisa el tipo, la fecha, el costo y el kilometraje. Los números deben ser mayores o iguales a 0."
+        )
+      await updateMaintenanceOptimistic(record.id, parsed.data)
 
       onOpenChange(false)
     } catch (error: unknown) {
@@ -139,12 +85,6 @@ export function EditMaintenanceDialog({ record, vehicleId, open, onOpenChange }:
       setError(errorMessage)
     } finally {
       setIsLoading(false)
-
-      // Recargar datos tanto del contexto como de la ruta actual
-      refreshMaintenance().catch((err) => {
-        console.error("Error al refrescar (no crítico):", err)
-      })
-      router.refresh()
     }
   }
 
@@ -160,104 +100,110 @@ export function EditMaintenanceDialog({ record, vehicleId, open, onOpenChange }:
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="type">Tipo de Mantenimiento *</Label>
-              <Select value={formData.type} onValueChange={(value) => setFormData({ ...formData, type: value })}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Seleccionar tipo" />
-                </SelectTrigger>
-                <SelectContent>
-                  {maintenanceTypes.map((type) => (
-                    <SelectItem key={type.value} value={type.value}>
-                      {type.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          <OperationRecovery />
+          <fieldset disabled={pending || isLoading} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="type">Tipo de Mantenimiento *</Label>
+                <Select value={formData.type} onValueChange={(value) => setFormData({ ...formData, type: value })}>
+                  <SelectTrigger disabled={pending || isLoading}>
+                    <SelectValue placeholder="Seleccionar tipo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {maintenanceTypes.map((type) => (
+                      <SelectItem key={type.value} value={type.value}>
+                        {type.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="service_date">Fecha de Servicio *</Label>
+                <Input
+                  id="service_date"
+                  type="date"
+                  value={formData.service_date}
+                  onChange={(e) => setFormData({ ...formData, service_date: e.target.value })}
+                  required
+                />
+              </div>
             </div>
+
             <div className="space-y-2">
-              <Label htmlFor="service_date">Fecha de Servicio *</Label>
+              <Label htmlFor="description">Descripción</Label>
               <Input
-                id="service_date"
-                type="date"
-                value={formData.service_date}
-                onChange={(e) => setFormData({ ...formData, service_date: e.target.value })}
-                required
+                id="description"
+                placeholder="Descripción breve del servicio realizado"
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               />
             </div>
-          </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="description">Descripción</Label>
-            <Input
-              id="description"
-              placeholder="Descripción breve del servicio realizado"
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-            />
-          </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="cost">Costo (€)</Label>
+                <Input
+                  id="cost"
+                  type="number"
+                  step="0.01"
+                  placeholder="0.00"
+                  value={formData.cost}
+                  onChange={(e) => setFormData({ ...formData, cost: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="mileage">Kilometraje</Label>
+                <Input
+                  id="mileage"
+                  type="number"
+                  placeholder="50000"
+                  value={formData.mileage}
+                  onChange={(e) => setFormData({ ...formData, mileage: e.target.value })}
+                />
+              </div>
+            </div>
 
-          <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="cost">Costo (€)</Label>
-              <Input
-                id="cost"
-                type="number"
-                step="0.01"
-                placeholder="0.00"
-                value={formData.cost}
-                onChange={(e) => setFormData({ ...formData, cost: e.target.value })}
+              <Label htmlFor="notes">Notas Adicionales</Label>
+              <Textarea
+                id="notes"
+                placeholder="Cualquier información adicional sobre el servicio..."
+                value={formData.notes}
+                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                rows={3}
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="mileage">Kilometraje</Label>
-              <Input
-                id="mileage"
-                type="number"
-                placeholder="50000"
-                value={formData.mileage}
-                onChange={(e) => setFormData({ ...formData, mileage: e.target.value })}
-              />
+
+            {error && (
+              <div
+                role="alert"
+                className="text-destructive-foreground bg-destructive/10 border-destructive/20 rounded-md border p-3 text-sm"
+              >
+                {error}
+              </div>
+            )}
+
+            <div className="flex gap-2 pt-4">
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="flex-1">
+                Cancelar
+              </Button>
+              <Button
+                type="submit"
+                disabled={isLoading || !formData.type}
+                className="bg-primary hover:bg-primary/90 flex-1"
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Actualizando...
+                  </>
+                ) : (
+                  "Actualizar Mantenimiento"
+                )}
+              </Button>
             </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="notes">Notas Adicionales</Label>
-            <Textarea
-              id="notes"
-              placeholder="Cualquier información adicional sobre el servicio..."
-              value={formData.notes}
-              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-              rows={3}
-            />
-          </div>
-
-          {error && (
-            <div className="text-destructive-foreground bg-destructive/10 border-destructive/20 rounded-md border p-3 text-sm">
-              {error}
-            </div>
-          )}
-
-          <div className="flex gap-2 pt-4">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="flex-1">
-              Cancelar
-            </Button>
-            <Button
-              type="submit"
-              disabled={isLoading || !formData.type}
-              className="bg-primary hover:bg-primary/90 flex-1"
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Actualizando...
-                </>
-              ) : (
-                "Actualizar Mantenimiento"
-              )}
-            </Button>
-          </div>
+          </fieldset>
         </form>
       </DialogContent>
     </Dialog>

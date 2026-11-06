@@ -1,17 +1,18 @@
 /* eslint-disable typescript/no-non-null-assertion -- Public Supabase env vars are required at startup. */
 
 import { createBrowserClient } from "@supabase/ssr"
+import type { Database } from "./database.types"
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { getSupabaseClientCookieOptions } from "./cookie-options"
 
-let supabaseClient: SupabaseClient | null = null
+let supabaseClient: SupabaseClient<Database> | null = null
 
 export function createClient() {
   if (supabaseClient) {
     return supabaseClient
   }
 
-  supabaseClient = createBrowserClient(
+  supabaseClient = createBrowserClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {

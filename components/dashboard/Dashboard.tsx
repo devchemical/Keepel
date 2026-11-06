@@ -1,7 +1,5 @@
 "use client"
 
-/* eslint-disable typescript/no-explicit-any -- Dashboard receives Supabase-shaped records until generated database types are introduced. */
-
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { Car, CheckCircle } from "lucide-react"
@@ -10,24 +8,13 @@ import { RecentActivity } from "@/components/dashboard/recent-activity"
 import { UpcomingMaintenance } from "@/components/dashboard/upcoming-maintenance"
 import { VehicleOverview } from "@/components/dashboard/vehicle-overview"
 import { DashboardSkeleton } from "@/components/skeletons/dashboard-skeleton"
-import type { ScheduledService } from "@/contexts"
-
-interface Vehicle {
-  id: string
-  make: string
-  model: string
-  year: number
-  license_plate?: string
-  vin?: string
-  color?: string
-  mileage: number
-  created_at: string
-  updated_at: string
-}
+import { localToday } from "@/lib/data/calendar-day"
+import { selectScheduledServices } from "@/lib/data/scheduled-services"
+import type { MaintenanceRecord, ScheduledService, Vehicle } from "@/contexts"
 
 interface DashboardProps {
   vehicles: Vehicle[]
-  maintenanceRecords: any[]
+  maintenanceRecords: MaintenanceRecord[]
   upcomingMaintenance: ScheduledService[]
   isLoading?: boolean
 }
@@ -36,6 +23,8 @@ export function Dashboard({ vehicles, maintenanceRecords, upcomingMaintenance, i
   if (isLoading) {
     return <DashboardSkeleton />
   }
+
+  const reminders = selectScheduledServices(upcomingMaintenance, localToday())
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -62,12 +51,7 @@ export function Dashboard({ vehicles, maintenanceRecords, upcomingMaintenance, i
       </div>
 
       {/* Dashboard Stats */}
-      <DashboardStats
-        vehicles={vehicles}
-        maintenanceRecords={maintenanceRecords}
-        scheduledServices={upcomingMaintenance}
-        isLoading={isLoading}
-      />
+      <DashboardStats vehicles={vehicles} reminderCount={reminders.length} isLoading={isLoading} />
 
       {/* Main Content Grid */}
       <div className="mt-10 grid gap-8 lg:grid-cols-3">
@@ -79,7 +63,7 @@ export function Dashboard({ vehicles, maintenanceRecords, upcomingMaintenance, i
 
         {/* Right Column - Upcoming Maintenance */}
         <div className="space-y-8">
-          <UpcomingMaintenance upcomingMaintenance={upcomingMaintenance} isLoading={isLoading} />
+          <UpcomingMaintenance upcomingMaintenance={reminders} isLoading={isLoading} />
         </div>
       </div>
     </div>

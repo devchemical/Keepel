@@ -1,5 +1,7 @@
 "use client"
 
+import { MAINTENANCE_TYPES } from "@/lib/data/maintenance-types"
+
 /* eslint-disable react/no-array-index-key, unicorn/consistent-function-scoping -- Static skeleton placeholders have no ids; formatters stay near usage for readability. */
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -8,13 +10,14 @@ import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Activity, Car } from "lucide-react"
 import Link from "next/link"
+import { formatShortDate, formatCurrency } from "@/lib/formatters"
 
 interface MaintenanceRecord {
   id: string
   type: string
-  cost?: number
+  cost?: number | null
   service_date: string
-  vehicles: {
+  vehicles?: {
     make: string
     model: string
     year: number
@@ -24,22 +27,6 @@ interface MaintenanceRecord {
 interface RecentActivityProps {
   maintenanceRecords: MaintenanceRecord[]
   isLoading?: boolean
-}
-
-const maintenanceTypes = {
-  oil_change: "Cambio de Aceite",
-  tire_rotation: "Rotación de Llantas",
-  brake_service: "Servicio de Frenos",
-  transmission: "Transmisión",
-  engine_tune: "Afinación del Motor",
-  battery: "Batería",
-  air_filter: "Filtro de Aire",
-  coolant: "Refrigerante",
-  spark_plugs: "Bujías",
-  belts_hoses: "Correas y Mangueras",
-  suspension: "Suspensión",
-  exhaust: "Sistema de Escape",
-  other: "Otro",
 }
 
 export function RecentActivity({ maintenanceRecords, isLoading }: RecentActivityProps) {
@@ -74,21 +61,6 @@ export function RecentActivity({ maintenanceRecords, isLoading }: RecentActivity
         </CardContent>
       </Card>
     )
-  }
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("es-ES", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    })
-  }
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("es-ES", {
-      style: "currency",
-      currency: "EUR",
-    }).format(amount)
   }
 
   if (maintenanceRecords.length === 0) {
@@ -144,22 +116,22 @@ export function RecentActivity({ maintenanceRecords, isLoading }: RecentActivity
               <div className="min-w-0 flex-1">
                 <div className="mb-1 flex items-center gap-2">
                   <span className="text-sm font-medium text-slate-900">
-                    {maintenanceTypes[record.type as keyof typeof maintenanceTypes] || record.type}
+                    {MAINTENANCE_TYPES.find((type) => type.value === record.type)?.label ?? record.type}
                   </span>
-                  {record.cost && (
-                    <Badge variant="outline" className="border-slate-200 bg-slate-50 text-xs text-slate-600">
-                      {formatCurrency(record.cost)}
-                    </Badge>
-                  )}
+                  <Badge variant="outline" className="border-slate-200 bg-slate-50 text-xs text-slate-600">
+                    {formatCurrency(record.cost ?? null)}
+                  </Badge>
                 </div>
 
                 <div className="flex items-center gap-2 text-xs text-slate-500">
                   <Car className="h-3.5 w-3.5 text-slate-400" />
                   <span>
-                    {record.vehicles.make} {record.vehicles.model} {record.vehicles.year}
+                    {record.vehicles
+                      ? `${record.vehicles.make} ${record.vehicles.model} ${record.vehicles.year}`
+                      : "Vehículo no disponible"}
                   </span>
                   <span className="text-slate-300">•</span>
-                  <span>{formatDate(record.service_date)}</span>
+                  <span>{formatShortDate(record.service_date)}</span>
                 </div>
               </div>
             </div>

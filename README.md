@@ -19,11 +19,11 @@
 
 ---
 
-[![Next.js](https://img.shields.io/badge/Next.js-16.1.1-black?logo=next.js&logoColor=white)](https://nextjs.org/)
+[![Next.js](https://img.shields.io/badge/Next.js-16.2.9-black?logo=next.js&logoColor=white)](https://nextjs.org/)
 [![React](https://img.shields.io/badge/React-19-blue?logo=react&logoColor=white)](https://reactjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![Supabase](https://img.shields.io/badge/Supabase-Latest-green?logo=supabase&logoColor=white)](https://supabase.com/)
-[![TailwindCSS](https://img.shields.io/badge/TailwindCSS-4.1.9-blue?logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
+[![Supabase](https://img.shields.io/badge/Supabase_JS-2.108.1-green?logo=supabase&logoColor=white)](https://supabase.com/)
+[![TailwindCSS](https://img.shields.io/badge/TailwindCSS-4-blue?logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ## 🎯 Características Destacadas
@@ -62,7 +62,7 @@ Keepel mantiene la sesión y los comandos de autenticación en el servidor:
 
 - Recordatorios de mantenimiento
 - Programación de servicios futuros
-- Calendario integrado
+- Previsiones por fecha o kilometraje, con resolución explícita
 
 </td>
 </tr>
@@ -122,12 +122,12 @@ Keepel mantiene la sesión y los comandos de autenticación en el servidor:
 
 <div align="center">
 
-|                                               Frontend                                               |                                        Backend & Database                                         |                                       Tools & Utilities                                       |
-| :--------------------------------------------------------------------------------------------------: | :-----------------------------------------------------------------------------------------------: | :-------------------------------------------------------------------------------------------: |
-|      ![Next.js](https://img.shields.io/badge/Next.js-16.1.1-black?logo=next.js&logoColor=white)      | ![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL-green?logo=supabase&logoColor=white) | ![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?logo=typescript&logoColor=white) |
-|           ![React](https://img.shields.io/badge/React-19-blue?logo=react&logoColor=white)            | ![Supabase Auth](https://img.shields.io/badge/Auth-Supabase-green?logo=supabase&logoColor=white)  |                    ![Zod](https://img.shields.io/badge/Zod-Validation-red)                    |
-| ![TailwindCSS](https://img.shields.io/badge/TailwindCSS-4.1.9-blue?logo=tailwindcss&logoColor=white) |               ![Row Level Security](https://img.shields.io/badge/RLS-Enabled-green)               |         ![React Hook Form](https://img.shields.io/badge/React_Hook_Form-7.60.0-pink)          |
-|                ![shadcn/ui](https://img.shields.io/badge/shadcn/ui-Components-black)                 |              ![Realtime](https://img.shields.io/badge/Realtime-Subscriptions-green)               |                ![Lucide React](https://img.shields.io/badge/Lucide-Icons-blue)                |
+|                                             Frontend                                             |                                        Backend & Database                                         |                                       Tools & Utilities                                       |
+| :----------------------------------------------------------------------------------------------: | :-----------------------------------------------------------------------------------------------: | :-------------------------------------------------------------------------------------------: |
+|    ![Next.js](https://img.shields.io/badge/Next.js-16.2.9-black?logo=next.js&logoColor=white)    | ![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL-green?logo=supabase&logoColor=white) | ![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?logo=typescript&logoColor=white) |
+|         ![React](https://img.shields.io/badge/React-19-blue?logo=react&logoColor=white)          | ![Supabase Auth](https://img.shields.io/badge/Auth-Supabase-green?logo=supabase&logoColor=white)  |                    ![Zod](https://img.shields.io/badge/Zod-Validation-red)                    |
+| ![TailwindCSS](https://img.shields.io/badge/TailwindCSS-4-blue?logo=tailwindcss&logoColor=white) |               ![Row Level Security](https://img.shields.io/badge/RLS-Enabled-green)               |            ![React Hook Form](https://img.shields.io/badge/React_Hook_Form-7-pink)            |
+|              ![shadcn/ui](https://img.shields.io/badge/shadcn/ui-Components-black)               |                ![PostgREST](https://img.shields.io/badge/PostgREST-Data_API-green)                |                ![Lucide React](https://img.shields.io/badge/Lucide-Icons-blue)                |
 
 </div>
 
@@ -173,7 +173,7 @@ sequenceDiagram
 
 - **🏗️ App Router**: Utilizando el App Router de Next.js 16
 - **🎨 Design System**: Componentes consistentes con shadcn/ui
-- **🔄 Real-time**: Actualizaciones en tiempo real con Supabase
+- **🔄 Datos coherentes**: Mutaciones confirmadas, invalidación y reintento explícito
 - **🔐 Auth Server-Authoritative**: Comandos y validación de sesión en el servidor
 - **💾 Proyección de Sesión**: Identidad mínima y tipada para la interfaz
 - **🔗 Cross-Tab Sync**: Invalidación semántica de auth entre pestañas
@@ -186,8 +186,8 @@ Antes de comenzar, asegúrate de tener instalado:
 
 | Requisito                                                                                     | Versión           | Enlace                                        |
 | --------------------------------------------------------------------------------------------- | ----------------- | --------------------------------------------- |
-| ![Node.js](https://img.shields.io/badge/Node.js-18+-green?logo=node.js&logoColor=white)       | 18.0.0 o superior | [Descargar](https://nodejs.org/)              |
-| ![bun](https://img.shields.io/badge/bun-Recomendado-orange?logo=bun&logoColor=white)          | Última versión    | [Instalar](https://bun.com/docs/installation) |
+| ![Node.js](https://img.shields.io/badge/Node.js-20.9+-green?logo=node.js&logoColor=white)     | 20.9.0 o superior | [Descargar](https://nodejs.org/)              |
+| ![bun](https://img.shields.io/badge/bun-Recomendado-orange?logo=bun&logoColor=white)          | 1.3.9 (CI)        | [Instalar](https://bun.com/docs/installation) |
 | ![Supabase](https://img.shields.io/badge/Cuenta-Supabase-green?logo=supabase&logoColor=white) | Cuenta gratuita   | [Registrarse](https://supabase.com/)          |
 
 ## 🚀 Instalación
@@ -196,11 +196,11 @@ Antes de comenzar, asegúrate de tener instalado:
 
 ```bash
 # 1. Clonar el repositorio
-git clone https://github.com/devchemical/CarCare.git
+git clone https://github.com/devchemical/Keepel.git
 cd Keepel
 
 # 2. Instalar dependencias
-bun install
+bun install --frozen-lockfile
 
 # 3. Configurar variables de entorno
 cp .env.example .env.local
@@ -218,7 +218,7 @@ bun dev
 #### 1. Clonar el Repositorio
 
 ```bash
-git clone https://github.com/devchemical/CarCare.git
+git clone https://github.com/devchemical/Keepel.git
 cd Keepel
 ```
 
@@ -227,19 +227,7 @@ cd Keepel
 **Con bun (recomendado):**
 
 ```bash
-bun install
-```
-
-**Con npm:**
-
-```bash
-npm install
-```
-
-**Con yarn:**
-
-```bash
-yarn install
+bun install --frozen-lockfile
 ```
 
 #### 3. Configurar Supabase
@@ -285,26 +273,11 @@ Las credenciales de OpenPanel son exclusivamente de servidor. Keepel no utiliza 
 
 #### 4. Configurar Base de Datos
 
-**Opción A: Usar la interfaz de Supabase**
-
-1. Ve a tu proyecto en Supabase
-2. Navega a "SQL Editor"
-3. Ejecuta los scripts en orden:
-   - `scripts/001_create_tables.sql`
-   - `scripts/002_create_profile_trigger.sql`
-
-**Opción B: Usar CLI de Supabase (Avanzado)**
-
-```bash
-# Instalar Supabase CLI
-npm install -g @supabase/cli
-
-# Hacer login
-supabase login
-
-# Ejecutar migraciones
-supabase db push
-```
+Para una base nueva, ejecute todos los scripts canónicos `scripts/001`–`010` en orden.
+Lea [Configuración de Base de Datos](#️-configuración-de-base-de-datos) y el
+[contrato de migraciones](docs/testing/data-api.md) antes de actualizar una base existente.
+Los scripts de este repositorio no se aplican mediante `supabase db push`.
+Para probar, use exclusivamente `bun run data-api:start` y el arnés local documentado abajo.
 
 #### 5. Ejecutar la Aplicación
 
@@ -313,93 +286,57 @@ supabase db push
 bun dev
 
 # Construcción para producción
-bun build
+bun run build
 bun start
 ```
 
 </details>
 ### 🗄️ Configuración de Base de Datos
 
-<details>
-<summary><strong>📋 Scripts SQL para Supabase</strong></summary>
+Los contratos actuales requieren ejecutar los scripts canónicos `scripts/001`–`010` en orden
+en una base nueva. No copie fragmentos antiguos del README: `004` crea previsiones explícitas,
+`005` migra los campos heredados **antes** de que `006` los elimine; `007`–`010` añaden
+transacciones, confirmaciones y totales completos. Una base existente requiere revisar su
+versión y respaldos antes de migrar. Esta aceptación solo ensaya una base local desechable.
+Véase [contrato de migraciones](docs/testing/data-api.md).
 
-#### Script 1: Crear Tablas Principales
+### Verificación reproducible
 
-Ejecuta `scripts/001_create_tables.sql` en el editor SQL de Supabase:
+Node.js >=20.9, Bun >=1.3 (CI fija 1.3.9), Docker y Supabase CLI 2.75.0.
+Instale Chromium con `bun x playwright install --with-deps chromium`.
+Ejecute estos comandos en serie, desde el checkout propietario de la pila local:
 
-```sql
--- Tabla de perfiles de usuario
-CREATE TABLE profiles (
-  id UUID REFERENCES auth.users(id) PRIMARY KEY,
-  email TEXT NOT NULL,
-  full_name TEXT,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
--- Tabla de vehículos
-CREATE TABLE vehicles (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  user_id UUID REFERENCES profiles(id) ON DELETE CASCADE NOT NULL,
-  make TEXT NOT NULL,
-  model TEXT NOT NULL,
-  year INTEGER NOT NULL,
-  license_plate TEXT,
-  vin TEXT,
-  color TEXT,
-  mileage INTEGER DEFAULT 0,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
--- Tabla de registros de mantenimiento
-CREATE TABLE maintenance_records (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  vehicle_id UUID REFERENCES vehicles(id) ON DELETE CASCADE NOT NULL,
-  type TEXT NOT NULL,
-  description TEXT,
-  cost DECIMAL(10,2),
-  mileage INTEGER,
-  service_date DATE NOT NULL,
-  next_service_date DATE,
-  notes TEXT,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
--- Habilitar Row Level Security
-ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
-ALTER TABLE vehicles ENABLE ROW LEVEL SECURITY;
-ALTER TABLE maintenance_records ENABLE ROW LEVEL SECURITY;
-
--- Políticas de seguridad...
--- (Ver archivo completo en scripts/001_create_tables.sql)
+```bash
+bun install --frozen-lockfile
+bun fmt:check
+bun lint
+bun type-check
+bun run test
+bun run data-api:start
+bun run test:data-api
+bun run test:e2e
+bun run test:data-browser
+bun run test:schema
+bun run build:local
+# Solo al terminar todos los consumidores:
+bun run data-api:stop
 ```
 
-#### Script 2: Crear Triggers
+`bun run test` invoca Vitest; el comando nativo `bun test` no sustituye esta suite.
+`test:data-api` ensaya SQL real con dos cuentas ordinarias y reinicia exclusivamente la pila
+local guardada. `test:data-browser` recorre 1007 registros con Auth/PostgREST/RLS reales.
+`test:schema` restaura 001–010, genera tipos del esquema real y exige coincidencia.
+`build:local` usa claves públicas de esa pila en memoria y marcadores sintéticos para las
+variables obligatorias de Redis, HMAC y consentimiento; no necesita secretos alojados.
+Los E2E controlados configuran sus propios servicios y secretos sintéticos.
+No ejecute consumidores que reinician la base ni consumidores de `.next` en paralelo.
 
-Ejecuta `scripts/002_create_profile_trigger.sql`:
-
-```sql
--- Función para crear perfil automáticamente
-CREATE OR REPLACE FUNCTION public.handle_new_user()
-RETURNS TRIGGER AS $$
-BEGIN
-  INSERT INTO public.profiles (id, email, full_name)
-  VALUES (NEW.id, NEW.email, NEW.raw_user_meta_data->>'full_name');
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
--- Trigger para crear perfil cuando se registra un usuario
-CREATE OR REPLACE TRIGGER on_auth_user_created
-  AFTER INSERT ON auth.users
-  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
-```
-
-</details>
-
----
+[Acceptance CI](.github/workflows/acceptance.yml) exige todos estos pasos sin omitir errores
+TypeScript ni reintentar pruebas fallidas. El estado **Complete data reliability gate** debe
+configurarse como requerido en la protección de la rama (configuración del repositorio).
+La [matriz #90](docs/testing/issue-90-acceptance.md) relaciona historias, pruebas y límites.
+La analítica CRUD y los identificadores quedan diferidos por decisión expresa del usuario;
+se mantiene ADR0002 y no se amplía la recogida de datos.
 
 ### ▶️ Ejecutar la Aplicación
 
@@ -443,8 +380,7 @@ Keepel/
 │   │   ├── signup-success/          # Confirmación de registro
 │   │   ├── callback/                # OAuth callback
 │   │   └── error/                   # Página de errores
-│   ├── api/                         # API routes
-│   │   └── auth/signout/            # Sign-out endpoint
+│   ├── actions/privacy.ts           # Preferencias firmadas de privacidad
 │   ├── 🚗 vehicles/                 # Gestión de vehículos
 │   │   ├── page.tsx                 # Lista de vehículos
 │   │   └── [id]/maintenance/        # Mantenimiento por vehículo
@@ -492,7 +428,8 @@ Keepel/
 ├── 📁 scripts/                      # Scripts SQL de base de datos
 │   ├── 001_create_tables.sql        # Creación de tablas
 │   ├── 002_create_profile_trigger.sql # Triggers de perfiles
-│   └── 003_maintenance_function.sql   # Funciones de mantenimiento
+│   ├── 003_maintenance_function.sql # Compatibilidad histórica
+│   └── 004–010                      # Previsiones, migración, transacciones y totales
 ├── 📁 styles/                       # Estilos adicionales
 ├── 📁 public/                       # Archivos estáticos
 │   ├── keepel_logo.svg              # Logo del proyecto
@@ -809,8 +746,8 @@ La política pública está disponible en [`/privacidad`](https://keepel.chemica
 2. **Ver historial:**
    - Desde la página del vehículo
    - Revisa todos los servicios anteriores
-   - Filtra por tipo o fecha
-   - Exporta reportes
+   - Recorre todas las páginas del historial
+   - Consulta el total completo de registros y gastos
 
 </details>
 
@@ -917,7 +854,7 @@ graph LR
 
    ```bash
    # Instala dependencias
-   bun install
+   bun install --frozen-lockfile
 
    # Ejecuta en modo desarrollo
    bun dev
@@ -932,7 +869,7 @@ graph LR
    bun lint
 
    # Construye el proyecto
-   bun build
+   bun run build
 
    # Prueba manualmente
    ```
@@ -1054,7 +991,7 @@ Este proyecto sigue la especificación de [all-contributors](https://github.com/
 
 ### 🚀 Próximas Características (v1.1)
 
-- 🧪 **Testing setup** con Vitest (unit/integration) y Playwright (e2e)
+- 🧪 Vitest, Playwright y API real implementados; ver la matriz de aceptación
 - 🔄 **API REST completa** para integraciones
 - 📊 **Reportes avanzados** con gráficos mejorados
 - 🌍 **Internacionalización** (i18n) Español/Inglés
@@ -1081,7 +1018,7 @@ Este proyecto sigue la especificación de [all-contributors](https://github.com/
 
 | Característica       | Prioridad |      Estado      | Versión Estimada |
 | -------------------- | :-------: | :--------------: | :--------------: |
-| Testing Setup        |  🔥 Alta  |  📋 Planificado  |       v1.1       |
+| Testing Setup        |  🔥 Alta  | ✅ Implementado  |       v1.0       |
 | API REST             |  🔥 Alta  |  🔄 En progreso  |       v1.1       |
 | Reportes Avanzados   | 🟡 Media  |  📋 Planificado  |       v1.1       |
 | Multi-idioma         | 🟡 Media  |  📋 Planificado  |       v1.1       |

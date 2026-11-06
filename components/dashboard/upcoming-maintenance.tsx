@@ -1,6 +1,6 @@
 "use client"
 
-/* eslint-disable react/no-array-index-key, unicorn/consistent-function-scoping -- Static skeleton placeholders have no ids; date helpers stay near usage for readability. */
+/* eslint-disable react/no-array-index-key -- Static skeleton placeholders have no ids. */
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -8,49 +8,41 @@ import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Calendar, AlertTriangle, CheckCircle, Car, MoreVertical, Edit } from "lucide-react"
-import Link from "next/link"
 import { useState } from "react"
+import { useData } from "@/contexts"
+import { toast } from "sonner"
+import { AddMaintenanceDialog } from "@/components/maintenance/add-maintenance-dialog"
 import { EditScheduledServiceDialog } from "@/components/maintenance/edit-scheduled-service-dialog"
 
-interface UpcomingMaintenanceRecord {
-  id: string
-  type: string
-  description?: string
-  scheduled_date?: string
-  scheduled_mileage?: number
-  status: string
-  notes?: string
-  vehicles?: {
-    make: string
-    model: string
-    year: number
-    license_plate?: string
-  }
-}
+import type { ScheduledService } from "@/contexts"
+import type { ScheduleClassification } from "@/lib/data/scheduled-services"
+import { formatCalendarDay } from "@/lib/data/calendar-day"
+import { MAINTENANCE_TYPES } from "@/lib/data/maintenance-types"
 
 interface UpcomingMaintenanceProps {
-  upcomingMaintenance: UpcomingMaintenanceRecord[]
+  upcomingMaintenance: (ScheduleClassification & { service: ScheduledService })[]
   isLoading?: boolean
 }
 
-const maintenanceTypes = {
-  oil_change: "Cambio de Aceite",
-  tire_rotation: "Rotación de Llantas",
-  brake_service: "Servicio de Frenos",
-  transmission: "Transmisión",
-  engine_tune: "Afinación del Motor",
-  battery: "Batería",
-  air_filter: "Filtro de Aire",
-  coolant: "Refrigerante",
-  spark_plugs: "Bujías",
-  belts_hoses: "Correas y Mangueras",
-  suspension: "Suspensión",
-  exhaust: "Sistema de Escape",
-  other: "Otro",
-}
-
 export function UpcomingMaintenance({ upcomingMaintenance, isLoading }: UpcomingMaintenanceProps) {
-  const [editingService, setEditingService] = useState<UpcomingMaintenanceRecord | null>(null)
+  const { cancelScheduledService } = useData()
+  const [completingService, setCompletingService] = useState<ScheduledService | null>(null)
+  const [cancellingId, setCancellingId] = useState<string | null>(null)
+  const [showAll, setShowAll] = useState(false)
+  const [editingService, setEditingService] = useState<ScheduledService | null>(null)
+
+  const cancel = async (id: string) => {
+    if (cancellingId) return
+    setCancellingId(id)
+    try {
+      await cancelScheduledService(id)
+      toast.success("Previsión cancelada")
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "No se pudo confirmar la cancelación")
+    } finally {
+      setCancellingId(null)
+    }
+  }
 
   if (isLoading) {
     return (
@@ -81,25 +73,6 @@ export function UpcomingMaintenance({ upcomingMaintenance, isLoading }: Upcoming
         </CardContent>
       </Card>
     )
-  }
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("es-ES", {
-      month: "short",
-      day: "numeric",
-    })
-  }
-
-  const isOverdue = (dateString: string) => {
-    return new Date(dateString) < new Date()
-  }
-
-  const getDaysUntil = (dateString: string) => {
-    const today = new Date()
-    const serviceDate = new Date(dateString)
-    const diffTime = serviceDate.getTime() - today.getTime()
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-    return diffDays
   }
 
   if (upcomingMaintenance.length === 0) {
@@ -137,14 +110,18 @@ export function UpcomingMaintenance({ upcomingMaintenance, isLoading }: Upcoming
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="space-y-3">
-          {upcomingMaintenance.slice(0, 5).map((maintenance) => {
-            const scheduledDate = maintenance.scheduled_date || ""
-            const daysUntil = scheduledDate ? getDaysUntil(scheduledDate) : null
-            const overdue = scheduledDate ? isOverdue(scheduledDate) : false
+        <div role="list" aria-label="Previsiones" className="space-y-3">
+          {upcomingMaintenance.slice(0, showAll ? undefined : 5).map(({ service: maintenance, daysUntil, urgency }) => {
+            const scheduledDate = maintenance.scheduled_date
+            const overdue = urgency === "overdue"
+            const serviceLabel =
+              MAINTENANCE_TYPES.find((type) => type.value === maintenance.type)?.label || maintenance.type
+            const accessibleName = maintenance.description || serviceLabel
 
             return (
               <div
+                role="listitem"
+                aria-label={accessibleName}
                 key={maintenance.id}
                 className="flex items-start gap-4 rounded-xl border border-slate-100 bg-white p-4 transition-colors hover:bg-slate-50/50"
               >
@@ -158,14 +135,12 @@ export function UpcomingMaintenance({ upcomingMaintenance, isLoading }: Upcoming
 
                 <div className="min-w-0 flex-1">
                   <div className="mb-1.5 flex items-center gap-2">
-                    <span className="text-sm font-medium text-slate-900">
-                      {maintenanceTypes[maintenance.type as keyof typeof maintenanceTypes] || maintenance.type}
-                    </span>
+                    <span className="text-sm font-medium text-slate-900">{serviceLabel}</span>
                     <Badge
                       variant={overdue ? "destructive" : "secondary"}
                       className={`border-0 text-xs ${overdue ? "" : "bg-amber-100 text-amber-700"}`}
                     >
-                      {overdue ? "Vencido" : daysUntil !== null ? `${daysUntil} días` : "Programado"}
+                      {overdue ? "Vencido" : urgency === "today" ? "Hoy" : `${daysUntil} días`}
                     </Badge>
                   </div>
 
@@ -181,8 +156,8 @@ export function UpcomingMaintenance({ upcomingMaintenance, isLoading }: Upcoming
                   </div>
 
                   <div className="mt-1.5 text-xs text-slate-500">
-                    {scheduledDate && formatDate(scheduledDate)}
-                    {maintenance.scheduled_mileage && (
+                    {scheduledDate && formatCalendarDay(scheduledDate, { month: "short", day: "numeric" })}
+                    {typeof maintenance.scheduled_mileage === "number" && (
                       <span> &middot; {maintenance.scheduled_mileage.toLocaleString("es-ES")} km</span>
                     )}
                   </div>
@@ -190,12 +165,26 @@ export function UpcomingMaintenance({ upcomingMaintenance, isLoading }: Upcoming
 
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      aria-label={`Acciones de ${accessibleName}`}
+                      className="h-8 w-8 p-0"
+                    >
                       <MoreVertical className="h-4 w-4" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => setEditingService(maintenance)}>
+                    <DropdownMenuItem
+                      disabled={cancellingId !== null}
+                      onClick={() => setCompletingService(maintenance)}
+                    >
+                      Completar previsión
+                    </DropdownMenuItem>
+                    <DropdownMenuItem disabled={cancellingId !== null} onClick={() => void cancel(maintenance.id)}>
+                      Cancelar previsión
+                    </DropdownMenuItem>
+                    <DropdownMenuItem disabled={cancellingId !== null} onClick={() => setEditingService(maintenance)}>
                       <Edit className="mr-2 h-4 w-4" />
                       Editar
                     </DropdownMenuItem>
@@ -205,16 +194,24 @@ export function UpcomingMaintenance({ upcomingMaintenance, isLoading }: Upcoming
             )
           })}
 
-          {upcomingMaintenance.length > 5 && (
+          {upcomingMaintenance.length > 5 && !showAll && (
             <div className="pt-3 text-center">
-              <Button variant="ghost" size="sm" asChild>
-                <Link href="/vehicles">Ver {upcomingMaintenance.length - 5} más</Link>
+              <Button variant="ghost" size="sm" onClick={() => setShowAll(true)}>
+                Ver {upcomingMaintenance.length - 5} más
               </Button>
             </div>
           )}
         </div>
       </CardContent>
 
+      {completingService && (
+        <AddMaintenanceDialog
+          vehicleId={completingService.vehicle_id}
+          initialScheduledServiceId={completingService.id}
+          open
+          onOpenChange={(open) => !open && setCompletingService(null)}
+        />
+      )}
       {editingService && (
         <EditScheduledServiceDialog
           service={editingService}
