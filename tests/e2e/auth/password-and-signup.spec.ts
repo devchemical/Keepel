@@ -33,8 +33,10 @@ test("a rate-limit outage blocks password login with an incident reference", asy
   await page.getByLabel("Contraseña").fill("correct-horse")
   await page.getByRole("button", { name: "Iniciar Sesión", exact: true }).click()
 
-  const alert = page.getByRole("alert").filter({ hasText: "Ocurrió un error inesperado." })
-  await expect(alert).toContainText("Ocurrió un error inesperado. Inténtalo de nuevo.")
+  const alert = page.getByRole("alert").filter({ hasText: "El servicio de acceso no está disponible" })
+  await expect(alert).toContainText(
+    "El servicio de acceso no está disponible en este momento. Inténtalo de nuevo en unos minutos."
+  )
   await expect(alert).toContainText(/Referencia: [0-9a-f-]{36}/)
   await expect(page).toHaveURL(/\/auth\/login$/)
 })
@@ -61,8 +63,10 @@ test("a rate-limit outage blocks signup with an incident reference", async ({ pa
   await page.getByLabel("Confirmar Contraseña").fill("correct-horse")
   await page.getByRole("button", { name: "Crear Cuenta", exact: true }).click()
 
-  const alert = page.getByRole("alert").filter({ hasText: "Ocurrió un error inesperado." })
-  await expect(alert).toContainText("Ocurrió un error inesperado. Inténtalo de nuevo.")
+  const alert = page.getByRole("alert").filter({ hasText: "El servicio de acceso no está disponible" })
+  await expect(alert).toContainText(
+    "El servicio de acceso no está disponible en este momento. Inténtalo de nuevo en unos minutos."
+  )
   await expect(alert).toContainText(/Referencia: [0-9a-f-]{36}/)
   await expect(page).toHaveURL(/\/auth\/signup$/)
 })
