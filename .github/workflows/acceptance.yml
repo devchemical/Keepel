@@ -1,0 +1,49 @@
+name: Acceptance
+
+on:
+  pull_request:
+  push:
+    branches: [main, integration/issue-90-data-reliability]
+
+permissions:
+  contents: read
+
+jobs:
+  acceptance:
+    name: Complete data reliability gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.9
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.75.0
+      - run: bun install --frozen-lockfile
+      - run: bun x playwright install --with-deps chromium
+      - run: bun fmt:check
+      - run: bun lint
+      - run: bun type-check
+      - run: bun run test
+      - run: bun run data-api:start
+      # Resetting consumers and Next's .next consumers must remain serial.
+      - run: bun run test:data-api
+      - run: bun run test:e2e
+      - run: bun run test:data-browser
+      - run: bun run test:schema
+      # Local CLI anon key stays in memory; required signing/Redis placeholders
+      # are synthetic in build:local. No hosted or production secrets required.
+      - run: bun run build:local
+      - name: Remove only this checkout's disposable stack
+        if: always()
+        run: |
+          if test -f supabase/.temp/issue91-owner; then
+            bun run data-api:stop
+          fi

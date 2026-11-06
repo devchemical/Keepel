@@ -4,6 +4,3 @@
  */
 
 export { useAuthCommandRecovery } from "./use-auth-command-recovery"
-
-// UI hooks
-export { useMediaQuery } from "./use-media-query"

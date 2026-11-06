@@ -28,12 +28,14 @@ try {
     if (!existsSync(ownerPath) || readFileSync(ownerPath, "utf8") !== ROOT) {
       throw new Error("Start this checkout's isolated stack first: bun run data-api:start")
     }
-    if (command === "test" || command === "browser") {
+    if (["test", "browser", "types", "build"].includes(command)) {
       const result = spawnSync(
         "bun",
-        command === "browser"
-          ? ["x", "playwright", "test", "--config", "playwright.data-api.config.ts", ...process.argv.slice(3)]
-          : ["run", "test", "--", ...(process.argv.length > 3 ? process.argv.slice(3) : ["tests/data-api"])],
+        ["types", "build"].includes(command)
+          ? ["tests/data-api/acceptance.ts", command]
+          : command === "browser"
+            ? ["x", "playwright", "test", "--config", "playwright.data-api.config.ts", ...process.argv.slice(3)]
+            : ["run", "test", "--", ...(process.argv.length > 3 ? process.argv.slice(3) : ["tests/data-api"])],
         {
           cwd: ROOT,
           env: process.env,
@@ -46,7 +48,7 @@ try {
       unlinkSync(ownerPath)
       process.stdout.write(`Removed only the disposable ${PROJECT_ID} stack and its volumes\n`)
     } else {
-      throw new Error("Expected start, test, browser, or stop")
+      throw new Error("Expected start, test, browser, types, build, or stop")
     }
   }
 } finally {
