@@ -18,8 +18,8 @@ API tests prove persistence, SQL atomicity, ownership and constraints independen
 | 8 identity propagation     | UI data-recovery identity edit updates history/reminders/dashboard from current owned vehicle                                                                                                                                                                   |
 | 9 load error vs empty      | UI data-recovery initial failure, history initial failure, explicit retry; successful empty has separate state                                                                                                                                                  |
 | 10 retain/retry            | UI failed vehicle refresh and history navigation retain valid data; failed post-write refresh explicitly invalidates stale page/totals and retries                                                                                                              |
-| 11 partial batch           | UI maintenance-batch retains incomplete row; API maintenance-batch rejects whole batch, omits only entirely empty rows                                                                                                                                          |
-| 12 strict numbers          | API maintenance-batch + data-commands reject negatives/fractions/partial parses/exponents; UI scheduled create/edit and data-recovery maintenance/vehicle editors; shared unit maintenance validation                                                           |
+| 11 partial batch           | UI maintenance-batch retains incomplete rows; shared validation omits only wholly empty rows; API maintenance-batch rejects invalid batches atomically                                                                                                          |
+| 12 strict numbers          | API maintenance-batch + data-commands reject negatives/fractions/partial parses/exponents; shared unit maintenance validation; UI partial-row blocking and required schedule criteria                                                                           |
 | 13 zero vs null            | API exact zero/NULL reads; UI scheduled create/edit, maintenance edit/batch, history and recent activity show zero and missing values distinctly; vehicle overview/list use nullable formatter                                                                  |
 | 14 recent odometer         | API maintenance-batch: nonfuture performed day can raise mileage transactionally                                                                                                                                                                                |
 | 15 historical odometer     | Same API: older/lower/future values, edits/deletes/concurrent batches never reduce odometer                                                                                                                                                                     |
@@ -57,8 +57,29 @@ API tests prove persistence, SQL atomicity, ownership and constraints independen
 
 ## Verification evidence
 
-Final serial command results are recorded here after execution. Local raw logs use
-`/tmp/keepel97-*.log`; those ephemeral files are not required to reproduce CI.
+Verified in ticket #97's checkout on 2026-11-06, Node 22.22.3, Bun 1.3.12 and
+Supabase CLI 2.75.0. CI pins Node 22/Bun 1.3.9/CLI 2.75.0; frozen install was also
+verified with Bun 1.3.9. These are current-checkout results, independent of prior tickets.
+
+| Command                                       | Result                                                                          |
+| --------------------------------------------- | ------------------------------------------------------------------------------- |
+| `bun install --frozen-lockfile`               | Pass, including CI-pinned Bun 1.3.9                                             |
+| `bun fmt:check`, `bun lint`, `bun type-check` | Pass                                                                            |
+| `bun run test`                                | 226 tests / 43 files pass                                                       |
+| `bun run test:data-api`                       | 22 tests / 6 files pass; real migration replay and two ordinary accounts        |
+| `bun run test:e2e`                            | 46 / 46 pass, retries disabled                                                  |
+| `bun run test:data-browser`                   | 1 / 1 pass; 1007 records / 41 pages, totals, CRUD and cascade                   |
+| `bun run test:schema`                         | Replayed 001–009 matches checked-in generated public types                      |
+| `bun run build:local`                         | Pass, including TypeScript and static generation; synthetic local configuration |
+
+The real-browser journey uses the visible home link and asserts its destination; its
+record/count/cost assertions and timeouts remain unchanged. An initial full-document
+navigation exceeded the dashboard readiness assertion; the unchanged diagnostic trace
+run passed, so no application defect was established. Controlled journeys retain reload
+coverage. No force clicks, weakened data assertions or automatic test retries were added.
+
+Local raw logs use `/tmp/keepel97-*.log`; those ephemeral files are not required to
+reproduce CI. The disposable stack remains local; no hosted migration was performed.
 
 ## Retained limits
 

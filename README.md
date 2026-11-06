@@ -19,11 +19,11 @@
 
 ---
 
-[![Next.js](https://img.shields.io/badge/Next.js-16.1.1-black?logo=next.js&logoColor=white)](https://nextjs.org/)
+[![Next.js](https://img.shields.io/badge/Next.js-16.2.9-black?logo=next.js&logoColor=white)](https://nextjs.org/)
 [![React](https://img.shields.io/badge/React-19-blue?logo=react&logoColor=white)](https://reactjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![Supabase](https://img.shields.io/badge/Supabase-Latest-green?logo=supabase&logoColor=white)](https://supabase.com/)
-[![TailwindCSS](https://img.shields.io/badge/TailwindCSS-4.1.9-blue?logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
+[![Supabase](https://img.shields.io/badge/Supabase_JS-2.108.1-green?logo=supabase&logoColor=white)](https://supabase.com/)
+[![TailwindCSS](https://img.shields.io/badge/TailwindCSS-4-blue?logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ## 🎯 Características Destacadas
@@ -62,7 +62,7 @@ Keepel mantiene la sesión y los comandos de autenticación en el servidor:
 
 - Recordatorios de mantenimiento
 - Programación de servicios futuros
-- Calendario integrado
+- Previsiones por fecha o kilometraje, con resolución explícita
 
 </td>
 </tr>
@@ -122,12 +122,12 @@ Keepel mantiene la sesión y los comandos de autenticación en el servidor:
 
 <div align="center">
 
-|                                               Frontend                                               |                                        Backend & Database                                         |                                       Tools & Utilities                                       |
-| :--------------------------------------------------------------------------------------------------: | :-----------------------------------------------------------------------------------------------: | :-------------------------------------------------------------------------------------------: |
-|      ![Next.js](https://img.shields.io/badge/Next.js-16.1.1-black?logo=next.js&logoColor=white)      | ![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL-green?logo=supabase&logoColor=white) | ![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?logo=typescript&logoColor=white) |
-|           ![React](https://img.shields.io/badge/React-19-blue?logo=react&logoColor=white)            | ![Supabase Auth](https://img.shields.io/badge/Auth-Supabase-green?logo=supabase&logoColor=white)  |                    ![Zod](https://img.shields.io/badge/Zod-Validation-red)                    |
-| ![TailwindCSS](https://img.shields.io/badge/TailwindCSS-4.1.9-blue?logo=tailwindcss&logoColor=white) |               ![Row Level Security](https://img.shields.io/badge/RLS-Enabled-green)               |         ![React Hook Form](https://img.shields.io/badge/React_Hook_Form-7.60.0-pink)          |
-|                ![shadcn/ui](https://img.shields.io/badge/shadcn/ui-Components-black)                 |              ![Realtime](https://img.shields.io/badge/Realtime-Subscriptions-green)               |                ![Lucide React](https://img.shields.io/badge/Lucide-Icons-blue)                |
+|                                             Frontend                                             |                                        Backend & Database                                         |                                       Tools & Utilities                                       |
+| :----------------------------------------------------------------------------------------------: | :-----------------------------------------------------------------------------------------------: | :-------------------------------------------------------------------------------------------: |
+|    ![Next.js](https://img.shields.io/badge/Next.js-16.2.9-black?logo=next.js&logoColor=white)    | ![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL-green?logo=supabase&logoColor=white) | ![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?logo=typescript&logoColor=white) |
+|         ![React](https://img.shields.io/badge/React-19-blue?logo=react&logoColor=white)          | ![Supabase Auth](https://img.shields.io/badge/Auth-Supabase-green?logo=supabase&logoColor=white)  |                    ![Zod](https://img.shields.io/badge/Zod-Validation-red)                    |
+| ![TailwindCSS](https://img.shields.io/badge/TailwindCSS-4-blue?logo=tailwindcss&logoColor=white) |               ![Row Level Security](https://img.shields.io/badge/RLS-Enabled-green)               |            ![React Hook Form](https://img.shields.io/badge/React_Hook_Form-7-pink)            |
+|              ![shadcn/ui](https://img.shields.io/badge/shadcn/ui-Components-black)               |                ![PostgREST](https://img.shields.io/badge/PostgREST-Data_API-green)                |                ![Lucide React](https://img.shields.io/badge/Lucide-Icons-blue)                |
 
 </div>
 
@@ -173,7 +173,7 @@ sequenceDiagram
 
 - **🏗️ App Router**: Utilizando el App Router de Next.js 16
 - **🎨 Design System**: Componentes consistentes con shadcn/ui
-- **🔄 Real-time**: Actualizaciones en tiempo real con Supabase
+- **🔄 Datos coherentes**: Mutaciones confirmadas, invalidación y reintento explícito
 - **🔐 Auth Server-Authoritative**: Comandos y validación de sesión en el servidor
 - **💾 Proyección de Sesión**: Identidad mínima y tipada para la interfaz
 - **🔗 Cross-Tab Sync**: Invalidación semántica de auth entre pestañas
@@ -196,7 +196,7 @@ Antes de comenzar, asegúrate de tener instalado:
 
 ```bash
 # 1. Clonar el repositorio
-git clone https://github.com/devchemical/CarCare.git
+git clone https://github.com/devchemical/Keepel.git
 cd Keepel
 
 # 2. Instalar dependencias
@@ -218,7 +218,7 @@ bun dev
 #### 1. Clonar el Repositorio
 
 ```bash
-git clone https://github.com/devchemical/CarCare.git
+git clone https://github.com/devchemical/Keepel.git
 cd Keepel
 ```
 
@@ -380,8 +380,7 @@ Keepel/
 │   │   ├── signup-success/          # Confirmación de registro
 │   │   ├── callback/                # OAuth callback
 │   │   └── error/                   # Página de errores
-│   ├── api/                         # API routes
-│   │   └── auth/signout/            # Sign-out endpoint
+│   ├── actions/privacy.ts           # Preferencias firmadas de privacidad
 │   ├── 🚗 vehicles/                 # Gestión de vehículos
 │   │   ├── page.tsx                 # Lista de vehículos
 │   │   └── [id]/maintenance/        # Mantenimiento por vehículo
@@ -429,7 +428,8 @@ Keepel/
 ├── 📁 scripts/                      # Scripts SQL de base de datos
 │   ├── 001_create_tables.sql        # Creación de tablas
 │   ├── 002_create_profile_trigger.sql # Triggers de perfiles
-│   └── 003_maintenance_function.sql   # Funciones de mantenimiento
+│   ├── 003_maintenance_function.sql # Compatibilidad histórica
+│   └── 004–009                      # Previsiones, migración, transacciones y totales
 ├── 📁 styles/                       # Estilos adicionales
 ├── 📁 public/                       # Archivos estáticos
 │   ├── keepel_logo.svg              # Logo del proyecto
@@ -746,8 +746,8 @@ La política pública está disponible en [`/privacidad`](https://keepel.chemica
 2. **Ver historial:**
    - Desde la página del vehículo
    - Revisa todos los servicios anteriores
-   - Filtra por tipo o fecha
-   - Exporta reportes
+   - Recorre todas las páginas del historial
+   - Consulta el total completo de registros y gastos
 
 </details>
 
