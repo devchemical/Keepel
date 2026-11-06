@@ -14,6 +14,7 @@ describe("signup feedback", () => {
 
     expect(markup).toContain('role="alert"')
     expect(markup).toContain(expectedMessage)
+    expect(markup).not.toContain("Referencia:")
   })
 
   it("shows the incident reference for temporary unavailability", () => {
@@ -26,7 +27,10 @@ describe("signup feedback", () => {
       })
     )
 
-    expect(markup).toContain("Ocurrió un error inesperado. Inténtalo de nuevo.")
+    expect(markup).toContain(
+      "El servicio de acceso no está disponible en este momento. Inténtalo de nuevo en unos minutos."
+    )
+    expect(markup).toContain("Si el problema persiste, contacta con soporte")
     expect(markup).toContain("Referencia: auth-incident-signup")
   })
 
