@@ -1,14 +1,12 @@
 "use client"
 
-/* eslint-disable eslint/no-shadow -- The caught error is rendered by the form error state. */
-
 import { vehicleValuesSchema } from "@/lib/data/data-command"
 import type React from "react"
 
 import { useState, useEffect } from "react"
-import { OperationRecovery, usePendingDataOperation } from "@/components/data/operation-recovery"
+import { OperationRecovery } from "@/components/data/operation-recovery"
 import { useData } from "@/contexts"
-import { operationMessage } from "@/lib/data/operation-messages"
+import { useEditor } from "@/hooks/use-editor"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
@@ -43,9 +41,6 @@ const colors = [
 ]
 
 export function EditVehicleDialog({ vehicle, open, onOpenChange }: EditVehicleDialogProps) {
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
   const { updateVehicle } = useData()
 
   const [formData, setFormData] = useState({
@@ -70,35 +65,19 @@ export function EditVehicleDialog({ vehicle, open, onOpenChange }: EditVehicleDi
     })
   }, [vehicle])
 
-  const pending = usePendingDataOperation(() => {
-    setError(null)
-    onOpenChange(false)
-  })
-  const handleSubmit = async (e: React.FormEvent) => {
+  const editor = useEditor({ kind: "crud", open, onOpenChange, failureMessage: "Error al actualizar vehículo" })
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    setIsLoading(true)
-    setError(null)
-
-    try {
+    void editor.submit(() => {
       const parsed = vehicleValuesSchema.safeParse(formData)
       if (!parsed.success)
-        throw new Error("Indica marca, modelo, un año válido y kilometraje entero mayor o igual a 0.")
-      const message = operationMessage("crud", await updateVehicle(vehicle.id, parsed.data))
-      if (message) {
-        setError(message)
-        return
-      }
-
-      onOpenChange(false)
-    } catch (error: unknown) {
-      setError(error instanceof Error ? error.message : "Error al actualizar vehículo")
-    } finally {
-      setIsLoading(false)
-    }
+        return { invalid: "Indica marca, modelo, un año válido y kilometraje entero mayor o igual a 0." }
+      return { send: () => updateVehicle(vehicle.id, parsed.data) }
+    })
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={editor.open} onOpenChange={editor.setOpen}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -108,9 +87,9 @@ export function EditVehicleDialog({ vehicle, open, onOpenChange }: EditVehicleDi
           <DialogDescription>Actualiza la información de tu vehículo.</DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4" data-editor-state={editor.state.status}>
           <OperationRecovery />
-          <fieldset disabled={pending || isLoading} className="space-y-4">
+          <fieldset disabled={editor.frozen || editor.submitting} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="make">Marca *</Label>
@@ -138,7 +117,7 @@ export function EditVehicleDialog({ vehicle, open, onOpenChange }: EditVehicleDi
               <div className="space-y-2">
                 <Label htmlFor="year">Año *</Label>
                 <Select value={formData.year} onValueChange={(value) => setFormData({ ...formData, year: value })}>
-                  <SelectTrigger id="year" disabled={pending || isLoading}>
+                  <SelectTrigger id="year" disabled={editor.frozen || editor.submitting}>
                     <SelectValue placeholder="Seleccionar año" />
                   </SelectTrigger>
                   <SelectContent>
@@ -153,7 +132,7 @@ export function EditVehicleDialog({ vehicle, open, onOpenChange }: EditVehicleDi
               <div className="space-y-2">
                 <Label htmlFor="color">Color</Label>
                 <Select value={formData.color} onValueChange={(value) => setFormData({ ...formData, color: value })}>
-                  <SelectTrigger id="color" disabled={pending || isLoading}>
+                  <SelectTrigger id="color" disabled={editor.frozen || editor.submitting}>
                     <SelectValue placeholder="Seleccionar color" />
                   </SelectTrigger>
                   <SelectContent>
@@ -198,21 +177,21 @@ export function EditVehicleDialog({ vehicle, open, onOpenChange }: EditVehicleDi
               />
             </div>
 
-            {error && (
+            {editor.error && (
               <div
                 role="alert"
                 className="text-destructive-foreground bg-destructive/10 border-destructive/20 rounded-md border p-3 text-sm"
               >
-                {error}
+                {editor.error}
               </div>
             )}
 
             <div className="flex gap-2 pt-4">
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="flex-1">
+              <Button type="button" variant="outline" onClick={() => editor.setOpen(false)} className="flex-1">
                 Cancelar
               </Button>
-              <Button type="submit" disabled={isLoading} className="bg-primary hover:bg-primary/90 flex-1">
-                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              <Button type="submit" disabled={editor.submitting} className="bg-primary hover:bg-primary/90 flex-1">
+                {editor.submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Actualizar Vehículo
               </Button>
             </div>

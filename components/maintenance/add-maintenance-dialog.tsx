@@ -1,12 +1,13 @@
 "use client"
 
-/* eslint-disable eslint/no-shadow, typescript/no-non-null-assertion, unicorn/consistent-function-scoping -- Form error state uses conventional naming; numeric validations guard non-null assertions; temp id helper stays local. */
+/* eslint-disable typescript/no-non-null-assertion, unicorn/consistent-function-scoping -- Numeric validations guard non-null assertions; temp id helper stays local. */
 
 import type React from "react"
 
-import { useRef, useState } from "react"
+import { useState } from "react"
 import { useData } from "@/contexts"
-import { BATCH_UNEXPECTED_MESSAGE, JOURNAL_BATCH_ALERT, operationMessage } from "@/lib/data/operation-messages"
+import { BATCH_UNEXPECTED_MESSAGE, JOURNAL_BATCH_ALERT } from "@/lib/data/operation-messages"
+import { useEditor } from "@/hooks/use-editor"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -49,12 +50,6 @@ export function AddMaintenanceDialog({
   open: controlledOpen,
   onOpenChange,
 }: AddMaintenanceDialogProps) {
-  const [internalOpen, setInternalOpen] = useState(false)
-  const open = controlledOpen !== undefined ? controlledOpen : internalOpen
-  const setOpen = onOpenChange ?? setInternalOpen
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
   // Usar contextos en lugar de crear cliente directamente
   const {
     createMaintenanceBatch,
@@ -69,7 +64,6 @@ export function AddMaintenanceDialog({
   const pendingBatch = pendingOperation?.action === "maintenance.batch" ? pendingOperation : null
   const [selectedSchedule, setSelectedSchedule] = useState(initialScheduledServiceId ?? "none")
   const [completionRowId, setCompletionRowId] = useState("")
-  const submitting = useRef(false)
   const pendingSchedules = scheduledServices.filter(
     (service) => service.vehicle_id === vehicleId && isPendingScheduledService(service.status)
   )
@@ -124,66 +118,62 @@ export function AddMaintenanceDialog({
     setServices(services.map((s) => (s.id === id ? { ...s, [field]: value } : s)))
   }
 
-  const save = async (reconcileOnly = false) => {
-    if (submitting.current) return
-    setError(null)
-    let command: MaintenanceCommand | null = pendingBatch
-    if (!command) {
-      const parsed = maintenanceBatchSchema.safeParse({ ...formData, services })
-      if (!parsed.success) {
-        setError(
-          parsed.error.issues
-            .map((issue) => {
-              const index = issue.path[0] === "services" && typeof issue.path[1] === "number" ? issue.path[1] : null
-              return index !== null
-                ? `Servicio #${index + 1}: revisa el tipo, la descripción y el costo.`
-                : "Revisa la fecha, el kilometraje y los servicios."
-            })
-            .join(" ")
-        )
-        return
-      }
-      const nonemptyRows = services.filter((row) => !isEmptyMaintenanceRow(row))
-      const selectedRow = completionRowId || services.find((row) => row.type)?.id
-      const envelope = maintenanceCommandSchema.safeParse({
-        operationId: crypto.randomUUID(),
-        vehicleId,
-        today: localToday(),
-        batch: parsed.data,
-        completion:
-          selectedSchedule === "none"
-            ? null
-            : {
-                scheduled_service_id: selectedSchedule,
-                service_index: nonemptyRows.findIndex((row) => row.id === selectedRow),
-              },
-      })
-      if (!envelope.success) {
-        setError("Selecciona un servicio realizado y una fecha no futura para resolver la previsión.")
-        return
-      }
-      command = envelope.data
-    }
-    submitting.current = true
-    setIsLoading(true)
-    try {
-      const result = await (reconcileOnly ? reconcileMaintenanceBatch(command) : createMaintenanceBatch(command))
-      if (result.status === "confirmed") {
-        setServices([{ id: generateTempId(), type: "", description: "", cost: "" }])
-        setFormData({ mileage: "", service_date: localToday(), notes: "" })
-        setSelectedSchedule("none")
-        setCompletionRowId("")
-        setOpen(false)
-      } else {
-        setError(operationMessage("batch", result))
-      }
-    } catch {
-      setError(BATCH_UNEXPECTED_MESSAGE)
-    } finally {
-      submitting.current = false
-      setIsLoading(false)
-    }
+  const resetDraft = () => {
+    setServices([{ id: generateTempId(), type: "", description: "", cost: "" }])
+    setFormData({ mileage: "", service_date: localToday(), notes: "" })
+    setSelectedSchedule("none")
+    setCompletionRowId("")
   }
+
+  const editor = useEditor({
+    kind: "batch",
+    open: controlledOpen,
+    onOpenChange,
+    onConfirmed: resetDraft,
+    failureMessage: BATCH_UNEXPECTED_MESSAGE,
+  })
+
+  const prepareCommand = (): { invalid: string } | { command: MaintenanceCommand } => {
+    if (pendingBatch) return { command: pendingBatch }
+    const parsed = maintenanceBatchSchema.safeParse({ ...formData, services })
+    if (!parsed.success)
+      return {
+        invalid: parsed.error.issues
+          .map((issue) => {
+            const index = issue.path[0] === "services" && typeof issue.path[1] === "number" ? issue.path[1] : null
+            return index !== null
+              ? `Servicio #${index + 1}: revisa el tipo, la descripción y el costo.`
+              : "Revisa la fecha, el kilometraje y los servicios."
+          })
+          .join(" "),
+      }
+    const nonemptyRows = services.filter((row) => !isEmptyMaintenanceRow(row))
+    const selectedRow = completionRowId || services.find((row) => row.type)?.id
+    const envelope = maintenanceCommandSchema.safeParse({
+      operationId: crypto.randomUUID(),
+      vehicleId,
+      today: localToday(),
+      batch: parsed.data,
+      completion:
+        selectedSchedule === "none"
+          ? null
+          : {
+              scheduled_service_id: selectedSchedule,
+              service_index: nonemptyRows.findIndex((row) => row.id === selectedRow),
+            },
+    })
+    if (!envelope.success)
+      return { invalid: "Selecciona un servicio realizado y una fecha no futura para resolver la previsión." }
+    return { command: envelope.data }
+  }
+
+  const save = (reconcileOnly = false) =>
+    editor.submit(() => {
+      const prepared = prepareCommand()
+      if ("invalid" in prepared) return prepared
+      const { command } = prepared
+      return { send: () => (reconcileOnly ? reconcileMaintenanceBatch(command) : createMaintenanceBatch(command)) }
+    })
 
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault()
@@ -191,12 +181,7 @@ export function AddMaintenanceDialog({
   }
 
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(next) => {
-        if (!isLoading) setOpen(next)
-      }}
-    >
+    <Dialog open={editor.open} onOpenChange={editor.setOpen}>
       {children && <DialogTrigger asChild>{children}</DialogTrigger>}
       <DialogContent className="sm:max-w-[600px]">
         <DialogHeader className="space-y-2">
@@ -214,8 +199,8 @@ export function AddMaintenanceDialog({
             Operación original pendiente. Vehículo: {pendingBatch.vehicleId}. Referencia: {pendingBatch.operationId}
           </p>
         )}
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <fieldset disabled={isLoading || !!pendingBatch} className="contents">
+        <form onSubmit={handleSubmit} className="space-y-4" data-editor-state={editor.state.status}>
+          <fieldset disabled={editor.submitting || editor.frozen} className="contents">
             {/* Información general */}
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
@@ -381,16 +366,16 @@ export function AddMaintenanceDialog({
             )}
           </fieldset>
           {operationStorageError && <p role="alert">{JOURNAL_BATCH_ALERT}</p>}
-          {error && (
+          {editor.error && (
             <div
               role="alert"
               className="text-destructive-foreground bg-destructive/10 border-destructive/20 rounded-md border p-2.5 text-xs sm:text-sm"
             >
-              {error}
+              {editor.error}
             </div>
           )}
 
-          {pendingOperation && !isLoading && (
+          {pendingOperation && !editor.submitting && (
             <Button type="button" variant="outline" onClick={() => void save(true)}>
               Comprobar resultado
             </Button>
@@ -399,19 +384,19 @@ export function AddMaintenanceDialog({
           <div className="border-border flex flex-col-reverse gap-2 border-t pt-3 sm:flex-row sm:gap-3">
             <Button
               type="button"
-              disabled={isLoading}
+              disabled={editor.submitting}
               variant="outline"
-              onClick={() => setOpen(false)}
+              onClick={() => editor.setOpen(false)}
               className="h-10 flex-1 sm:h-11"
             >
               Cancelar
             </Button>
             <Button
               type="submit"
-              disabled={isLoading}
+              disabled={editor.submitting}
               className="bg-primary hover:bg-primary/90 h-10 flex-1 font-medium sm:h-11"
             >
-              {isLoading ? (
+              {editor.submitting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Guardando...

@@ -1,5 +1,4 @@
 "use client"
-import { useEffect, useRef } from "react"
 import { useData } from "@/contexts"
 import { Button } from "@/components/ui/button"
 import { OPERATION_POLICY, operationKind } from "@/lib/data/operation-machine"
@@ -87,18 +86,4 @@ export function OperationRecovery() {
       ))}
     </>
   )
-}
-
-/** Keep the unresolved editor frozen; closing it does not discard the owner's operation. */
-export function usePendingDataOperation(onConfirmed: () => void) {
-  const { pendingOperations } = useData()
-  const unresolved = useRef(false)
-  useEffect(() => {
-    if (pendingOperations.some((operation) => operation.status === "unknown")) unresolved.current = true
-    if (unresolved.current && pendingOperations.length === 0) {
-      unresolved.current = false
-      onConfirmed()
-    }
-  }, [pendingOperations, onConfirmed])
-  return pendingOperations.length > 0
 }

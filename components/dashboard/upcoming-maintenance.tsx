@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Calendar, AlertTriangle, CheckCircle, Car, MoreVertical, Edit } from "lucide-react"
-import { useState } from "react"
+import { useReducer, useState } from "react"
 import { useData } from "@/contexts"
 import { toast } from "sonner"
 import { AddMaintenanceDialog } from "@/components/maintenance/add-maintenance-dialog"
@@ -19,6 +19,7 @@ import type { ScheduleReminder } from "@/lib/data/scheduled-services"
 import { formatCalendarDay } from "@/lib/data/calendar-day"
 import { MAINTENANCE_TYPES } from "@/lib/data/maintenance-types"
 import { operationMessage } from "@/lib/data/operation-messages"
+import { NO_ROW_ACTION, transitionRowAction } from "@/lib/ui/editor-machine"
 
 interface UpcomingMaintenanceProps {
   upcomingMaintenance: (ScheduleReminder & { service: ScheduledService })[]
@@ -27,10 +28,12 @@ interface UpcomingMaintenanceProps {
 
 export function UpcomingMaintenance({ upcomingMaintenance, isLoading }: UpcomingMaintenanceProps) {
   const { cancelScheduledService } = useData()
-  const [completingService, setCompletingService] = useState<ScheduledService | null>(null)
+  const [rowAction, dispatchRowAction] = useReducer(
+    transitionRowAction<ScheduledService, "completing" | "editing">,
+    NO_ROW_ACTION
+  )
   const [cancellingId, setCancellingId] = useState<string | null>(null)
   const [showAll, setShowAll] = useState(false)
-  const [editingService, setEditingService] = useState<ScheduledService | null>(null)
 
   const cancel = async (id: string) => {
     if (cancellingId) return
@@ -179,14 +182,17 @@ export function UpcomingMaintenance({ upcomingMaintenance, isLoading }: Upcoming
                   <DropdownMenuContent align="end">
                     <DropdownMenuItem
                       disabled={cancellingId !== null}
-                      onClick={() => setCompletingService(maintenance)}
+                      onClick={() => dispatchRowAction({ type: "SELECT", action: "completing", row: maintenance })}
                     >
                       Completar previsión
                     </DropdownMenuItem>
                     <DropdownMenuItem disabled={cancellingId !== null} onClick={() => void cancel(maintenance.id)}>
                       Cancelar previsión
                     </DropdownMenuItem>
-                    <DropdownMenuItem disabled={cancellingId !== null} onClick={() => setEditingService(maintenance)}>
+                    <DropdownMenuItem
+                      disabled={cancellingId !== null}
+                      onClick={() => dispatchRowAction({ type: "SELECT", action: "editing", row: maintenance })}
+                    >
                       <Edit className="mr-2 h-4 w-4" />
                       Editar
                     </DropdownMenuItem>
@@ -206,19 +212,19 @@ export function UpcomingMaintenance({ upcomingMaintenance, isLoading }: Upcoming
         </div>
       </CardContent>
 
-      {completingService && (
+      {rowAction.type === "completing" && (
         <AddMaintenanceDialog
-          vehicleId={completingService.vehicle_id}
-          initialScheduledServiceId={completingService.id}
+          vehicleId={rowAction.row.vehicle_id}
+          initialScheduledServiceId={rowAction.row.id}
           open
-          onOpenChange={(open) => !open && setCompletingService(null)}
+          onOpenChange={(open) => !open && dispatchRowAction({ type: "CLEAR", action: "completing" })}
         />
       )}
-      {editingService && (
+      {rowAction.type === "editing" && (
         <EditScheduledServiceDialog
-          service={editingService}
-          open={!!editingService}
-          onOpenChange={(open) => !open && setEditingService(null)}
+          service={rowAction.row}
+          open
+          onOpenChange={(open) => !open && dispatchRowAction({ type: "CLEAR", action: "editing" })}
         />
       )}
     </Card>

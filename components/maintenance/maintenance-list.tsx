@@ -10,9 +10,10 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Calendar, DollarSign, Gauge, MoreVertical, Edit, Trash2 } from "lucide-react"
 import { EditMaintenanceDialog } from "./edit-maintenance-dialog"
 import { DeleteMaintenanceDialog } from "./delete-maintenance-dialog"
-import { useState } from "react"
+import { useReducer } from "react"
 import { formatDate, formatCurrency, formatMileage } from "@/lib/formatters"
 import { MaintenanceSkeleton } from "@/components/skeletons/maintenance-skeleton"
+import { NO_ROW_ACTION, transitionRowAction } from "@/lib/ui/editor-machine"
 
 interface MaintenanceRecord {
   id: string
@@ -32,8 +33,10 @@ interface MaintenanceListProps {
 }
 
 export function MaintenanceList({ records, vehicleId, isLoading }: MaintenanceListProps) {
-  const [editingRecord, setEditingRecord] = useState<MaintenanceRecord | null>(null)
-  const [deletingRecord, setDeletingRecord] = useState<MaintenanceRecord | null>(null)
+  const [rowAction, dispatchRowAction] = useReducer(
+    transitionRowAction<MaintenanceRecord, "editing" | "deleting">,
+    NO_ROW_ACTION
+  )
 
   if (isLoading) {
     return <MaintenanceSkeleton />
@@ -68,12 +71,14 @@ export function MaintenanceList({ records, vehicleId, isLoading }: MaintenanceLi
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => setEditingRecord(record)}>
+                  <DropdownMenuItem
+                    onClick={() => dispatchRowAction({ type: "SELECT", action: "editing", row: record })}
+                  >
                     <Edit className="mr-2 h-4 w-4" />
                     Editar
                   </DropdownMenuItem>
                   <DropdownMenuItem
-                    onClick={() => setDeletingRecord(record)}
+                    onClick={() => dispatchRowAction({ type: "SELECT", action: "deleting", row: record })}
                     className="text-destructive focus:text-destructive"
                   >
                     <Trash2 className="mr-2 h-4 w-4" />
@@ -107,20 +112,20 @@ export function MaintenanceList({ records, vehicleId, isLoading }: MaintenanceLi
         </Card>
       ))}
 
-      {editingRecord && (
+      {rowAction.type === "editing" && (
         <EditMaintenanceDialog
-          record={editingRecord}
+          record={rowAction.row}
           vehicleId={vehicleId}
-          open={!!editingRecord}
-          onOpenChange={(open) => !open && setEditingRecord(null)}
+          open
+          onOpenChange={(open) => !open && dispatchRowAction({ type: "CLEAR", action: "editing" })}
         />
       )}
 
-      {deletingRecord && (
+      {rowAction.type === "deleting" && (
         <DeleteMaintenanceDialog
-          record={deletingRecord}
-          open={!!deletingRecord}
-          onOpenChange={(open) => !open && setDeletingRecord(null)}
+          record={rowAction.row}
+          open
+          onOpenChange={(open) => !open && dispatchRowAction({ type: "CLEAR", action: "deleting" })}
         />
       )}
     </div>

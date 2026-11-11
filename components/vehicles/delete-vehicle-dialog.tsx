@@ -1,11 +1,8 @@
 "use client"
 
-/* eslint-disable eslint/no-shadow -- The caught error is rendered by the form error state. */
-
-import { useState } from "react"
-import { OperationRecovery, usePendingDataOperation } from "@/components/data/operation-recovery"
+import { OperationRecovery } from "@/components/data/operation-recovery"
 import { useData } from "@/contexts"
-import { operationMessage } from "@/lib/data/operation-messages"
+import { useEditor } from "@/hooks/use-editor"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { AlertTriangle, Loader2 } from "lucide-react"
@@ -24,37 +21,14 @@ interface DeleteVehicleDialogProps {
 }
 
 export function DeleteVehicleDialog({ vehicle, open, onOpenChange }: DeleteVehicleDialogProps) {
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
   const { deleteVehicle } = useData()
 
-  const pending = usePendingDataOperation(() => {
-    setError(null)
-    onOpenChange(false)
-  })
-  const handleDelete = async () => {
-    setIsLoading(true)
-    setError(null)
-
-    try {
-      const message = operationMessage("crud", await deleteVehicle(vehicle.id))
-      if (message) {
-        setError(message)
-        return
-      }
-
-      onOpenChange(false)
-    } catch (error: unknown) {
-      setError(error instanceof Error ? error.message : "Error al eliminar vehículo")
-    } finally {
-      setIsLoading(false)
-    }
-  }
+  const editor = useEditor({ kind: "crud", open, onOpenChange, failureMessage: "Error al eliminar vehículo" })
+  const handleDelete = () => void editor.submit(() => ({ send: () => deleteVehicle(vehicle.id) }))
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[400px]">
+    <Dialog open={editor.open} onOpenChange={editor.setOpen}>
+      <DialogContent className="sm:max-w-[400px]" data-editor-state={editor.state.status}>
         <DialogHeader>
           <DialogTitle className="text-destructive flex items-center gap-2">
             <AlertTriangle className="h-5 w-5" />
@@ -77,21 +51,26 @@ export function DeleteVehicleDialog({ vehicle, open, onOpenChange }: DeleteVehic
         </div>
 
         <OperationRecovery />
-        {error && (
+        {editor.error && (
           <div
             role="alert"
             className="text-destructive-foreground bg-destructive/10 border-destructive/20 rounded-md border p-3 text-sm"
           >
-            {error}
+            {editor.error}
           </div>
         )}
 
         <div className="flex gap-2 pt-4">
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="flex-1">
+          <Button type="button" variant="outline" onClick={() => editor.setOpen(false)} className="flex-1">
             Cancelar
           </Button>
-          <Button onClick={handleDelete} disabled={isLoading || pending} variant="destructive" className="flex-1">
-            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          <Button
+            onClick={handleDelete}
+            disabled={editor.submitting || editor.frozen}
+            variant="destructive"
+            className="flex-1"
+          >
+            {editor.submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Eliminar Vehículo
           </Button>
         </div>
