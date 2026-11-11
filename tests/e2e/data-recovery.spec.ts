@@ -256,17 +256,19 @@ test("a delayed create is sent once and cancellation of the client wait does not
   await expect(dialog.getByRole("alert")).toHaveCount(0)
 })
 
-test("an unresolved create retains its immutable operation across reload and can only query its status", async ({
+test("an unresolved create retains its immutable operation across reload and can query or replay it", async ({
   page,
   request,
 }) => {
   await request.post(`${CONTROLLED_SERVICES_URL}/__test__/reset`, { data: { maintenance: true } })
   await loginWithPassword(page, "/vehicles/00000000-0000-4000-8000-000000000093/maintenance")
-  let attempts = 0
+  const operationIds: string[] = []
   await page.route("**/rest/v1/rpc/mutate_data", async (route) => {
-    attempts++
-    await route.fetch()
-    await route.fulfill({ status: 503, json: { message: "Lost response" } })
+    operationIds.push((route.request().postDataJSON() as { p_operation_id: string }).p_operation_id)
+    const response = await route.fetch()
+    // Only the first response is lost; the write itself reached the database.
+    if (operationIds.length === 1) await route.fulfill({ status: 503, json: { message: "Lost response" } })
+    else await route.fulfill({ response })
   })
   await page.getByRole("button", { name: "Agregar", exact: true }).click()
   await page.getByRole("menuitem", { name: "Programar Servicio", exact: true }).click()
@@ -280,9 +282,55 @@ test("an unresolved create retains its immutable operation across reload and can
   if (!reference) throw new Error("Missing unresolved operation reference")
   await page.reload()
   await expect(page.getByText(reference, { exact: true })).toBeVisible()
-  await page.getByRole("button", { name: "Comprobar resultado", exact: true }).click()
+  await expect(page.getByRole("button", { name: "Comprobar resultado", exact: true })).toBeEnabled()
+  // Replaying the same operation id returns the original receipt instead of writing again.
+  await page.getByRole("button", { name: "Reintentar misma operación", exact: true }).click()
   await expect(page.getByText(reference, { exact: true })).toHaveCount(0)
-  expect(attempts).toBe(1)
+  expect(operationIds).toHaveLength(2)
+  expect(operationIds[1]).toBe(operationIds[0])
+  expect(reference).toContain(operationIds[0])
+  expect((await (await request.get(`${CONTROLLED_SERVICES_URL}/__test__/maintenance`)).json()).schedules).toHaveLength(
+    1
+  )
+})
+
+test("a lost CRUD request is replayed explicitly from its editor once and writes exactly one row", async ({
+  page,
+  request,
+}) => {
+  await request.post(`${CONTROLLED_SERVICES_URL}/__test__/reset`, { data: { maintenance: true } })
+  await loginWithPassword(page, "/vehicles/00000000-0000-4000-8000-000000000093/maintenance")
+  const operationIds: string[] = []
+  await page.route("**/rest/v1/rpc/mutate_data", async (route) => {
+    operationIds.push((route.request().postDataJSON() as { p_operation_id: string }).p_operation_id)
+    // The first request never reaches the database.
+    if (operationIds.length === 1) await route.abort("failed")
+    else await route.continue()
+  })
+  await page.getByRole("button", { name: "Agregar", exact: true }).click()
+  await page.getByRole("menuitem", { name: "Programar Servicio", exact: true }).click()
+  const dialog = page.getByRole("dialog", { name: "Programar Servicio", exact: true })
+  await dialog.getByLabel("Tipo de Servicio", { exact: false }).click()
+  await page.getByRole("option", { name: "Otro", exact: true }).click()
+  await dialog.getByLabel("Kilometraje Programado").fill("0")
+  await dialog.getByRole("button", { name: "Programar Servicio", exact: true }).click()
+  await expect(dialog.getByRole("status")).toContainText("Resultado pendiente de confirmar")
+  await expect(dialog.getByLabel("Kilometraje Programado")).toBeDisabled()
+  // Nothing reached the database, so a status query can never resolve it.
+  await dialog.getByRole("button", { name: "Comprobar resultado", exact: true }).click()
+  await expect(dialog.getByRole("button", { name: "Comprobar resultado", exact: true })).toBeEnabled()
+  await expect(dialog.getByRole("status")).toContainText("Resultado pendiente de confirmar")
+  expect(operationIds).toHaveLength(1)
+  await dialog.getByRole("button", { name: "Reintentar misma operación", exact: true }).click()
+  await expect(dialog).toBeHidden()
+  expect(operationIds).toEqual([operationIds[0], operationIds[0]])
+  expect((await (await request.get(`${CONTROLLED_SERVICES_URL}/__test__/maintenance`)).json()).schedules).toHaveLength(
+    1
+  )
+  await page.getByRole("button", { name: "Agregar", exact: true }).click()
+  await page.getByRole("menuitem", { name: "Programar Servicio", exact: true }).click()
+  await expect(dialog.getByLabel("Kilometraje Programado")).toHaveValue("")
+  await expect(dialog.getByRole("alert")).toHaveCount(0)
 })
 
 test("maintenance editing preserves zero and NULL, then deletion updates the owned history", async ({
