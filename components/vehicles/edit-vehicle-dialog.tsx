@@ -8,6 +8,7 @@ import type React from "react"
 import { useState, useEffect } from "react"
 import { OperationRecovery, usePendingDataOperation } from "@/components/data/operation-recovery"
 import { useData } from "@/contexts"
+import { operationMessage } from "@/lib/data/operation-messages"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
@@ -45,7 +46,7 @@ export function EditVehicleDialog({ vehicle, open, onOpenChange }: EditVehicleDi
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const { updateVehicleOptimistic } = useData()
+  const { updateVehicle } = useData()
 
   const [formData, setFormData] = useState({
     make: vehicle.make,
@@ -82,7 +83,11 @@ export function EditVehicleDialog({ vehicle, open, onOpenChange }: EditVehicleDi
       const parsed = vehicleValuesSchema.safeParse(formData)
       if (!parsed.success)
         throw new Error("Indica marca, modelo, un año válido y kilometraje entero mayor o igual a 0.")
-      await updateVehicleOptimistic(vehicle.id, parsed.data)
+      const message = operationMessage("crud", await updateVehicle(vehicle.id, parsed.data))
+      if (message) {
+        setError(message)
+        return
+      }
 
       onOpenChange(false)
     } catch (error: unknown) {
