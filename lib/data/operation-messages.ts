@@ -3,6 +3,8 @@
 
 import type { PendingCommand } from "./pending-operations"
 import type { BlockReason, OperationKind, OperationOutcome, PendingOperationStatus } from "./operation-machine"
+import { MAINTENANCE_TYPES } from "./maintenance-types"
+import { formatDate } from "@/lib/formatters"
 
 export const OPERATION_LABELS: Record<PendingCommand["action"], string> = {
   "maintenance.batch": "Alta múltiple de mantenimiento",
@@ -96,4 +98,17 @@ const MESSAGES: Record<OperationKind, Record<FailedOutcome | BlockReason, string
 export function operationMessage(kind: OperationKind, outcome: OperationOutcome): string | null {
   if (outcome.status === "confirmed") return null
   return MESSAGES[kind][outcome.status === "blocked" ? outcome.reason : outcome.status]
+}
+
+/** A forecast completed by a maintenance record; deleting the record returns it to pending. */
+export interface CompletedForecast {
+  type: string
+  scheduled_date: string | null
+}
+
+/** Delete-dialog warning for a record that completed a forecast. */
+export function completedForecastWarning(forecast: CompletedForecast): string {
+  const label = MAINTENANCE_TYPES.find((type) => type.value === forecast.type)?.label ?? forecast.type
+  const date = forecast.scheduled_date ? ` del ${formatDate(forecast.scheduled_date)}` : ""
+  return `Este registro completó la previsión de ${label}${date}. Al eliminarlo, la previsión volverá a quedar pendiente.`
 }
