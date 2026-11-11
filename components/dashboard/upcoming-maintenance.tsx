@@ -15,12 +15,13 @@ import { AddMaintenanceDialog } from "@/components/maintenance/add-maintenance-d
 import { EditScheduledServiceDialog } from "@/components/maintenance/edit-scheduled-service-dialog"
 
 import type { ScheduledService } from "@/contexts"
-import type { ScheduleClassification } from "@/lib/data/scheduled-services"
+import type { ScheduleReminder } from "@/lib/data/scheduled-services"
 import { formatCalendarDay } from "@/lib/data/calendar-day"
 import { MAINTENANCE_TYPES } from "@/lib/data/maintenance-types"
+import { operationMessage } from "@/lib/data/operation-messages"
 
 interface UpcomingMaintenanceProps {
-  upcomingMaintenance: (ScheduleClassification & { service: ScheduledService })[]
+  upcomingMaintenance: (ScheduleReminder & { service: ScheduledService })[]
   isLoading?: boolean
 }
 
@@ -35,10 +36,11 @@ export function UpcomingMaintenance({ upcomingMaintenance, isLoading }: Upcoming
     if (cancellingId) return
     setCancellingId(id)
     try {
-      await cancelScheduledService(id)
-      toast.success("Previsión cancelada")
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "No se pudo confirmar la cancelación")
+      const message = operationMessage("crud", await cancelScheduledService(id))
+      if (message) toast.error(message)
+      else toast.success("Previsión cancelada")
+    } catch {
+      toast.error("No se pudo confirmar la cancelación")
     } finally {
       setCancellingId(null)
     }

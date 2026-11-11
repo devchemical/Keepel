@@ -8,6 +8,7 @@ import { formatDate } from "@/lib/formatters"
 import { useState } from "react"
 import { OperationRecovery, usePendingDataOperation } from "@/components/data/operation-recovery"
 import { useData } from "@/contexts"
+import { operationMessage } from "@/lib/data/operation-messages"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { AlertTriangle, Loader2 } from "lucide-react"
@@ -28,7 +29,7 @@ export function DeleteMaintenanceDialog({ record, open, onOpenChange }: DeleteMa
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const { deleteMaintenanceOptimistic } = useData()
+  const { deleteMaintenance } = useData()
 
   const pending = usePendingDataOperation(() => {
     setError(null)
@@ -39,7 +40,11 @@ export function DeleteMaintenanceDialog({ record, open, onOpenChange }: DeleteMa
     setError(null)
 
     try {
-      await deleteMaintenanceOptimistic(record.id)
+      const message = operationMessage("crud", await deleteMaintenance(record.id))
+      if (message) {
+        setError(message)
+        return
+      }
 
       onOpenChange(false)
     } catch (error: unknown) {

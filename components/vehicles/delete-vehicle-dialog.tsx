@@ -5,6 +5,7 @@
 import { useState } from "react"
 import { OperationRecovery, usePendingDataOperation } from "@/components/data/operation-recovery"
 import { useData } from "@/contexts"
+import { operationMessage } from "@/lib/data/operation-messages"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { AlertTriangle, Loader2 } from "lucide-react"
@@ -26,7 +27,7 @@ export function DeleteVehicleDialog({ vehicle, open, onOpenChange }: DeleteVehic
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const { deleteVehicleOptimistic } = useData()
+  const { deleteVehicle } = useData()
 
   const pending = usePendingDataOperation(() => {
     setError(null)
@@ -37,7 +38,11 @@ export function DeleteVehicleDialog({ vehicle, open, onOpenChange }: DeleteVehic
     setError(null)
 
     try {
-      await deleteVehicleOptimistic(vehicle.id)
+      const message = operationMessage("crud", await deleteVehicle(vehicle.id))
+      if (message) {
+        setError(message)
+        return
+      }
 
       onOpenChange(false)
     } catch (error: unknown) {

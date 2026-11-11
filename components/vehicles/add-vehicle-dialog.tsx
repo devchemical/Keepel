@@ -8,6 +8,7 @@ import type React from "react"
 import { useState } from "react"
 import { OperationRecovery, usePendingDataOperation } from "@/components/data/operation-recovery"
 import { useData } from "@/contexts"
+import { operationMessage } from "@/lib/data/operation-messages"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -49,7 +50,7 @@ export function AddVehicleDialog({ children }: AddVehicleDialogProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const { addVehicleOptimistic } = useData()
+  const { createVehicle } = useData()
 
   const [formData, setFormData] = useState({
     make: "",
@@ -85,7 +86,11 @@ export function AddVehicleDialog({ children }: AddVehicleDialogProps) {
       const parsed = vehicleValuesSchema.safeParse(formData)
       if (!parsed.success)
         throw new Error("Indica marca, modelo, un año válido y kilometraje entero mayor o igual a 0.")
-      await addVehicleOptimistic(parsed.data)
+      const message = operationMessage("crud", await createVehicle(parsed.data))
+      if (message) {
+        setError(message)
+        return
+      }
 
       resetConfirmedForm()
     } catch (error: unknown) {

@@ -6,6 +6,7 @@ import type React from "react"
 
 import { useRef, useState } from "react"
 import { useData } from "@/contexts"
+import { BATCH_UNEXPECTED_MESSAGE, JOURNAL_BATCH_ALERT, operationMessage } from "@/lib/data/operation-messages"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -24,6 +25,7 @@ import { localToday } from "@/lib/data/calendar-day"
 import { MAINTENANCE_TYPES as maintenanceTypes } from "@/lib/data/maintenance-types"
 import { maintenanceBatchSchema, isEmptyMaintenanceRow } from "@/lib/data/maintenance-validation"
 import { maintenanceCommandSchema, type MaintenanceCommand } from "@/lib/data/maintenance-command"
+import { isPendingScheduledService } from "@/lib/data/scheduled-service-lifecycle"
 
 interface AddMaintenanceDialogProps {
   children?: React.ReactNode
@@ -69,7 +71,7 @@ export function AddMaintenanceDialog({
   const [completionRowId, setCompletionRowId] = useState("")
   const submitting = useRef(false)
   const pendingSchedules = scheduledServices.filter(
-    (service) => service.vehicle_id === vehicleId && service.status === "pending"
+    (service) => service.vehicle_id === vehicleId && isPendingScheduledService(service.status)
   )
 
   // Helper para generar IDs temporales compatibles con todos los navegadores
@@ -166,21 +168,17 @@ export function AddMaintenanceDialog({
     setIsLoading(true)
     try {
       const result = await (reconcileOnly ? reconcileMaintenanceBatch(command) : createMaintenanceBatch(command))
-      if (result.status === "success") {
+      if (result.status === "confirmed") {
         setServices([{ id: generateTempId(), type: "", description: "", cost: "" }])
         setFormData({ mileage: "", service_date: localToday(), notes: "" })
         setSelectedSchedule("none")
         setCompletionRowId("")
         setOpen(false)
-      } else if (result.status === "rejected") {
-        setError("No se pudo guardar el mantenimiento. Revisa los datos y la sesión e inténtalo de nuevo.")
       } else {
-        setError(
-          "Resultado pendiente de confirmar. Comprueba el resultado o reintenta la misma operación; no se duplicarán los servicios."
-        )
+        setError(operationMessage("batch", result))
       }
     } catch {
-      setError("Resultado pendiente de confirmar. Comprueba el resultado antes de crear otra operación.")
+      setError(BATCH_UNEXPECTED_MESSAGE)
     } finally {
       submitting.current = false
       setIsLoading(false)
@@ -382,12 +380,7 @@ export function AddMaintenanceDialog({
               </div>
             )}
           </fieldset>
-          {operationStorageError && (
-            <p role="alert">
-              No se pudo guardar la referencia o recuperar las referencias pendientes en esta pestaña. No se ha enviado
-              un lote nuevo. Revisa el almacenamiento antes de continuar.
-            </p>
-          )}
+          {operationStorageError && <p role="alert">{JOURNAL_BATCH_ALERT}</p>}
           {error && (
             <div
               role="alert"
