@@ -19,7 +19,7 @@ import type { ScheduleReminder } from "@/lib/data/scheduled-services"
 import { formatCalendarDay } from "@/lib/data/calendar-day"
 import { MAINTENANCE_TYPES } from "@/lib/data/maintenance-types"
 import { OPERATION_SUCCESS_MESSAGES, operationMessage } from "@/lib/data/operation-messages"
-import { NO_ROW_ACTION, transitionRowAction } from "@/lib/ui/editor-machine"
+import { NO_ROW_ACTION, transitionRowAction } from "@/lib/ui/row-action"
 
 interface UpcomingMaintenanceProps {
   upcomingMaintenance: (ScheduleReminder & { service: ScheduledService })[]
@@ -28,10 +28,7 @@ interface UpcomingMaintenanceProps {
 
 export function UpcomingMaintenance({ upcomingMaintenance, isLoading }: UpcomingMaintenanceProps) {
   const { cancelScheduledService } = useData()
-  const [rowAction, dispatchRowAction] = useReducer(
-    transitionRowAction<ScheduledService, "completing" | "editing">,
-    NO_ROW_ACTION
-  )
+  const [rowAction, dispatchRowAction] = useReducer(transitionRowAction<ScheduledService>, NO_ROW_ACTION)
   const [cancellingId, setCancellingId] = useState<string | null>(null)
   const [showAll, setShowAll] = useState(false)
 
@@ -212,7 +209,7 @@ export function UpcomingMaintenance({ upcomingMaintenance, isLoading }: Upcoming
         </div>
       </CardContent>
 
-      {rowAction.type === "completing" && (
+      {rowAction.status === "completing" && (
         <AddMaintenanceDialog
           vehicleId={rowAction.row.vehicle_id}
           initialScheduledServiceId={rowAction.row.id}
@@ -220,7 +217,7 @@ export function UpcomingMaintenance({ upcomingMaintenance, isLoading }: Upcoming
           onOpenChange={(open) => !open && dispatchRowAction({ type: "CLEAR", action: "completing" })}
         />
       )}
-      {rowAction.type === "editing" && (
+      {rowAction.status === "editing" && (
         <EditScheduledServiceDialog
           service={rowAction.row}
           open

@@ -6,11 +6,9 @@ import {
   editorFrozen,
   isEditorOpen,
   transitionEditor,
-  transitionRowAction,
   transitionSettleLatch,
   type EditorEvent,
   type EditorState,
-  type RowAction,
   type SettleLatch,
 } from "@/lib/ui/editor-machine"
 import type { PendingOperation } from "@/lib/data/operation-machine"
@@ -183,28 +181,5 @@ describe("editor policy", () => {
     expect(editorFrozen("crud", [operation("maintenance.batch")])).toBe(true)
     expect(editorFrozen("batch", [operation("vehicle.update")])).toBe(false)
     expect(editorFrozen("batch", [operation("maintenance.batch")])).toBe(true)
-  })
-})
-
-describe("row action selection", () => {
-  type Row = { id: string }
-  const a = { id: "a" }
-  const b = { id: "b" }
-  const none: RowAction<Row> = { type: "none" }
-
-  it("selects one action at a time; the latest selection wins", () => {
-    const editing = transitionRowAction(none, { type: "SELECT", action: "editing", row: a })
-    expect(editing).toEqual({ type: "editing", row: a })
-    expect(transitionRowAction(editing, { type: "SELECT", action: "deleting", row: b })).toEqual({
-      type: "deleting",
-      row: b,
-    })
-  })
-
-  it("clears only the action that is closing", () => {
-    const deleting: RowAction<Row> = { type: "deleting", row: a }
-    expect(transitionRowAction(deleting, { type: "CLEAR", action: "editing" })).toBe(deleting)
-    expect(transitionRowAction(deleting, { type: "CLEAR", action: "deleting" })).toEqual(none)
-    expect(transitionRowAction(none, { type: "CLEAR", action: "deleting" })).toBe(none)
   })
 })

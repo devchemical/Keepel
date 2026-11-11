@@ -30,12 +30,7 @@
 // | idle  | PENDING_CHANGED (some unknown)       | armed |                                   |
 // | armed | PENDING_CHANGED (none pending)       | idle  | the owner dispatches ALL_SETTLED  |
 //
-// Machine 8 — Row action selection: `RowAction<T>` holds at most one row action per list.
-//
-// | from | event                 | to          |
-// | ---- | --------------------- | ----------- |
-// | any  | SELECT action, row    | action, row |
-// | same | CLEAR (same action)   | none        |
+// Machine 8 (row action selection) lives in lib/ui/row-action.ts.
 
 import type { OperationOutcome, PendingOperation } from "@/lib/data/operation-machine"
 
@@ -162,19 +157,4 @@ export function editorFrozen(kind: EditorKind, pendingOperations: readonly Pendi
   return EDITOR_POLICY[kind].freezeOn === "any-operation"
     ? pendingOperations.length > 0
     : pendingOperations.some((operation) => operation.command.action === "maintenance.batch")
-}
-
-export type RowAction<T, A extends string = "editing" | "deleting"> = { type: "none" } | { type: A; row: T }
-export type RowActionEvent<T, A extends string = "editing" | "deleting"> =
-  | { type: "SELECT"; action: A; row: T }
-  | { type: "CLEAR"; action: A }
-
-export const NO_ROW_ACTION = { type: "none" } as const
-
-export function transitionRowAction<T, A extends string>(
-  state: RowAction<T, A>,
-  event: RowActionEvent<T, A>
-): RowAction<T, A> {
-  if (event.type === "SELECT") return { type: event.action, row: event.row }
-  return state.type === event.action ? NO_ROW_ACTION : state
 }
