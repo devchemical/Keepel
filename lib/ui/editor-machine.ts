@@ -142,11 +142,11 @@ export function transitionSettleLatch(latch: SettleLatch, event: SettleLatchEven
 export type EditorKind = "crud" | "batch"
 
 /**
- * Today's deliberate split between the CRUD editors and the maintenance batch editor. D1 and D3
- * (docs/specs/explicit-state-machines.md) change these values, not the machine.
+ * The split between the CRUD editors and the maintenance batch editor. D3 made every editor block
+ * close while submitting; D1 (docs/specs/explicit-state-machines.md) changes the freeze, not the machine.
  */
 export const EDITOR_POLICY = {
-  crud: { closeWhileSubmitting: "hide", freezeOn: "any-operation", closeWhenAllSettled: true },
+  crud: { closeWhileSubmitting: "ignore", freezeOn: "any-operation", closeWhenAllSettled: true },
   batch: { closeWhileSubmitting: "ignore", freezeOn: "batch-operation", closeWhenAllSettled: false },
 } as const satisfies Record<
   EditorKind,

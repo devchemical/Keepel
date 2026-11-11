@@ -13,7 +13,6 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Calendar, Loader2 } from "lucide-react"
-import { toast } from "sonner"
 
 import { MAINTENANCE_TYPES as maintenanceTypes } from "@/lib/data/maintenance-types"
 import { scheduledServiceSchema } from "@/lib/data/scheduled-command"
@@ -56,22 +55,20 @@ export function EditScheduledServiceDialog({ service, open, onOpenChange }: Edit
 
   const editor = useEditor({
     kind: "crud",
+    action: "schedule.update",
     open,
     onOpenChange,
     failureMessage: "Error desconocido al actualizar servicio",
   })
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    const result = await editor.submit(() => {
+    void editor.submit(() => {
       if (!service?.id) return { invalid: "ID del servicio no válido" }
       const parsed = scheduledServiceSchema.safeParse(formData)
       if (!parsed.success)
         return { invalid: "Indica un tipo válido y al menos una fecha o un kilometraje válido mayor o igual a 0." }
       return { send: () => updateScheduledService(service.id, parsed.data) }
     })
-    if (!result) return
-    if (result.message) toast.error(result.message)
-    else toast.success("Servicio actualizado correctamente")
   }
 
   return (
@@ -178,6 +175,7 @@ export function EditScheduledServiceDialog({ service, open, onOpenChange }: Edit
               <Button
                 type="button"
                 variant="outline"
+                disabled={editor.submitting}
                 onClick={() => editor.setOpen(false)}
                 className="h-10 flex-1 sm:h-11"
               >

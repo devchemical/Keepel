@@ -67,7 +67,12 @@ export function AddVehicleDialog({ children }: AddVehicleDialogProps) {
       mileage: "",
     })
 
-  const editor = useEditor({ kind: "crud", onConfirmed: resetDraft, failureMessage: "Error al agregar vehículo" })
+  const editor = useEditor({
+    kind: "crud",
+    action: "vehicle.create",
+    onConfirmed: resetDraft,
+    failureMessage: "Error al agregar vehículo",
+  })
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     void editor.submit(() => {
@@ -192,7 +197,13 @@ export function AddVehicleDialog({ children }: AddVehicleDialogProps) {
             )}
 
             <div className="flex gap-2 pt-4">
-              <Button type="button" variant="outline" onClick={() => editor.setOpen(false)} className="flex-1">
+              <Button
+                type="button"
+                variant="outline"
+                disabled={editor.submitting}
+                onClick={() => editor.setOpen(false)}
+                className="flex-1"
+              >
                 Cancelar
               </Button>
               <Button type="submit" disabled={editor.submitting} className="bg-primary hover:bg-primary/90 flex-1">

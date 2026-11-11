@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import { BLOCK_REASON } from "@/lib/data/operation-machine"
-import { operationMessage, RECOVERY_STATUS_MESSAGES } from "@/lib/data/operation-messages"
+import { OPERATION_SUCCESS_MESSAGES, operationMessage, RECOVERY_STATUS_MESSAGES } from "@/lib/data/operation-messages"
 
 // Characterization: the copy CRUD dialogs rendered from thrown errors and the batch editor
 // rendered from its result before outcomes became values.
@@ -65,6 +65,22 @@ describe("every outcome has copy", () => {
       sending: "Comprobando operación…",
       checking: "Comprobando operación…",
       unknown: "Resultado pendiente de confirmar. No repitas la operación.",
+    })
+  })
+})
+
+describe("confirmed write copy (D3)", () => {
+  it("gives every editor command one success toast", () => {
+    expect(OPERATION_SUCCESS_MESSAGES).toEqual({
+      "maintenance.batch": "Mantenimiento registrado correctamente",
+      "vehicle.create": "Vehículo agregado correctamente",
+      "vehicle.update": "Vehículo actualizado correctamente",
+      "vehicle.delete": "Vehículo eliminado correctamente",
+      "maintenance.update": "Mantenimiento actualizado correctamente",
+      "maintenance.delete": "Mantenimiento eliminado correctamente",
+      "schedule.create": "Servicio programado correctamente",
+      "schedule.update": "Servicio actualizado correctamente",
+      "schedule.cancel": "Previsión cancelada",
     })
   })
 })

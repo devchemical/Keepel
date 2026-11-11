@@ -18,7 +18,7 @@ import type { ScheduledService } from "@/contexts"
 import type { ScheduleReminder } from "@/lib/data/scheduled-services"
 import { formatCalendarDay } from "@/lib/data/calendar-day"
 import { MAINTENANCE_TYPES } from "@/lib/data/maintenance-types"
-import { operationMessage } from "@/lib/data/operation-messages"
+import { OPERATION_SUCCESS_MESSAGES, operationMessage } from "@/lib/data/operation-messages"
 import { NO_ROW_ACTION, transitionRowAction } from "@/lib/ui/editor-machine"
 
 interface UpcomingMaintenanceProps {
@@ -41,7 +41,7 @@ export function UpcomingMaintenance({ upcomingMaintenance, isLoading }: Upcoming
     try {
       const message = operationMessage("crud", await cancelScheduledService(id))
       if (message) toast.error(message)
-      else toast.success("Previsión cancelada")
+      else toast.success(OPERATION_SUCCESS_MESSAGES["schedule.cancel"])
     } catch {
       toast.error("No se pudo confirmar la cancelación")
     } finally {
