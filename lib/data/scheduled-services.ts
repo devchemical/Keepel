@@ -1,4 +1,5 @@
 import { calendarDaysBetween, parseCalendarDay } from "@/lib/data/calendar-day"
+import { isPendingScheduledService, type ScheduleUrgency } from "@/lib/data/scheduled-service-lifecycle"
 
 export const SCHEDULE_HORIZON_DAYS = 30
 
@@ -9,14 +10,16 @@ interface ScheduleCriteria {
   vehicles?: { mileage: number | null }
 }
 export interface ScheduleClassification {
-  urgency: "overdue" | "today" | "upcoming"
+  urgency: ScheduleUrgency
   daysUntil: number | null
 }
+/** A classification shown as a dashboard reminder; `later` stays out of the list. */
+export type ScheduleReminder = ScheduleClassification & { urgency: Exclude<ScheduleUrgency, "later"> }
 
 /** Unreached mileage has no temporal estimate and alone does not enter the date horizon. */
 export function classifyScheduledService(service: ScheduleCriteria, today: string): ScheduleClassification | null {
   parseCalendarDay(today)
-  if (service.status !== "pending") return null
+  if (!isPendingScheduledService(service.status)) return null
   const scheduledDate = service.scheduled_date ?? null
   const scheduledMileage = service.scheduled_mileage ?? null
   const currentMileage = service.vehicles?.mileage ?? null
@@ -25,7 +28,11 @@ export function classifyScheduledService(service: ScheduleCriteria, today: strin
   if ((daysUntil !== null && daysUntil < 0) || reached) return { urgency: "overdue", daysUntil }
   if (daysUntil === 0) return { urgency: "today", daysUntil }
   if (daysUntil !== null && daysUntil <= SCHEDULE_HORIZON_DAYS) return { urgency: "upcoming", daysUntil }
-  return null
+  return { urgency: "later", daysUntil }
+}
+
+function isReminder(classification: ScheduleClassification | null): classification is ScheduleReminder {
+  return classification !== null && classification.urgency !== "later"
 }
 
 /** One ordered projection is passed to both the dashboard list and its counter. */
@@ -33,7 +40,7 @@ export function selectScheduledServices<T extends ScheduleCriteria>(services: re
   return services
     .flatMap((service) => {
       const classification = classifyScheduledService(service, today)
-      return classification ? [{ service, ...classification }] : []
+      return isReminder(classification) ? [{ service, ...classification }] : []
     })
     .toSorted((a, b) => {
       const rank = { overdue: 0, today: 1, upcoming: 2 }

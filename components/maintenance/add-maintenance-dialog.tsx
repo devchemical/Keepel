@@ -25,6 +25,7 @@ import { localToday } from "@/lib/data/calendar-day"
 import { MAINTENANCE_TYPES as maintenanceTypes } from "@/lib/data/maintenance-types"
 import { maintenanceBatchSchema, isEmptyMaintenanceRow } from "@/lib/data/maintenance-validation"
 import { maintenanceCommandSchema, type MaintenanceCommand } from "@/lib/data/maintenance-command"
+import { isPendingScheduledService } from "@/lib/data/scheduled-service-lifecycle"
 
 interface AddMaintenanceDialogProps {
   children?: React.ReactNode
@@ -70,7 +71,7 @@ export function AddMaintenanceDialog({
   const [completionRowId, setCompletionRowId] = useState("")
   const submitting = useRef(false)
   const pendingSchedules = scheduledServices.filter(
-    (service) => service.vehicle_id === vehicleId && service.status === "pending"
+    (service) => service.vehicle_id === vehicleId && isPendingScheduledService(service.status)
   )
 
   // Helper para generar IDs temporales compatibles con todos los navegadores

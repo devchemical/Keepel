@@ -17,6 +17,7 @@ import { useSupabase } from "./SupabaseContext"
 import { AUTH_STATE_STATUS } from "@/lib/auth/contracts"
 import type { Tables } from "@/lib/supabase/database.types"
 import type { ScheduledServiceValues } from "@/lib/data/scheduled-command"
+import { isPendingScheduledService, type ScheduledServiceStatus } from "@/lib/data/scheduled-service-lifecycle"
 import {
   isConfirmedRejection,
   type VehicleValues,
@@ -53,7 +54,7 @@ export type Vehicle = Omit<VehicleRow, "user_id">
 export type MaintenanceRecord = Tables<"maintenance_records"> & {
   vehicles?: Pick<VehicleRow, "make" | "model" | "year">
 }
-export type ScheduledServiceStatus = "pending" | "completed" | "cancelled"
+export type { ScheduledServiceStatus }
 type ScheduledRow = Tables<"scheduled_services">
 export type ScheduledService = Omit<
   ScheduledRow,
@@ -316,7 +317,7 @@ export function DataProvider({ children }: DataProviderProps) {
       } else {
         const row = receipt.row as ScheduledService
         setScheduledServices((prev) =>
-          row.status === "pending"
+          isPendingScheduledService(row.status)
             ? [row, ...prev.filter((value) => value.id !== id)]
             : prev.filter((value) => value.id !== id)
         )
