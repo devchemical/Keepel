@@ -66,6 +66,10 @@ const CRUD_REJECTED = "No se realizó la operación. No se confirmó ninguna fil
 const BATCH_REJECTED = "No se pudo guardar el mantenimiento. Revisa los datos y la sesión e inténtalo de nuevo."
 const BATCH_UNKNOWN =
   "Resultado pendiente de confirmar. Comprueba el resultado o reintenta la misma operación; no se duplicarán los servicios."
+// A replay or check names an operation that has already left the pending list, or one that is
+// still being sent or checked.
+const NOT_PENDING = "La operación ya no está pendiente."
+const NOT_REPLAYABLE = "La operación todavía se está comprobando. Espera a que termine antes de reintentarla."
 
 type FailedOutcome = Exclude<OperationOutcome["status"], "confirmed" | "blocked">
 
@@ -80,6 +84,8 @@ const MESSAGES: Record<OperationKind, Record<FailedOutcome | BlockReason, string
     // CRUD policy does not require a durable journal, so the owner never reports this for CRUD.
     "journal-unwritable": CRUD_REJECTED,
     "no-session": "No hay sesión activa",
+    "not-pending": NOT_PENDING,
+    "not-replayable": NOT_REPLAYABLE,
     "session-changed": "La sesión ha cambiado. No se aplicó una respuesta anterior.",
   },
   batch: {
@@ -89,6 +95,8 @@ const MESSAGES: Record<OperationKind, Record<FailedOutcome | BlockReason, string
     "journal-unreadable": BATCH_REJECTED,
     "journal-unwritable": BATCH_REJECTED,
     "no-session": BATCH_REJECTED,
+    "not-pending": NOT_PENDING,
+    "not-replayable": NOT_REPLAYABLE,
     "session-changed": BATCH_UNKNOWN,
   },
 }
