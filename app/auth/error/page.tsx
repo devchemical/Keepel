@@ -3,9 +3,14 @@ import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { AlertCircle } from "lucide-react"
 import { Layout } from "../../../components/layout/Layout"
+import { getOAuthErrorMessage } from "@/lib/auth/oauth-error-message"
 
-export default async function AuthErrorPage({ searchParams }: { searchParams: Promise<{ error: string }> }) {
-  const params = await searchParams
+export default async function AuthErrorPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string | string[] }>
+}) {
+  const { error } = await searchParams
 
   return (
     <Layout showHeader={true}>
@@ -21,13 +26,7 @@ export default async function AuthErrorPage({ searchParams }: { searchParams: Pr
               <CardTitle className="text-foreground text-2xl">Error de Autenticación</CardTitle>
             </CardHeader>
             <CardContent className="text-center">
-              {params?.error ? (
-                <p className="text-muted-foreground mb-6 text-sm">Código de error: {params.error}</p>
-              ) : (
-                <p className="text-muted-foreground mb-6 text-sm">
-                  Ocurrió un error no especificado durante la autenticación.
-                </p>
-              )}
+              <p className="text-muted-foreground mb-6 text-sm">{getOAuthErrorMessage(error)}</p>
               <Button asChild className="bg-primary hover:bg-primary/90 w-full">
                 <Link href="/auth/login">Volver a Iniciar Sesión</Link>
               </Button>
