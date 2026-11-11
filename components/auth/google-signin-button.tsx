@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Icons } from "@/components/ui/icons"
 import { sanitizeInternalRedirect } from "@/lib/auth/redirects"
@@ -19,6 +19,13 @@ export function GoogleSignInButton({
   const [isLoading, setIsLoading] = useState(false)
   const searchParams = new URLSearchParams({ redirectTo: sanitizeInternalRedirect(redirectTo) })
   const initiationUrl = `/auth/google?${searchParams.toString()}`
+
+  useEffect(() => {
+    // A back/forward cache restore keeps the clicked state; the redirect is no longer in progress.
+    const resetLoading = () => setIsLoading(false)
+    window.addEventListener("pageshow", resetLoading)
+    return () => window.removeEventListener("pageshow", resetLoading)
+  }, [])
 
   const handleGoogleSignIn = () => {
     setIsLoading(true)
