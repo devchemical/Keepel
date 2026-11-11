@@ -1,6 +1,7 @@
 import { z } from "zod"
 import { calendarDaySchema, maintenanceBatchSchema } from "./maintenance-validation"
 import type { Database, Tables } from "@/lib/supabase/database.types"
+import { SCHEDULED_SERVICE_STATUS } from "./scheduled-service-lifecycle"
 
 export const maintenanceCommandSchema = z
   .object({
@@ -64,7 +65,7 @@ export const scheduledSchema = z.object({
   description: nullableText,
   scheduled_date: calendarDaySchema.nullable(),
   scheduled_mileage: z.number().int().nonnegative().nullable(),
-  status: z.enum(["pending", "completed", "cancelled"]),
+  status: z.enum(SCHEDULED_SERVICE_STATUS),
   notes: nullableText,
   completed_record_id: z.string().uuid().nullable(),
   ...timestamps,

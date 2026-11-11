@@ -5,6 +5,7 @@ import type React from "react"
 import { useState, useEffect } from "react"
 import { OperationRecovery, usePendingDataOperation } from "@/components/data/operation-recovery"
 import { useData } from "@/contexts"
+import { operationMessage } from "@/lib/data/operation-messages"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
@@ -36,7 +37,7 @@ export function EditScheduledServiceDialog({ service, open, onOpenChange }: Edit
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const { updateScheduledServiceOptimistic } = useData()
+  const { updateScheduledService } = useData()
 
   const [formData, setFormData] = useState({
     type: service.type,
@@ -73,7 +74,12 @@ export function EditScheduledServiceDialog({ service, open, onOpenChange }: Edit
       const parsed = scheduledServiceSchema.safeParse(formData)
       if (!parsed.success)
         throw new Error("Indica un tipo válido y al menos una fecha o un kilometraje válido mayor o igual a 0.")
-      await updateScheduledServiceOptimistic(service.id, parsed.data)
+      const message = operationMessage("crud", await updateScheduledService(service.id, parsed.data))
+      if (message) {
+        setError(message)
+        toast.error(message)
+        return
+      }
       toast.success("Servicio actualizado correctamente")
       onOpenChange(false)
     } catch (err: unknown) {

@@ -2,18 +2,9 @@
 import { useEffect, useRef } from "react"
 import { useData } from "@/contexts"
 import { Button } from "@/components/ui/button"
+import { OPERATION_POLICY, operationKind } from "@/lib/data/operation-machine"
+import { JOURNAL_RECOVERY_ALERT, OPERATION_LABELS, RECOVERY_STATUS_MESSAGES } from "@/lib/data/operation-messages"
 
-const labels = {
-  "maintenance.batch": "Alta múltiple de mantenimiento",
-  "vehicle.create": "Alta de vehículo",
-  "vehicle.update": "Edición de vehículo",
-  "vehicle.delete": "Eliminación de vehículo",
-  "maintenance.update": "Edición de mantenimiento",
-  "maintenance.delete": "Eliminación de mantenimiento",
-  "schedule.create": "Programación de servicio",
-  "schedule.update": "Edición de previsión",
-  "schedule.cancel": "Cancelación de previsión",
-}
 export function OperationRecovery() {
   const {
     pendingOperations,
@@ -24,20 +15,16 @@ export function OperationRecovery() {
   } = useData()
   return (
     <>
-      {operationStorageError && (
-        <p role="alert">
-          No se pudieron conservar o recuperar las referencias en esta pestaña. Recarga cuando el almacenamiento esté
-          disponible. No se enviará un lote nuevo sin guardarla. Mantén esta página abierta si hay una operación
-          pendiente.
-        </p>
-      )}
+      {operationStorageError && <p role="alert">{JOURNAL_RECOVERY_ALERT}</p>}
       {pendingOperations.map(({ command, status }) => (
-        <div key={command.operationId} className="my-2 space-y-2 rounded-md border p-3">
+        <div
+          key={command.operationId}
+          className="my-2 space-y-2 rounded-md border p-3"
+          data-operation-status={status}
+          data-operation-id={command.operationId}
+        >
           <p role="status">
-            {labels[command.action]}:{" "}
-            {status === "unknown"
-              ? "Resultado pendiente de confirmar. No repitas la operación."
-              : "Comprobando operación…"}
+            {OPERATION_LABELS[command.action]}: {RECOVERY_STATUS_MESSAGES[status]}
           </p>
           <p className="text-muted-foreground text-xs">Referencia: {command.operationId}</p>
           {command.action === "maintenance.batch" && (
@@ -84,16 +71,18 @@ export function OperationRecovery() {
               Comprobar resultado
             </Button>
           )}
-          {command.action === "maintenance.batch" && status !== "sending" && (
-            <Button
-              type="button"
-              variant="outline"
-              disabled={status === "checking"}
-              onClick={() => void createMaintenanceBatch(command)}
-            >
-              Reintentar misma operación
-            </Button>
-          )}
+          {command.action === "maintenance.batch" &&
+            OPERATION_POLICY[operationKind(command.action)].replayable &&
+            status !== "sending" && (
+              <Button
+                type="button"
+                variant="outline"
+                disabled={status === "checking"}
+                onClick={() => void createMaintenanceBatch(command)}
+              >
+                Reintentar misma operación
+              </Button>
+            )}
         </div>
       ))}
     </>

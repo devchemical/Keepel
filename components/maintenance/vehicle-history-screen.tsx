@@ -13,9 +13,11 @@ import { Badge } from "@/components/ui/badge"
 import { ArrowLeft, Car, Plus, Wrench, Gauge } from "lucide-react"
 import Link from "next/link"
 import { Layout } from "@/components/layout/Layout"
+import { snapshotView } from "@/lib/data/snapshot-machine"
 
 export function VehicleHistoryScreen({ id }: { id: string }) {
-  const { vehicles, history, selectHistory, changeHistoryPage, hasLoaded, isLoading } = useData()
+  const { vehicles, history, selectHistory, changeHistoryPage, snapshot, isLoading } = useData()
+  const hasContent = snapshotView(snapshot) === "content"
   useEffect(() => {
     selectHistory(id)
     return () => selectHistory()
@@ -23,14 +25,14 @@ export function VehicleHistoryScreen({ id }: { id: string }) {
   const currentHistory = history?.vehicleId === id ? history : null
   const vehicle = vehicles.find((row) => row.id === id)
   const maintenanceRecords = currentHistory?.records ?? []
-  if (!hasLoaded || !vehicle)
+  if (!hasContent || !vehicle)
     return (
       <Layout showHeader>
-        <div className="container mx-auto px-4 py-8">
+        <div className="container mx-auto px-4 py-8" data-snapshot-status={snapshot.status}>
           <DataRecovery />
           {isLoading ? (
             <p role="status">Cargando historial…</p>
-          ) : hasLoaded ? (
+          ) : hasContent ? (
             <p>
               Vehículo no disponible. <Link href="/vehicles">Volver a Vehículos</Link>
             </p>
@@ -40,7 +42,7 @@ export function VehicleHistoryScreen({ id }: { id: string }) {
     )
   return (
     <Layout showHeader={true}>
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 py-8" data-snapshot-status={snapshot.status}>
         <DataRecovery />
         <div className="mb-6">
           <Button variant="ghost" asChild className="mb-4">
