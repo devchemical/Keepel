@@ -28,7 +28,6 @@ export function DeleteVehicleDialog({ vehicle, open, onOpenChange }: DeleteVehic
     action: "vehicle.delete",
     open,
     onOpenChange,
-    failureMessage: "Error al eliminar vehículo",
   })
   const handleDelete = () => void editor.submit(() => ({ send: () => deleteVehicle(vehicle.id) }))
 

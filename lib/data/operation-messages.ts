@@ -44,9 +44,23 @@ export const JOURNAL_RECOVERY_ALERT =
 export const JOURNAL_BATCH_ALERT =
   "No se pudo guardar la referencia o recuperar las referencias pendientes en esta pestaña. No se ha enviado un lote nuevo. Revisa el almacenamiento antes de continuar."
 
-/** The batch editor's copy when the owner fails unexpectedly instead of returning an outcome. */
-export const BATCH_UNEXPECTED_MESSAGE =
-  "Resultado pendiente de confirmar. Comprueba el resultado antes de crear otra operación."
+/** Commands written through an editor dialog; cancelling a scheduled service is a list action. */
+export type EditorAction = Exclude<PendingCommand["action"], "schedule.cancel">
+
+/**
+ * An editor's copy when its write throws instead of returning an outcome. CRUD editors show a
+ * thrown `Error`'s own message and fall back to this copy.
+ */
+export const EDITOR_FAILURE_MESSAGES: Record<EditorAction, string> = {
+  "maintenance.batch": "Resultado pendiente de confirmar. Comprueba el resultado antes de crear otra operación.",
+  "vehicle.create": "Error al agregar vehículo",
+  "vehicle.update": "Error al actualizar vehículo",
+  "vehicle.delete": "Error al eliminar vehículo",
+  "maintenance.update": "Error desconocido al actualizar mantenimiento",
+  "maintenance.delete": "Error desconocido al eliminar registro",
+  "schedule.create": "Error desconocido al programar servicio",
+  "schedule.update": "Error desconocido al actualizar servicio",
+}
 
 const CRUD_REJECTED = "No se realizó la operación. No se confirmó ninguna fila; revisa los datos y vuelve a intentarlo."
 const BATCH_REJECTED = "No se pudo guardar el mantenimiento. Revisa los datos y la sesión e inténtalo de nuevo."

@@ -70,14 +70,13 @@ export function EditVehicleDialog({ vehicle, open, onOpenChange }: EditVehicleDi
     action: "vehicle.update",
     open,
     onOpenChange,
-    failureMessage: "Error al actualizar vehículo",
   })
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     void editor.submit(() => {
       const parsed = vehicleValuesSchema.safeParse(formData)
       if (!parsed.success)
-        return { invalid: "Indica marca, modelo, un año válido y kilometraje entero mayor o igual a 0." }
+        return { validationError: "Indica marca, modelo, un año válido y kilometraje entero mayor o igual a 0." }
       return { send: () => updateVehicle(vehicle.id, parsed.data) }
     })
   }

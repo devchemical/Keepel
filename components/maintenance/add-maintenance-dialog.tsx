@@ -6,7 +6,7 @@ import type React from "react"
 
 import { useState } from "react"
 import { useData } from "@/contexts"
-import { BATCH_UNEXPECTED_MESSAGE, JOURNAL_BATCH_ALERT } from "@/lib/data/operation-messages"
+import { JOURNAL_BATCH_ALERT } from "@/lib/data/operation-messages"
 import { useEditor } from "@/hooks/use-editor"
 import { Button } from "@/components/ui/button"
 import {
@@ -131,15 +131,14 @@ export function AddMaintenanceDialog({
     open: controlledOpen,
     onOpenChange,
     onConfirmed: resetDraft,
-    failureMessage: BATCH_UNEXPECTED_MESSAGE,
   })
 
-  const prepareCommand = (): { invalid: string } | { command: MaintenanceCommand } => {
+  const prepareCommand = (): { validationError: string } | { command: MaintenanceCommand } => {
     if (pendingBatch) return { command: pendingBatch }
     const parsed = maintenanceBatchSchema.safeParse({ ...formData, services })
     if (!parsed.success)
       return {
-        invalid: parsed.error.issues
+        validationError: parsed.error.issues
           .map((issue) => {
             const index = issue.path[0] === "services" && typeof issue.path[1] === "number" ? issue.path[1] : null
             return index !== null
@@ -164,14 +163,14 @@ export function AddMaintenanceDialog({
             },
     })
     if (!envelope.success)
-      return { invalid: "Selecciona un servicio realizado y una fecha no futura para resolver la previsión." }
+      return { validationError: "Selecciona un servicio realizado y una fecha no futura para resolver la previsión." }
     return { command: envelope.data }
   }
 
   const save = (reconcileOnly = false) =>
     editor.submit(() => {
       const prepared = prepareCommand()
-      if ("invalid" in prepared) return prepared
+      if ("validationError" in prepared) return prepared
       const { command } = prepared
       return { send: () => (reconcileOnly ? reconcileMaintenanceBatch(command) : createMaintenanceBatch(command)) }
     })

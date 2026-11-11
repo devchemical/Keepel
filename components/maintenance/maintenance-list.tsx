@@ -13,7 +13,7 @@ import { DeleteMaintenanceDialog } from "./delete-maintenance-dialog"
 import { useReducer } from "react"
 import { formatDate, formatCurrency, formatMileage } from "@/lib/formatters"
 import { MaintenanceSkeleton } from "@/components/skeletons/maintenance-skeleton"
-import { NO_ROW_ACTION, transitionRowAction } from "@/lib/ui/editor-machine"
+import { NO_ROW_ACTION, transitionRowAction } from "@/lib/ui/row-action"
 
 interface MaintenanceRecord {
   id: string
@@ -33,10 +33,7 @@ interface MaintenanceListProps {
 }
 
 export function MaintenanceList({ records, vehicleId, isLoading }: MaintenanceListProps) {
-  const [rowAction, dispatchRowAction] = useReducer(
-    transitionRowAction<MaintenanceRecord, "editing" | "deleting">,
-    NO_ROW_ACTION
-  )
+  const [rowAction, dispatchRowAction] = useReducer(transitionRowAction<MaintenanceRecord>, NO_ROW_ACTION)
 
   if (isLoading) {
     return <MaintenanceSkeleton />
@@ -112,7 +109,7 @@ export function MaintenanceList({ records, vehicleId, isLoading }: MaintenanceLi
         </Card>
       ))}
 
-      {rowAction.type === "editing" && (
+      {rowAction.status === "editing" && (
         <EditMaintenanceDialog
           record={rowAction.row}
           vehicleId={vehicleId}
@@ -121,7 +118,7 @@ export function MaintenanceList({ records, vehicleId, isLoading }: MaintenanceLi
         />
       )}
 
-      {rowAction.type === "deleting" && (
+      {rowAction.status === "deleting" && (
         <DeleteMaintenanceDialog
           record={rowAction.row}
           open

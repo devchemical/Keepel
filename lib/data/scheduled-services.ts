@@ -1,10 +1,23 @@
 import { calendarDaysBetween, parseCalendarDay } from "@/lib/data/calendar-day"
-import { isPendingScheduledService, type ScheduleUrgency } from "@/lib/data/scheduled-service-lifecycle"
+import { isPendingScheduledService, type ScheduledServiceStatus } from "@/lib/data/scheduled-service-lifecycle"
+
+// Schedule urgency (machine 10), derived for a pending service on a calendar day by
+// `classifyScheduledService`; other statuses have none.
+//
+// | urgency  | condition (first match wins)                                     | dashboard |
+// | -------- | ---------------------------------------------------------------- | --------- |
+// | overdue  | scheduled date before today, or vehicle mileage reached          | shown     |
+// | today    | scheduled date is today                                          | shown     |
+// | upcoming | scheduled date within the horizon (1–30 days)                    | shown     |
+// | later    | anything else: beyond the horizon, unreached or unknown mileage  | hidden    |
+
+export const SCHEDULE_URGENCY = ["overdue", "today", "upcoming", "later"] as const
+export type ScheduleUrgency = (typeof SCHEDULE_URGENCY)[number]
 
 export const SCHEDULE_HORIZON_DAYS = 30
 
 interface ScheduleCriteria {
-  status: string
+  status: ScheduledServiceStatus
   scheduled_date?: string | null
   scheduled_mileage?: number | null
   vehicles?: { mileage: number | null }

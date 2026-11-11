@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest"
 import { BLOCK_REASON } from "@/lib/data/operation-machine"
-import { OPERATION_SUCCESS_MESSAGES, operationMessage, RECOVERY_STATUS_MESSAGES } from "@/lib/data/operation-messages"
+import {
+  EDITOR_FAILURE_MESSAGES,
+  OPERATION_SUCCESS_MESSAGES,
+  operationMessage,
+  RECOVERY_STATUS_MESSAGES,
+} from "@/lib/data/operation-messages"
 
 // Characterization: the copy CRUD dialogs rendered from thrown errors and the batch editor
 // rendered from its result before outcomes became values.
@@ -81,6 +86,22 @@ describe("confirmed write copy (D3)", () => {
       "schedule.create": "Servicio programado correctamente",
       "schedule.update": "Servicio actualizado correctamente",
       "schedule.cancel": "Previsión cancelada",
+    })
+  })
+})
+
+describe("editor failure copy", () => {
+  // Characterization: the copy each dialog passed inline for a write that threw.
+  it("keeps every editor's copy verbatim", () => {
+    expect(EDITOR_FAILURE_MESSAGES).toEqual({
+      "maintenance.batch": "Resultado pendiente de confirmar. Comprueba el resultado antes de crear otra operación.",
+      "vehicle.create": "Error al agregar vehículo",
+      "vehicle.update": "Error al actualizar vehículo",
+      "vehicle.delete": "Error al eliminar vehículo",
+      "maintenance.update": "Error desconocido al actualizar mantenimiento",
+      "maintenance.delete": "Error desconocido al eliminar registro",
+      "schedule.create": "Error desconocido al programar servicio",
+      "schedule.update": "Error desconocido al actualizar servicio",
     })
   })
 })

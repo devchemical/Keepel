@@ -16,7 +16,6 @@ import {
   historyRequest as requestedHistoryOf,
   requestFreshness,
   snapshotIsFetching,
-  snapshotLoadError,
   transitionHistory,
   transitionSnapshot,
   type HistoryEvent,
@@ -24,6 +23,7 @@ import {
   type SnapshotState,
   type SnapshotStatus,
 } from "@/lib/data/snapshot-machine"
+import { snapshotLoadError } from "@/lib/data/snapshot-messages"
 import { useAuthProjection } from "./AuthProjectionContext"
 import { useSupabase } from "./SupabaseContext"
 import { AUTH_STATE_STATUS } from "@/lib/auth/contracts"
@@ -83,6 +83,19 @@ export type PendingDataOperation = PendingOperation
 
 type MaintenanceHistoryState = HistoryState<MaintenanceRecord, MaintenanceTotals>
 type MaintenanceHistoryEvent = HistoryEvent<MaintenanceRecord, MaintenanceTotals>
+
+/** Fields that belong to the account whose data the provider currently holds. */
+type OwnedData = Pick<
+  DataContextType,
+  | "snapshot"
+  | "history"
+  | "totals"
+  | "journal"
+  | "pendingOperations"
+  | "vehicles"
+  | "maintenanceRecords"
+  | "scheduledServices"
+>
 
 interface DataContextType {
   totals: MaintenanceTotals | null
@@ -607,38 +620,50 @@ export function DataProvider({ children }: DataProviderProps) {
     vehicles: vehicleById.get(row.vehicle_id) ?? row.vehicles,
   }))
 
-  // Until the account-change effect runs, the previous account's snapshot is not this account's.
+  // Until the account-change effect runs, the previous account's data is not this account's.
+  const isOwnerCurrent = dataOwner === userId
   const isFetching = snapshotIsFetching(snapshotState)
-  const snapshot: SnapshotState =
-    dataOwner === userId ? snapshotState : userId ? { status: "pending", isFetching } : { status: "signedOut" }
-  const visibleHistory =
-    dataOwner === userId && history.status === "ready"
-      ? {
-          vehicleId: history.vehicleId,
-          records: history.records,
-          totals: history.totals,
-          page: history.page,
-          hasNext: history.hasNext,
-        }
-      : null
+  const ownedData: OwnedData = isOwnerCurrent
+    ? {
+        snapshot: snapshotState,
+        history:
+          history.status === "ready"
+            ? {
+                vehicleId: history.vehicleId,
+                records: history.records,
+                totals: history.totals,
+                page: history.page,
+                hasNext: history.hasNext,
+              }
+            : null,
+        totals,
+        journal,
+        pendingOperations,
+        vehicles: visibleVehicles,
+        maintenanceRecords: visibleRecords,
+        scheduledServices: visibleSchedules,
+      }
+    : {
+        snapshot: userId ? { status: "pending", isFetching } : { status: "signedOut" },
+        history: null,
+        totals: null,
+        journal: "healthy",
+        pendingOperations: [],
+        vehicles: [],
+        maintenanceRecords: [],
+        scheduledServices: [],
+      }
+  const { snapshot } = ownedData
 
   const value: DataContextType = {
-    totals: dataOwner === userId ? totals : null,
-    history: visibleHistory,
+    ...ownedData,
     selectHistory,
     changeHistoryPage,
-    journal: dataOwner === userId ? journal : "healthy",
-    operationStorageError: dataOwner === userId && journal !== "healthy",
-    pendingOperations: dataOwner === userId ? pendingOperations : [],
+    operationStorageError: ownedData.journal !== "healthy",
     reconcileDataOperation,
-    snapshot,
     snapshotStatus: snapshot.status,
     hasLoaded: snapshot.status === "ready",
     loadError: snapshotLoadError(snapshot),
-    // Data
-    vehicles: dataOwner === userId ? visibleVehicles : [],
-    maintenanceRecords: dataOwner === userId ? visibleRecords : [],
-    scheduledServices: dataOwner === userId ? visibleSchedules : [],
 
     // Loading states
     isLoading: isFetching,

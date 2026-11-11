@@ -71,14 +71,13 @@ export function AddVehicleDialog({ children }: AddVehicleDialogProps) {
     kind: "crud",
     action: "vehicle.create",
     onConfirmed: resetDraft,
-    failureMessage: "Error al agregar vehículo",
   })
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     void editor.submit(() => {
       const parsed = vehicleValuesSchema.safeParse(formData)
       if (!parsed.success)
-        return { invalid: "Indica marca, modelo, un año válido y kilometraje entero mayor o igual a 0." }
+        return { validationError: "Indica marca, modelo, un año válido y kilometraje entero mayor o igual a 0." }
       return { send: () => createVehicle(parsed.data) }
     })
   }

@@ -1,17 +1,17 @@
 import { describe, expect, it } from "vitest"
 import {
   INITIAL_SNAPSHOT_STATE,
-  SNAPSHOT_LOAD_ERROR_MESSAGE,
   isCurrent,
   requestFreshness,
-  snapshotLoadError,
   snapshotView,
   transitionHistory,
   transitionSnapshot,
+  type HistoryEvent,
   type HistoryState,
   type SnapshotEvent,
   type SnapshotState,
 } from "@/lib/data/snapshot-machine"
+import { SNAPSHOT_LOAD_ERROR_MESSAGE, snapshotLoadError } from "@/lib/data/snapshot-messages"
 
 const signedOut: SnapshotState = { status: "signedOut" }
 const pending = (isFetching: boolean): SnapshotState => ({ status: "pending", isFetching })
@@ -136,17 +136,38 @@ describe("snapshot view", () => {
 })
 
 describe("request scope guard", () => {
-  const scope = { generation: 2, request: 5, revision: 1 }
+  type Token = { generation: number; request: number; revision: number }
+  const scope: Token = { generation: 2, request: 5, revision: 1 }
 
-  it.each([
-    [{ generation: 2, request: 5, revision: 1 }, "current"],
-    [{ generation: 2, request: 5, revision: 0 }, "revised"],
-    [{ generation: 2, request: 4, revision: 1 }, "stale"],
-    [{ generation: 1, request: 5, revision: 1 }, "stale"],
-  ] as const)("%o is %s", (token, freshness) => {
-    expect(requestFreshness(scope, token)).toBe(freshness)
-    expect(isCurrent(scope, token)).toBe(freshness === "current")
-  })
+  // A token's freshness against the owner's scope (the state) and the scope changes (the events).
+  const TOKENS: Record<string, Token> = {
+    current: { generation: 2, request: 5, revision: 1 },
+    revised: { generation: 2, request: 5, revision: 0 },
+    "stale request": { generation: 2, request: 4, revision: 1 },
+    "stale generation": { generation: 1, request: 5, revision: 1 },
+  }
+  const SCOPE_EVENTS: Record<string, (value: Token) => Token> = {
+    none: (value) => value,
+    ACCOUNT_CHANGED: (value) => ({ generation: value.generation + 1, request: 0, revision: 0 }),
+    LOAD_STARTED: (value) => ({ ...value, request: value.request + 1 }),
+    WRITE_ACCEPTED: (value) => ({ ...value, revision: value.revision + 1 }),
+  }
+  // Independent copy of the header table.
+  const SCOPE_TABLE: Record<string, Record<string, "current" | "revised" | "stale">> = {
+    current: { none: "current", ACCOUNT_CHANGED: "stale", LOAD_STARTED: "stale", WRITE_ACCEPTED: "revised" },
+    revised: { none: "revised", ACCOUNT_CHANGED: "stale", LOAD_STARTED: "stale", WRITE_ACCEPTED: "revised" },
+    "stale request": { none: "stale", ACCOUNT_CHANGED: "stale", LOAD_STARTED: "stale", WRITE_ACCEPTED: "stale" },
+    "stale generation": { none: "stale", ACCOUNT_CHANGED: "stale", LOAD_STARTED: "stale", WRITE_ACCEPTED: "stale" },
+  }
+
+  for (const [tokenName, token] of Object.entries(TOKENS))
+    for (const [eventName, advance] of Object.entries(SCOPE_EVENTS)) {
+      const freshness = SCOPE_TABLE[tokenName][eventName]
+      it(`${tokenName} + ${eventName} -> ${freshness}`, () => {
+        expect(requestFreshness(advance(scope), token)).toBe(freshness)
+        expect(isCurrent(advance(scope), token)).toBe(freshness === "current")
+      })
+    }
 })
 
 type HistoryRecord = { id: string; service_date: string }
@@ -231,4 +252,77 @@ describe("history pagination", () => {
     )
     expect(transitionHistory(readyPage([undefined]), { type: "LOADED", request: null, result: null })).toEqual(none)
   })
+})
+
+const loadingHistory = (vehicleId: string): HistoryState<HistoryRecord, Totals> => ({
+  status: "loading",
+  vehicleId,
+  cursors: [undefined],
+})
+
+describe("history pagination table", () => {
+  type State = HistoryState<HistoryRecord, Totals>
+  type Cursors = (HistoryRecord | undefined)[]
+  const readyPage = (cursors: Cursors, hasNext: boolean, requested: Cursors = cursors): State => ({
+    status: "ready",
+    vehicleId: "v1",
+    cursors,
+    requested,
+    page: cursors.length,
+    hasNext,
+    records: [r("10"), r("11")],
+    totals: { record_count: 99 },
+  })
+  const none: State = { status: "none" }
+
+  const HISTORY_STATES: Record<string, State> = {
+    none,
+    loading: loadingHistory("v1"),
+    "page 1": readyPage([undefined], true),
+    "page 2": readyPage([undefined, r("01")], true),
+    "last page 2": readyPage([undefined, r("01")], false),
+    "page 2 requesting 1": readyPage([undefined, r("01")], true, [undefined]),
+  }
+  const HISTORY_EVENTS: Record<string, HistoryEvent<HistoryRecord, Totals>> = {
+    "SELECT v1": { type: "SELECT", vehicleId: "v1" },
+    "SELECT v2": { type: "SELECT", vehicleId: "v2" },
+    "SELECT none": { type: "SELECT" },
+    "PAGE next": { type: "PAGE", direction: "next" },
+    "PAGE previous": { type: "PAGE", direction: "previous" },
+    INVALIDATE: { type: "INVALIDATE" },
+    "LOADED page 2": {
+      type: "LOADED",
+      request: { vehicleId: "v1", cursors: [undefined, r("01")] },
+      result: { records: [r("10"), r("11")], totals: { record_count: 99 }, hasNext: true },
+    },
+    "LOADED none": { type: "LOADED", request: null, result: null },
+  }
+  const loaded = readyPage([undefined, r("01")], true)
+  const always = { "SELECT v2": loadingHistory("v2"), "LOADED page 2": loaded, "LOADED none": none }
+  const shown = { ...always, "SELECT none": none, INVALIDATE: loadingHistory("v1") }
+
+  // Independent copy of the header table. Every pair not listed keeps its state.
+  const HISTORY_TABLE: Record<string, Record<string, State>> = {
+    none: { ...always, "SELECT v1": loadingHistory("v1") },
+    loading: shown,
+    "page 1": { ...shown, "PAGE next": readyPage([undefined], true, [undefined, r("11")]) },
+    "page 2": {
+      ...shown,
+      "PAGE next": readyPage([undefined, r("01")], true, [undefined, r("01"), r("11")]),
+      "PAGE previous": readyPage([undefined, r("01")], true, [undefined]),
+    },
+    "last page 2": { ...shown, "PAGE previous": readyPage([undefined, r("01")], false, [undefined]) },
+    "page 2 requesting 1": {
+      ...shown,
+      "PAGE next": readyPage([undefined, r("01")], true, [undefined, r("01"), r("11")]),
+    },
+  }
+
+  for (const [stateName, state] of Object.entries(HISTORY_STATES))
+    for (const [eventName, event] of Object.entries(HISTORY_EVENTS)) {
+      const expected = HISTORY_TABLE[stateName][eventName] ?? state
+      it(`${stateName} + ${eventName} -> ${expected.status}`, () => {
+        expect(transitionHistory(state, event)).toEqual(expected)
+      })
+    }
 })

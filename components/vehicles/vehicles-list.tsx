@@ -11,7 +11,7 @@ import { useReducer } from "react"
 import Link from "next/link"
 import { formatMileage } from "@/lib/formatters"
 import { VehiclesSkeleton } from "@/components/skeletons/vehicles-skeleton"
-import { NO_ROW_ACTION, transitionRowAction } from "@/lib/ui/editor-machine"
+import { NO_ROW_ACTION, transitionRowAction } from "@/lib/ui/row-action"
 
 import type { Vehicle } from "@/contexts/DataContext"
 
@@ -21,7 +21,7 @@ interface VehiclesListProps {
 }
 
 export function VehiclesList({ vehicles, isLoading }: VehiclesListProps) {
-  const [rowAction, dispatchRowAction] = useReducer(transitionRowAction<Vehicle, "editing" | "deleting">, NO_ROW_ACTION)
+  const [rowAction, dispatchRowAction] = useReducer(transitionRowAction<Vehicle>, NO_ROW_ACTION)
 
   if (isLoading) {
     return <VehiclesSkeleton />
@@ -120,7 +120,7 @@ export function VehiclesList({ vehicles, isLoading }: VehiclesListProps) {
         </Card>
       ))}
 
-      {rowAction.type === "editing" && (
+      {rowAction.status === "editing" && (
         <EditVehicleDialog
           vehicle={rowAction.row}
           open
@@ -128,7 +128,7 @@ export function VehiclesList({ vehicles, isLoading }: VehiclesListProps) {
         />
       )}
 
-      {rowAction.type === "deleting" && (
+      {rowAction.status === "deleting" && (
         <DeleteVehicleDialog
           vehicle={rowAction.row}
           open

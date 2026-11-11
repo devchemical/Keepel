@@ -5,6 +5,7 @@
 // | —           | CREATE             | pending     | `mutate_data` `schedule.create` (scripts/008)      |
 // | pending     | UPDATE             | pending     | `mutate_data` `schedule.update`, status='pending'  |
 // | pending     | COMPLETE           | completed   | `create_maintenance_batch` completion (scripts/007)|
+// |             |                    |             | guard: service day ≤ today (scripts/007:131)       |
 // | pending     | CANCEL             | cancelled   | `mutate_data` `schedule.cancel`, status='pending'  |
 // | completed   | COMPLETION_DELETED | pending     | trigger `clear_deleted_completion` (scripts/007)   |
 // | cancelled   | —                  | terminal    | no statement matches                               |
@@ -36,18 +37,8 @@ export function canTransition(from: ScheduledServiceStatus | null, event: Schedu
 }
 
 /** Only a pending service is open: it can be edited, completed, cancelled or shown as a reminder. */
-export function isPendingScheduledService(status: string): status is "pending" {
-  return status === "pending"
+export const PENDING_SCHEDULED_SERVICE = "pending" satisfies ScheduledServiceStatus
+
+export function isPendingScheduledService(status: ScheduledServiceStatus): status is "pending" {
+  return status === PENDING_SCHEDULED_SERVICE
 }
-
-// Schedule urgency (machine 10), derived for a pending service on a calendar day; other statuses have none.
-//
-// | urgency  | condition (first match wins)                                     | dashboard |
-// | -------- | ---------------------------------------------------------------- | --------- |
-// | overdue  | scheduled date before today, or vehicle mileage reached          | shown     |
-// | today    | scheduled date is today                                          | shown     |
-// | upcoming | scheduled date within the horizon (1–30 days)                    | shown     |
-// | later    | anything else: beyond the horizon, unreached or unknown mileage  | hidden    |
-
-export const SCHEDULE_URGENCY = ["overdue", "today", "upcoming", "later"] as const
-export type ScheduleUrgency = (typeof SCHEDULE_URGENCY)[number]
