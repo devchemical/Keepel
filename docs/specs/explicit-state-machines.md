@@ -408,14 +408,24 @@ Order matters: phase 4 depends on the outcome type from phase 3, and D1 depends 
 - Phases 1–4 merge with zero edits to existing e2e and data-API specs.
 - A browser test can assert snapshot, operation and editor state through `data-*` attributes alone.
 
+## Decisions (2026-11-11)
+
+Taken by the maintainer after phases 0–4 and D3, D5, D6 merged.
+
+1. **D1 — accepted (option A).** An editor is frozen and reset only by the operation it submitted.
+   Unrelated editors stay usable; the data owner's `conflictsWith` guard remains the only app-wide
+   protection. Confirming one operation never resets another editor's draft.
+2. **D2 — accepted.** An unresolved CRUD command offers the same explicit, user-initiated
+   "Reintentar misma operación" as a batch, replaying the retained frozen command with the same
+   `operation_id`. Never automatic. Supersedes the #95 "can only query its status" contract.
+3. **D4 — accepted, minimal form.** The dashboard reminders card lists `later` forecasts in a
+   collapsed "Más adelante" section with the same edit/cancel actions; the counter is unchanged.
+   Deleting a maintenance record that completed a forecast warns, in the confirmation dialog, that
+   the forecast will return to pending.
+
 ## Open questions
 
-1. **D2** — may a person replay an unresolved CRUD command, as they can a batch? Without it the
-   `unknown` state has no exit when the request never arrived.
-2. **D1** — was the app-wide freeze during an unresolved operation intended as protection beyond the
-   owner's conflict guard? If so, D1 narrows only the draft reset and keeps the freeze.
-3. **D4** — should forecasts beyond the horizon be listed somewhere?
-4. Should the auth projection gain an explicit `revalidating` state so a cross-tab invalidation for
+1. Should the auth projection gain an explicit `revalidating` state so a cross-tab invalidation for
    the same account does not blank and reload the data? It is a real UX cost today, but it touches
    ADR 0001's fail-closed rule, so it is deliberately left out of this spec.
 
