@@ -171,3 +171,73 @@ test("creating and editing optional criteria validates the whole form and clears
   saved = await (await request.get(`${CONTROLLED_SERVICES_URL}/__test__/maintenance`)).json()
   expect(saved.schedules[0]).toMatchObject({ scheduled_mileage: 0, scheduled_date: null })
 })
+
+test.describe("later forecasts", () => {
+  test.use({ timezoneId: "Europe/Madrid" })
+  test("a forecast 60 days out and a mileage-only forecast are listed under Más adelante, cancellable and uncounted", async ({
+    page,
+    request,
+  }) => {
+    const schedule = (
+      id: number,
+      description: string,
+      scheduled_date: string | null,
+      scheduled_mileage: number | null
+    ) => ({
+      id: `00000000-0000-4000-8000-${String(id).padStart(12, "0")}`,
+      vehicle_id: vehicleId,
+      user_id: "00000000-0000-4000-8000-000000000051",
+      type: "oil_change",
+      description,
+      scheduled_date,
+      scheduled_mileage,
+      status: "pending",
+      notes: null,
+      completed_record_id: null,
+      created_at: "2026-01-01T00:00:00Z",
+      updated_at: "2026-01-01T00:00:00Z",
+    })
+    await request.post(`${CONTROLLED_SERVICES_URL}/__test__/reset`, {
+      data: {
+        maintenance: true,
+        vehicleMileage: 100,
+        schedules: [
+          schedule(1, "Por kilometraje", null, 15000),
+          schedule(2, "En 60 días", "2027-01-04", null),
+          schedule(3, "Próxima semana", "2026-11-10", null),
+        ],
+      },
+    })
+    await page.clock.setFixedTime(new Date("2026-11-05T10:00:00Z"))
+    await loginWithPassword(page)
+    const counter = page.getByText("Próximos Servicios", { exact: true }).locator("../..")
+    const reminders = page.getByRole("list", { name: "Previsiones" })
+    await expect(reminders.getByRole("listitem")).toHaveCount(1)
+    await expect(counter).toContainText("1")
+
+    const toggle = page.getByRole("button", { name: "Más adelante (2)" })
+    await expect(toggle).toHaveAttribute("aria-expanded", "false")
+    const later = page.getByRole("list", { name: "Más adelante" })
+    await expect(later).toHaveCount(0)
+    await toggle.focus()
+    await page.keyboard.press("Enter")
+    await expect(toggle).toHaveAttribute("aria-expanded", "true")
+    await expect(later.getByRole("listitem").nth(0)).toHaveAccessibleName("En 60 días")
+    await expect(later.getByRole("listitem").nth(1)).toHaveAccessibleName("Por kilometraje")
+    await expect(later.getByRole("listitem", { name: "Por kilometraje" })).toContainText("15.000 km")
+
+    await later.getByRole("button", { name: "Acciones de En 60 días", exact: true }).click()
+    await expect(page.getByRole("menuitem", { name: "Completar previsión", exact: true })).toHaveCount(0)
+    await page.getByRole("menuitem", { name: "Cancelar previsión", exact: true }).click()
+    await expect(later.getByRole("listitem", { name: "En 60 días" })).toHaveCount(0)
+    await later.getByRole("button", { name: "Acciones de Por kilometraje", exact: true }).click()
+    await page.getByRole("menuitem", { name: "Cancelar previsión", exact: true }).click()
+    await expect(later).toHaveCount(0)
+    await expect(page.getByRole("button", { name: /Más adelante/ })).toHaveCount(0)
+    await expect(reminders.getByRole("listitem")).toHaveCount(1)
+    await expect(counter).toContainText("1")
+
+    const saved = await (await request.get(`${CONTROLLED_SERVICES_URL}/__test__/maintenance`)).json()
+    expect(saved.schedules.map((row: { status: string }) => row.status)).toEqual(["cancelled", "cancelled", "pending"])
+  })
+})
