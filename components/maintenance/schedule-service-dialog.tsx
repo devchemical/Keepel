@@ -1,13 +1,11 @@
 "use client"
 
-/* eslint-disable eslint/no-shadow -- Form error state uses conventional naming. */
-
 import type React from "react"
 
 import { useState } from "react"
-import { OperationRecovery, usePendingDataOperation } from "@/components/data/operation-recovery"
+import { OperationRecovery } from "@/components/data/operation-recovery"
 import { useData } from "@/contexts"
-import { operationMessage } from "@/lib/data/operation-messages"
+import { useEditor } from "@/hooks/use-editor"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -39,12 +37,6 @@ export function ScheduleServiceDialog({
   open: controlledOpen,
   onOpenChange,
 }: ScheduleServiceDialogProps) {
-  const [internalOpen, setInternalOpen] = useState(false)
-  const open = controlledOpen !== undefined ? controlledOpen : internalOpen
-  const setOpen = onOpenChange ?? setInternalOpen
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
   const { createScheduledService } = useData()
 
   const [formData, setFormData] = useState({
@@ -55,8 +47,7 @@ export function ScheduleServiceDialog({
     notes: "",
   })
 
-  const resetConfirmedForm = () => {
-    setError(null)
+  const resetDraft = () =>
     setFormData({
       type: "",
       description: "",
@@ -64,40 +55,27 @@ export function ScheduleServiceDialog({
       scheduled_mileage: "",
       notes: "",
     })
-    setOpen(false)
-  }
 
-  const pending = usePendingDataOperation(resetConfirmedForm)
-  const handleSubmit = async (e: React.FormEvent) => {
+  const editor = useEditor({
+    kind: "crud",
+    open: controlledOpen,
+    onOpenChange,
+    onConfirmed: resetDraft,
+    failureMessage: "Error desconocido al programar servicio",
+  })
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    setIsLoading(true)
-    setError(null)
-
-    try {
-      if (!vehicleId) {
-        throw new Error("ID del vehículo no válido")
-      }
-
+    void editor.submit(() => {
+      if (!vehicleId) return { invalid: "ID del vehículo no válido" }
       const parsed = scheduledServiceSchema.safeParse(formData)
       if (!parsed.success)
-        throw new Error("Indica un tipo válido y al menos una fecha o un kilometraje válido mayor o igual a 0.")
-      const message = operationMessage("crud", await createScheduledService(vehicleId, parsed.data))
-      if (message) {
-        setError(message)
-        return
-      }
-
-      resetConfirmedForm()
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : "Error desconocido al programar servicio"
-      setError(errorMessage)
-    } finally {
-      setIsLoading(false)
-    }
+        return { invalid: "Indica un tipo válido y al menos una fecha o un kilometraje válido mayor o igual a 0." }
+      return { send: () => createScheduledService(vehicleId, parsed.data) }
+    })
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={editor.open} onOpenChange={editor.setOpen}>
       {children && <DialogTrigger asChild>{children}</DialogTrigger>}
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader className="space-y-2">
@@ -108,15 +86,15 @@ export function ScheduleServiceDialog({
           <DialogDescription className="text-sm">Programa un mantenimiento futuro para tu vehículo.</DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4" data-editor-state={editor.state.status}>
           <OperationRecovery />
-          <fieldset disabled={pending || isLoading} className="space-y-4">
+          <fieldset disabled={editor.frozen || editor.submitting} className="space-y-4">
             <div className="space-y-1.5">
               <Label htmlFor="type" className="text-sm font-medium">
                 Tipo de Servicio *
               </Label>
               <Select value={formData.type} onValueChange={(value) => setFormData({ ...formData, type: value })}>
-                <SelectTrigger disabled={pending || isLoading} id="type" className="h-10">
+                <SelectTrigger disabled={editor.frozen || editor.submitting} id="type" className="h-10">
                   <SelectValue placeholder="Seleccionar tipo" />
                 </SelectTrigger>
                 <SelectContent>
@@ -192,25 +170,30 @@ export function ScheduleServiceDialog({
               </p>
             </div>
 
-            {error && (
+            {editor.error && (
               <div
                 role="alert"
                 className="text-destructive-foreground bg-destructive/10 border-destructive/20 rounded-md border p-2.5 text-xs sm:text-sm"
               >
-                {error}
+                {editor.error}
               </div>
             )}
 
             <div className="border-border flex flex-col-reverse gap-2 border-t pt-3 sm:flex-row sm:gap-3">
-              <Button type="button" variant="outline" onClick={() => setOpen(false)} className="h-10 flex-1 sm:h-11">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => editor.setOpen(false)}
+                className="h-10 flex-1 sm:h-11"
+              >
                 Cancelar
               </Button>
               <Button
                 type="submit"
-                disabled={isLoading || !formData.type}
+                disabled={editor.submitting || !formData.type}
                 className="bg-primary hover:bg-primary/90 h-10 flex-1 font-medium sm:h-11"
               >
-                {isLoading ? (
+                {editor.submitting ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Programando...
