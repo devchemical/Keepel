@@ -27,6 +27,7 @@ export function DeleteMaintenanceDialog({ record, open, onOpenChange }: DeleteMa
 
   const editor = useEditor({
     kind: "crud",
+    action: "maintenance.delete",
     open,
     onOpenChange,
     failureMessage: "Error desconocido al eliminar registro",
@@ -68,7 +69,13 @@ export function DeleteMaintenanceDialog({ record, open, onOpenChange }: DeleteMa
         )}
 
         <div className="flex gap-2 pt-4">
-          <Button type="button" variant="outline" onClick={() => editor.setOpen(false)} className="flex-1">
+          <Button
+            type="button"
+            variant="outline"
+            disabled={editor.submitting}
+            onClick={() => editor.setOpen(false)}
+            className="flex-1"
+          >
             Cancelar
           </Button>
           <Button

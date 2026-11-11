@@ -59,6 +59,7 @@ export function EditMaintenanceDialog({ record, vehicleId, open, onOpenChange }:
 
   const editor = useEditor({
     kind: "crud",
+    action: "maintenance.update",
     open,
     onOpenChange,
     failureMessage: "Error desconocido al actualizar mantenimiento",
@@ -173,7 +174,13 @@ export function EditMaintenanceDialog({ record, vehicleId, open, onOpenChange }:
             )}
 
             <div className="flex gap-2 pt-4">
-              <Button type="button" variant="outline" onClick={() => editor.setOpen(false)} className="flex-1">
+              <Button
+                type="button"
+                variant="outline"
+                disabled={editor.submitting}
+                onClick={() => editor.setOpen(false)}
+                className="flex-1"
+              >
                 Cancelar
               </Button>
               <Button

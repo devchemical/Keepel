@@ -58,6 +58,7 @@ export function ScheduleServiceDialog({
 
   const editor = useEditor({
     kind: "crud",
+    action: "schedule.create",
     open: controlledOpen,
     onOpenChange,
     onConfirmed: resetDraft,
@@ -183,6 +184,7 @@ export function ScheduleServiceDialog({
               <Button
                 type="button"
                 variant="outline"
+                disabled={editor.submitting}
                 onClick={() => editor.setOpen(false)}
                 className="h-10 flex-1 sm:h-11"
               >

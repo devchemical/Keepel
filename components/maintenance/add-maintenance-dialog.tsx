@@ -127,6 +127,7 @@ export function AddMaintenanceDialog({
 
   const editor = useEditor({
     kind: "batch",
+    action: "maintenance.batch",
     open: controlledOpen,
     onOpenChange,
     onConfirmed: resetDraft,

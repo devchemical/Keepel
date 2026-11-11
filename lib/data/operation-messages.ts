@@ -16,6 +16,19 @@ export const OPERATION_LABELS: Record<PendingCommand["action"], string> = {
   "schedule.cancel": "Cancelación de previsión",
 }
 
+/** The one `sonner` success toast an editor shows when its write is confirmed. */
+export const OPERATION_SUCCESS_MESSAGES: Record<PendingCommand["action"], string> = {
+  "maintenance.batch": "Mantenimiento registrado correctamente",
+  "vehicle.create": "Vehículo agregado correctamente",
+  "vehicle.update": "Vehículo actualizado correctamente",
+  "vehicle.delete": "Vehículo eliminado correctamente",
+  "maintenance.update": "Mantenimiento actualizado correctamente",
+  "maintenance.delete": "Mantenimiento eliminado correctamente",
+  "schedule.create": "Servicio programado correctamente",
+  "schedule.update": "Servicio actualizado correctamente",
+  "schedule.cancel": "Previsión cancelada",
+}
+
 /** Recovery card copy. A `sending` operation is shown as being checked. */
 export const RECOVERY_STATUS_MESSAGES: Record<PendingOperationStatus, string> = {
   sending: "Comprobando operación…",

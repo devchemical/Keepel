@@ -65,7 +65,13 @@ export function EditVehicleDialog({ vehicle, open, onOpenChange }: EditVehicleDi
     })
   }, [vehicle])
 
-  const editor = useEditor({ kind: "crud", open, onOpenChange, failureMessage: "Error al actualizar vehículo" })
+  const editor = useEditor({
+    kind: "crud",
+    action: "vehicle.update",
+    open,
+    onOpenChange,
+    failureMessage: "Error al actualizar vehículo",
+  })
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     void editor.submit(() => {
@@ -187,7 +193,13 @@ export function EditVehicleDialog({ vehicle, open, onOpenChange }: EditVehicleDi
             )}
 
             <div className="flex gap-2 pt-4">
-              <Button type="button" variant="outline" onClick={() => editor.setOpen(false)} className="flex-1">
+              <Button
+                type="button"
+                variant="outline"
+                disabled={editor.submitting}
+                onClick={() => editor.setOpen(false)}
+                className="flex-1"
+              >
                 Cancelar
               </Button>
               <Button type="submit" disabled={editor.submitting} className="bg-primary hover:bg-primary/90 flex-1">

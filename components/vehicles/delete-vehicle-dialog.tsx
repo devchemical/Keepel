@@ -23,7 +23,13 @@ interface DeleteVehicleDialogProps {
 export function DeleteVehicleDialog({ vehicle, open, onOpenChange }: DeleteVehicleDialogProps) {
   const { deleteVehicle } = useData()
 
-  const editor = useEditor({ kind: "crud", open, onOpenChange, failureMessage: "Error al eliminar vehículo" })
+  const editor = useEditor({
+    kind: "crud",
+    action: "vehicle.delete",
+    open,
+    onOpenChange,
+    failureMessage: "Error al eliminar vehículo",
+  })
   const handleDelete = () => void editor.submit(() => ({ send: () => deleteVehicle(vehicle.id) }))
 
   return (
@@ -61,7 +67,13 @@ export function DeleteVehicleDialog({ vehicle, open, onOpenChange }: DeleteVehic
         )}
 
         <div className="flex gap-2 pt-4">
-          <Button type="button" variant="outline" onClick={() => editor.setOpen(false)} className="flex-1">
+          <Button
+            type="button"
+            variant="outline"
+            disabled={editor.submitting}
+            onClick={() => editor.setOpen(false)}
+            className="flex-1"
+          >
             Cancelar
           </Button>
           <Button

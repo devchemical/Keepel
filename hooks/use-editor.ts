@@ -1,9 +1,11 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"
+import { toast } from "sonner"
 import { useData } from "@/contexts"
 import type { OperationOutcome } from "@/lib/data/operation-machine"
-import { operationMessage } from "@/lib/data/operation-messages"
+import { OPERATION_SUCCESS_MESSAGES, operationMessage } from "@/lib/data/operation-messages"
+import type { PendingCommand } from "@/lib/data/pending-operations"
 import {
   EDITOR_CLOSED,
   EDITOR_EDITING,
@@ -30,6 +32,8 @@ export type EditorSubmitResult = {
 
 type UseEditorOptions = {
   kind: EditorKind
+  /** The command the editor writes; selects its success toast. */
+  action: PendingCommand["action"]
   /** Controlled visibility. When omitted, the editor owns it. */
   open?: boolean
   onOpenChange?: (open: boolean) => void
@@ -40,7 +44,7 @@ type UseEditorOptions = {
 }
 
 /** React binding for the editor dialog machine (lib/ui/editor-machine.ts). */
-export function useEditor({ kind, open, onOpenChange, onConfirmed, failureMessage }: UseEditorOptions) {
+export function useEditor({ kind, action, open, onOpenChange, onConfirmed, failureMessage }: UseEditorOptions) {
   const policy = EDITOR_POLICY[kind]
   const { pendingOperations } = useData()
   const [state, setState] = useState<EditorState>(() => (open ? EDITOR_EDITING : EDITOR_CLOSED))
@@ -103,6 +107,8 @@ export function useEditor({ kind, open, onOpenChange, onConfirmed, failureMessag
     }
     const message = operationMessage(kind, outcome)
     dispatch({ type: "OUTCOME", outcome, message })
+    // Confirmed writes get one toast; every other outcome stays inline in the editor.
+    if (outcome.status === "confirmed") toast.success(OPERATION_SUCCESS_MESSAGES[action])
     return { status: outcome.status, message }
   }
 

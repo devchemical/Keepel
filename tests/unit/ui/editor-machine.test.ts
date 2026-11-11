@@ -164,9 +164,9 @@ const operation = (action: PendingCommand["action"]): PendingOperation => ({
 })
 
 describe("editor policy", () => {
-  it("keeps today's split: CRUD editors hide on close and freeze app-wide, the batch editor neither", () => {
+  it("blocks close while submitting in every editor; only CRUD editors freeze app-wide (D3)", () => {
     expect(EDITOR_POLICY.crud).toEqual({
-      closeWhileSubmitting: "hide",
+      closeWhileSubmitting: "ignore",
       freezeOn: "any-operation",
       closeWhenAllSettled: true,
     })
