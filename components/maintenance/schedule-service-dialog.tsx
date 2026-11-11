@@ -7,6 +7,7 @@ import type React from "react"
 import { useState } from "react"
 import { OperationRecovery, usePendingDataOperation } from "@/components/data/operation-recovery"
 import { useData } from "@/contexts"
+import { operationMessage } from "@/lib/data/operation-messages"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -44,7 +45,7 @@ export function ScheduleServiceDialog({
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const { addScheduledServiceOptimistic } = useData()
+  const { createScheduledService } = useData()
 
   const [formData, setFormData] = useState({
     type: "",
@@ -80,7 +81,11 @@ export function ScheduleServiceDialog({
       const parsed = scheduledServiceSchema.safeParse(formData)
       if (!parsed.success)
         throw new Error("Indica un tipo válido y al menos una fecha o un kilometraje válido mayor o igual a 0.")
-      await addScheduledServiceOptimistic(vehicleId, parsed.data)
+      const message = operationMessage("crud", await createScheduledService(vehicleId, parsed.data))
+      if (message) {
+        setError(message)
+        return
+      }
 
       resetConfirmedForm()
     } catch (error: unknown) {

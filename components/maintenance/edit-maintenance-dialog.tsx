@@ -10,6 +10,7 @@ import type React from "react"
 import { useState, useEffect } from "react"
 import { OperationRecovery, usePendingDataOperation } from "@/components/data/operation-recovery"
 import { useData } from "@/contexts"
+import { operationMessage } from "@/lib/data/operation-messages"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
@@ -39,7 +40,7 @@ export function EditMaintenanceDialog({ record, vehicleId, open, onOpenChange }:
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const { updateMaintenanceOptimistic } = useData()
+  const { updateMaintenance } = useData()
 
   const [formData, setFormData] = useState({
     type: record.type,
@@ -77,7 +78,11 @@ export function EditMaintenanceDialog({ record, vehicleId, open, onOpenChange }:
         throw new Error(
           "Revisa el tipo, la fecha, el costo y el kilometraje. Los números deben ser mayores o iguales a 0."
         )
-      await updateMaintenanceOptimistic(record.id, parsed.data)
+      const message = operationMessage("crud", await updateMaintenance(record.id, parsed.data))
+      if (message) {
+        setError(message)
+        return
+      }
 
       onOpenChange(false)
     } catch (error: unknown) {
