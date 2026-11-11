@@ -1,0 +1,70 @@
+import { describe, expect, it } from "vitest"
+import { BLOCK_REASON } from "@/lib/data/operation-machine"
+import { operationMessage, RECOVERY_STATUS_MESSAGES } from "@/lib/data/operation-messages"
+
+// Characterization: the copy CRUD dialogs rendered from thrown errors and the batch editor
+// rendered from its result before outcomes became values.
+const OPERATION_ID = "33333333-3333-4333-8333-333333333333"
+
+describe("CRUD outcome copy", () => {
+  it.each([
+    [{ status: "blocked", reason: "no-session" } as const, "No hay sesión activa"],
+    [
+      { status: "blocked", reason: "journal-unreadable" } as const,
+      "No se pudieron recuperar las referencias pendientes. Recarga cuando el almacenamiento esté disponible.",
+    ],
+    [
+      { status: "blocked", reason: "conflict" } as const,
+      "Resultado pendiente de confirmar. Comprueba la operación anterior antes de continuar.",
+    ],
+    [
+      { status: "blocked", reason: "session-changed" } as const,
+      "La sesión ha cambiado. No se aplicó una respuesta anterior.",
+    ],
+    [
+      { status: "unknown", operationId: OPERATION_ID } as const,
+      "Resultado pendiente de confirmar. No repitas la operación; utiliza Comprobar resultado.",
+    ],
+    [
+      { status: "rejected" } as const,
+      "No se realizó la operación. No se confirmó ninguna fila; revisa los datos y vuelve a intentarlo.",
+    ],
+  ])("%o", (outcome, message) => {
+    expect(operationMessage("crud", outcome)).toBe(message)
+  })
+})
+
+describe("batch outcome copy", () => {
+  const rejected = "No se pudo guardar el mantenimiento. Revisa los datos y la sesión e inténtalo de nuevo."
+  const unknown =
+    "Resultado pendiente de confirmar. Comprueba el resultado o reintenta la misma operación; no se duplicarán los servicios."
+
+  it("reports rejection, missing session and an unusable journal as not saved", () => {
+    expect(operationMessage("batch", { status: "rejected" })).toBe(rejected)
+    for (const reason of ["no-session", "journal-unreadable", "journal-unwritable"] as const)
+      expect(operationMessage("batch", { status: "blocked", reason })).toBe(rejected)
+  })
+
+  it("reports no proof, a conflicting batch and a changed session as pending confirmation", () => {
+    expect(operationMessage("batch", { status: "unknown", operationId: OPERATION_ID })).toBe(unknown)
+    for (const reason of ["conflict", "session-changed"] as const)
+      expect(operationMessage("batch", { status: "blocked", reason })).toBe(unknown)
+  })
+})
+
+describe("every outcome has copy", () => {
+  it("returns null only for a confirmed outcome", () => {
+    for (const kind of ["crud", "batch"] as const) {
+      expect(operationMessage(kind, { status: "confirmed" })).toBeNull()
+      for (const reason of BLOCK_REASON) expect(operationMessage(kind, { status: "blocked", reason })).toBeTruthy()
+    }
+  })
+
+  it("shows a sending operation as being checked on its recovery card", () => {
+    expect(RECOVERY_STATUS_MESSAGES).toEqual({
+      sending: "Comprobando operación…",
+      checking: "Comprobando operación…",
+      unknown: "Resultado pendiente de confirmar. No repitas la operación.",
+    })
+  })
+})
