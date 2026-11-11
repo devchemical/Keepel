@@ -8,6 +8,7 @@ import {
   readDataSnapshot,
   maintenanceHistoryQuery,
   readMaintenanceTotals,
+  readCompletedForecast,
   HISTORY_PAGE_SIZE,
   type MaintenanceTotals,
 } from "@/lib/data/queries"
@@ -24,6 +25,7 @@ import {
   type SnapshotStatus,
 } from "@/lib/data/snapshot-machine"
 import { snapshotLoadError } from "@/lib/data/snapshot-messages"
+import type { CompletedForecast } from "@/lib/data/operation-messages"
 import { useAuthProjection } from "./AuthProjectionContext"
 import { useSupabase } from "./SupabaseContext"
 import { AUTH_STATE_STATUS } from "@/lib/auth/contracts"
@@ -149,6 +151,9 @@ interface DataContextType {
   createScheduledService: (vehicleId: string, values: ScheduledServiceValues) => Promise<OperationOutcome>
   updateScheduledService: (id: string, values: ScheduledServiceValues) => Promise<OperationOutcome>
   cancelScheduledService: (id: string) => Promise<OperationOutcome>
+
+  /** The forecast a maintenance record completed; `null` when none, signed out, or the read failed. */
+  findCompletedForecast: (recordId: string) => Promise<CompletedForecast | null>
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined)
@@ -565,6 +570,19 @@ export function DataProvider({ children }: DataProviderProps) {
     [mutate]
   )
   const cancelScheduledService = useCallback((id: string) => mutate("schedule.cancel", id, {}), [mutate])
+  const findCompletedForecast = useCallback(
+    async (recordId: string) => {
+      if (!userId) return null
+      try {
+        const forecast = await readCompletedForecast(supabase, userId, recordId)
+        // A result read for a previous account is not this account's.
+        return scope.current.userId === userId ? forecast : null
+      } catch {
+        return null
+      }
+    },
+    [supabase, userId]
+  )
 
   useEffect(() => {
     deletedVehicles.current.clear()
@@ -688,6 +706,7 @@ export function DataProvider({ children }: DataProviderProps) {
     createScheduledService,
     updateScheduledService,
     cancelScheduledService,
+    findCompletedForecast,
   }
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>
