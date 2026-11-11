@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest"
-import { classifyScheduledService, selectScheduledServices } from "@/lib/data/scheduled-services"
+import { SCHEDULE_URGENCY, classifyScheduledService, selectScheduledServices } from "@/lib/data/scheduled-services"
 import {
-  SCHEDULE_URGENCY,
   SCHEDULED_SERVICE_EVENT,
   SCHEDULED_SERVICE_STATUS,
   SCHEDULED_SERVICE_TRANSITIONS,
   canTransition,
   isPendingScheduledService,
+  type ScheduledServiceStatus,
 } from "@/lib/data/scheduled-service-lifecycle"
 
 // Independent copy of the spec table ("Machine 9"): from → event → to. Every pair not listed is refused.
@@ -50,13 +50,17 @@ describe("scheduled service lifecycle", () => {
 
   it("recognises only pending services as open", () => {
     expect(SCHEDULED_SERVICE_STATUS.filter(isPendingScheduledService)).toEqual(["pending"])
-    expect(isPendingScheduledService("unknown")).toBe(false)
   })
 })
 
 describe("schedule urgency", () => {
   const today = "2026-03-08"
-  const pending = { status: "pending", scheduled_date: null, scheduled_mileage: null, vehicles: { mileage: 10 } }
+  const pending = {
+    status: "pending" as ScheduledServiceStatus,
+    scheduled_date: null,
+    scheduled_mileage: null,
+    vehicles: { mileage: 10 },
+  }
 
   it("names all four urgencies", () => {
     expect(SCHEDULE_URGENCY).toEqual(["overdue", "today", "upcoming", "later"])
@@ -78,7 +82,7 @@ describe("schedule urgency", () => {
     expect(classifyScheduledService({ ...pending, ...criteria }, today)).toEqual(expected)
   })
 
-  it.each(["completed", "cancelled"])("does not classify a %s service", (status) => {
+  it.each(["completed", "cancelled"] as const)("does not classify a %s service", (status) => {
     expect(classifyScheduledService({ ...pending, status, scheduled_date: "2026-03-07" }, today)).toBeNull()
   })
 

@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import type { Database, Tables } from "@/lib/supabase/database.types"
+import { PENDING_SCHEDULED_SERVICE } from "@/lib/data/scheduled-service-lifecycle"
 
 export const HISTORY_PAGE_SIZE = 25
 export type HistoryCursor = { service_date: string; id: string }
@@ -70,7 +71,7 @@ async function readSchedules(client: SupabaseClient<Database>, userId: string, s
         "id,user_id,vehicle_id,type,description,scheduled_date,scheduled_mileage,status,notes,completed_record_id,created_at,updated_at"
       )
       .eq("user_id", userId)
-      .eq("status", "pending")
+      .eq("status", PENDING_SCHEDULED_SERVICE)
       .order("id")
       .limit(500)
     if (after) query = query.gt("id", after)

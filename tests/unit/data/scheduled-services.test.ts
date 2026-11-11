@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest"
+import type { ScheduledServiceStatus } from "@/lib/data/scheduled-service-lifecycle"
 import { classifyScheduledService, selectScheduledServices } from "@/lib/data/scheduled-services"
 
-const pending = { status: "pending", scheduled_date: null, scheduled_mileage: null, vehicles: { mileage: 0 } }
+const pending = {
+  status: "pending" as ScheduledServiceStatus,
+  scheduled_date: null,
+  scheduled_mileage: null,
+  vehicles: { mileage: 0 },
+}
 describe("scheduled reminder selection", () => {
   it("includes yesterday, today, the inclusive horizon and reached mileage, without estimating unreached mileage", () => {
     const services = [
@@ -13,8 +19,8 @@ describe("scheduled reminder selection", () => {
       { ...pending, id: "unreached", scheduled_mileage: 1 },
       { ...pending, id: "unknown-mileage", scheduled_mileage: 0, vehicles: { mileage: null } },
       { ...pending, id: "or", scheduled_date: "2027-01-01", scheduled_mileage: 0 },
-      { ...pending, id: "cancelled", status: "cancelled", scheduled_date: "2026-03-07" },
-      { ...pending, id: "completed", status: "completed", scheduled_mileage: 0 },
+      { ...pending, id: "cancelled", status: "cancelled" as const, scheduled_date: "2026-03-07" },
+      { ...pending, id: "completed", status: "completed" as const, scheduled_mileage: 0 },
     ]
     expect(selectScheduledServices(services, "2026-03-08").map(({ service }) => service.id)).toEqual([
       "yesterday",

@@ -1,8 +1,10 @@
 // Machine 1 — Data operation lifecycle. Owner: contexts/DataContext.tsx (the only place with effects).
 //
+// An operation is created in `sending` when the owner accepts a submit: no conflict
+// (`conflictsWith`) and the journal allows it. Creation is not an event of this machine.
+//
 // | from     | event              | to        | guard / note                                        |
 // | -------- | ------------------ | --------- | --------------------------------------------------- |
-// | —        | SUBMIT             | sending   | no conflict (`conflictsWith`), journal allows it    |
 // | sending  | RECEIPT            | confirmed | receipt matches operation, action, id and account   |
 // | sending  | REJECTED           | rejected  | native database error only                          |
 // | sending  | NO_PROOF           | unknown   | timeout, transport, malformed or missing receipt    |
