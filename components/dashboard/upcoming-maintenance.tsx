@@ -15,14 +15,14 @@ import { AddMaintenanceDialog } from "@/components/maintenance/add-maintenance-d
 import { EditScheduledServiceDialog } from "@/components/maintenance/edit-scheduled-service-dialog"
 
 import type { ScheduledService } from "@/contexts"
-import type { ScheduleClassification } from "@/lib/data/scheduled-services"
+import type { ScheduleReminder } from "@/lib/data/scheduled-services"
 import { formatCalendarDay } from "@/lib/data/calendar-day"
 import { MAINTENANCE_TYPES } from "@/lib/data/maintenance-types"
 import { operationMessage } from "@/lib/data/operation-messages"
 import { NO_ROW_ACTION, transitionRowAction } from "@/lib/ui/editor-machine"
 
 interface UpcomingMaintenanceProps {
-  upcomingMaintenance: (ScheduleClassification & { service: ScheduledService })[]
+  upcomingMaintenance: (ScheduleReminder & { service: ScheduledService })[]
   isLoading?: boolean
 }
 

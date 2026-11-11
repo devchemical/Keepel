@@ -2,21 +2,34 @@
 
 /* eslint-disable react/jsx-no-constructed-context-values -- The provider publishes a single interactive projection. */
 
-import React, { createContext, useContext, useEffect, useState, useCallback } from "react"
+import React, { createContext, useContext, useEffect, useReducer, useState, useCallback } from "react"
 import { readPendingCommands, writePendingCommands, freezePendingCommand } from "@/lib/data/pending-operations"
 import {
   readDataSnapshot,
   maintenanceHistoryQuery,
   readMaintenanceTotals,
   HISTORY_PAGE_SIZE,
-  type HistoryCursor,
   type MaintenanceTotals,
 } from "@/lib/data/queries"
+import {
+  INITIAL_SNAPSHOT_STATE,
+  historyRequest as requestedHistoryOf,
+  requestFreshness,
+  snapshotIsFetching,
+  snapshotLoadError,
+  transitionHistory,
+  transitionSnapshot,
+  type HistoryEvent,
+  type HistoryState,
+  type SnapshotState,
+  type SnapshotStatus,
+} from "@/lib/data/snapshot-machine"
 import { useAuthProjection } from "./AuthProjectionContext"
 import { useSupabase } from "./SupabaseContext"
 import { AUTH_STATE_STATUS } from "@/lib/auth/contracts"
 import type { Tables } from "@/lib/supabase/database.types"
 import type { ScheduledServiceValues } from "@/lib/data/scheduled-command"
+import { isPendingScheduledService, type ScheduledServiceStatus } from "@/lib/data/scheduled-service-lifecycle"
 import {
   isConfirmedRejection,
   type VehicleValues,
@@ -53,7 +66,7 @@ export type Vehicle = Omit<VehicleRow, "user_id">
 export type MaintenanceRecord = Tables<"maintenance_records"> & {
   vehicles?: Pick<VehicleRow, "make" | "model" | "year">
 }
-export type ScheduledServiceStatus = "pending" | "completed" | "cancelled"
+export type { ScheduledServiceStatus }
 type ScheduledRow = Tables<"scheduled_services">
 export type ScheduledService = Omit<
   ScheduledRow,
@@ -67,6 +80,9 @@ export type ScheduledService = Omit<
   }
 
 export type PendingDataOperation = PendingOperation
+
+type MaintenanceHistoryState = HistoryState<MaintenanceRecord, MaintenanceTotals>
+type MaintenanceHistoryEvent = HistoryEvent<MaintenanceRecord, MaintenanceTotals>
 
 interface DataContextType {
   totals: MaintenanceTotals | null
@@ -89,6 +105,9 @@ interface DataContextType {
   maintenanceRecords: MaintenanceRecord[]
   scheduledServices: ScheduledService[]
 
+  snapshot: SnapshotState
+  snapshotStatus: SnapshotStatus
+  // Legacy projections of `snapshot`, kept until every consumer reads the machine.
   hasLoaded: boolean
   loadError: string | null
   // Loading states
@@ -129,17 +148,14 @@ export function DataProvider({ children }: DataProviderProps) {
   const authState = useAuthProjection()
   const userId = authState.status === AUTH_STATE_STATUS.AUTHENTICATED ? authState.user.id : null
   const [totals, setTotals] = useState<MaintenanceTotals | null>(null)
-  const [history, setHistory] = useState<DataContextType["history"]>(null)
-  const historyRequest = React.useRef<{ vehicleId: string; cursors: (HistoryCursor | undefined)[] } | null>(null)
-  const committedHistoryRequest = React.useRef<typeof historyRequest.current>(null)
+  const [history, setHistory] = useState<MaintenanceHistoryState>({ status: "none" })
+  // Mirrors `history` synchronously so a load reads the latest request when it starts.
+  const historyRef = React.useRef<MaintenanceHistoryState>(history)
   const [dataOwner, setDataOwner] = useState(userId)
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
   const [maintenanceRecords, setMaintenanceRecords] = useState<MaintenanceRecord[]>([])
   const [scheduledServices, setScheduledServices] = useState<ScheduledService[]>([])
-
-  const [isVehiclesLoading, setIsVehiclesLoading] = useState(true)
-  const [isMaintenanceLoading, setIsMaintenanceLoading] = useState(true)
-  const [isScheduledServicesLoading, setIsScheduledServicesLoading] = useState(true)
+  const [snapshotState, dispatchSnapshot] = useReducer(transitionSnapshot, INITIAL_SNAPSHOT_STATE)
 
   const supabase = useSupabase()
   const [pendingOperations, setPendingOperations] = useState<PendingDataOperation[]>([])
@@ -152,23 +168,24 @@ export function DataProvider({ children }: DataProviderProps) {
     setJournal(journalRef.current)
   }, [])
 
-  const [hasLoaded, setHasLoaded] = useState(false)
-  const [loadError, setLoadError] = useState<string | null>(null)
   const scope = React.useRef({ userId, generation: 0, revision: 0, request: 0 })
   if (scope.current.userId !== userId) {
     scope.current = { userId, generation: scope.current.generation + 1, revision: 0, request: 0 }
   }
+  const updateHistory = useCallback((event: MaintenanceHistoryEvent) => {
+    const next = transitionHistory(historyRef.current, event)
+    historyRef.current = next
+    setHistory(next)
+    return next
+  }, [])
   const loadAllForUser = useCallback(
     async (currentUserId: string) => {
       if (scope.current.userId !== currentUserId) return
       const owner = scope.current
-      const request = ++owner.request
-      const revision = owner.revision
-      setIsVehiclesLoading(true)
-      setIsMaintenanceLoading(true)
-      setIsScheduledServicesLoading(true)
+      const token = { generation: owner.generation, request: ++owner.request, revision: owner.revision }
+      dispatchSnapshot({ type: "LOAD_STARTED" })
       try {
-        const requestedHistory = historyRequest.current
+        const requestedHistory = requestedHistoryOf(historyRef.current)
         const [snapshot, historyResult] = await Promise.all([
           readDataSnapshot(supabase, currentUserId),
           requestedHistory
@@ -188,70 +205,58 @@ export function DataProvider({ children }: DataProviderProps) {
         ])
         if (historyResult?.[0].error || (historyResult && !historyResult[0].data))
           throw new Error("History unavailable")
-        if (scope.current !== owner || request !== owner.request || revision !== owner.revision) return
-        committedHistoryRequest.current = requestedHistory
+        const freshness = requestFreshness(scope.current, token)
+        if (freshness !== "current") {
+          dispatchSnapshot({ type: "LOAD_SUCCEEDED", freshness })
+          return
+        }
         setTotals(snapshot.totals)
-        if (requestedHistory && historyResult)
-          setHistory({
-            vehicleId: requestedHistory.vehicleId,
-            records: (historyResult[0].data ?? []).slice(0, HISTORY_PAGE_SIZE),
-            totals: historyResult[1],
-            page: requestedHistory.cursors.length,
-            hasNext: (historyResult[0].data ?? []).length > HISTORY_PAGE_SIZE,
-          })
-        else setHistory(null)
+        const historyRows = historyResult?.[0].data ?? []
+        updateHistory({
+          type: "LOADED",
+          request: requestedHistory,
+          result: historyResult
+            ? {
+                records: historyRows.slice(0, HISTORY_PAGE_SIZE),
+                totals: historyResult[1],
+                hasNext: historyRows.length > HISTORY_PAGE_SIZE,
+              }
+            : null,
+        })
         setVehicles(snapshot.vehicles)
         setMaintenanceRecords(snapshot.maintenanceRecords)
         setScheduledServices(snapshot.scheduledServices as ScheduledService[])
-        setHasLoaded(true)
-        setLoadError(null)
+        dispatchSnapshot({ type: "LOAD_SUCCEEDED", freshness })
       } catch {
-        if (scope.current === owner && request === owner.request)
-          setLoadError("No se pudieron cargar los datos. Se conservan los últimos datos válidos.")
-      } finally {
-        if (scope.current === owner && request === owner.request) {
-          setIsVehiclesLoading(false)
-          setIsMaintenanceLoading(false)
-          setIsScheduledServicesLoading(false)
-        }
+        dispatchSnapshot({ type: "LOAD_FAILED", freshness: requestFreshness(scope.current, token) })
       }
     },
-    [supabase]
+    [supabase, updateHistory]
   )
   const refreshAll = useCallback(async () => {
     if (userId) await loadAllForUser(userId)
   }, [userId, loadAllForUser])
   const selectHistory = useCallback(
     (vehicleId?: string) => {
-      if (historyRequest.current?.vehicleId === vehicleId) return
-      historyRequest.current = vehicleId ? { vehicleId, cursors: [undefined] } : null
-      setHistory(null)
+      const current = historyRef.current
+      if (updateHistory({ type: "SELECT", vehicleId }) === current) return
       if (userId) void loadAllForUser(userId)
     },
-    [userId, loadAllForUser]
+    [userId, loadAllForUser, updateHistory]
   )
   const changeHistoryPage = useCallback(
     (direction: "next" | "previous") => {
-      if (!history || !userId) return
-      const cursors = committedHistoryRequest.current?.cursors.slice(0, history.page) ?? [undefined]
-      if (direction === "next") {
-        if (!history.hasNext) return
-        cursors.push(history.records.at(-1))
-      } else {
-        if (history.page <= 1) return
-        cursors.pop()
-      }
-      historyRequest.current = { vehicleId: history.vehicleId, cursors }
+      if (!userId) return
+      const current = historyRef.current
+      if (updateHistory({ type: "PAGE", direction }) === current) return
       void loadAllForUser(userId)
     },
-    [history, userId, loadAllForUser]
+    [userId, loadAllForUser, updateHistory]
   )
   const invalidateHistory = useCallback(() => {
     setTotals(null)
-    setHistory(null)
-    if (historyRequest.current)
-      historyRequest.current = { vehicleId: historyRequest.current.vehicleId, cursors: [undefined] }
-  }, [])
+    updateHistory({ type: "INVALIDATE" })
+  }, [updateHistory])
   const refreshVehicles = refreshAll
   const refreshMaintenance = refreshAll
   const refreshScheduledServices = refreshAll
@@ -316,7 +321,7 @@ export function DataProvider({ children }: DataProviderProps) {
       } else {
         const row = receipt.row as ScheduledService
         setScheduledServices((prev) =>
-          row.status === "pending"
+          isPendingScheduledService(row.status)
             ? [row, ...prev.filter((value) => value.id !== id)]
             : prev.filter((value) => value.id !== id)
         )
@@ -563,21 +568,13 @@ export function DataProvider({ children }: DataProviderProps) {
     setPendingOperations(pendingRef.current)
     recordJournal(restore)
     setTotals(null)
-    setHistory(null)
-    if (historyRequest.current)
-      historyRequest.current = { vehicleId: historyRequest.current.vehicleId, cursors: [undefined] }
+    updateHistory({ type: "INVALIDATE" })
     setVehicles([])
     setMaintenanceRecords([])
     setScheduledServices([])
-    setHasLoaded(false)
-    setLoadError(null)
+    dispatchSnapshot({ type: "ACCOUNT_CHANGED", signedIn: !!userId })
     if (userId) void loadAllForUser(userId)
-    else {
-      setIsVehiclesLoading(false)
-      setIsMaintenanceLoading(false)
-      setIsScheduledServicesLoading(false)
-    }
-  }, [userId, loadAllForUser, publishPending, recordJournal])
+  }, [userId, loadAllForUser, publishPending, recordJournal, updateHistory])
 
   let visibleVehicles = vehicles
   let visibleRecords = maintenanceRecords
@@ -610,27 +607,44 @@ export function DataProvider({ children }: DataProviderProps) {
     vehicles: vehicleById.get(row.vehicle_id) ?? row.vehicles,
   }))
 
+  // Until the account-change effect runs, the previous account's snapshot is not this account's.
+  const isFetching = snapshotIsFetching(snapshotState)
+  const snapshot: SnapshotState =
+    dataOwner === userId ? snapshotState : userId ? { status: "pending", isFetching } : { status: "signedOut" }
+  const visibleHistory =
+    dataOwner === userId && history.status === "ready"
+      ? {
+          vehicleId: history.vehicleId,
+          records: history.records,
+          totals: history.totals,
+          page: history.page,
+          hasNext: history.hasNext,
+        }
+      : null
+
   const value: DataContextType = {
     totals: dataOwner === userId ? totals : null,
-    history: dataOwner === userId ? history : null,
+    history: visibleHistory,
     selectHistory,
     changeHistoryPage,
     journal: dataOwner === userId ? journal : "healthy",
     operationStorageError: dataOwner === userId && journal !== "healthy",
     pendingOperations: dataOwner === userId ? pendingOperations : [],
     reconcileDataOperation,
-    hasLoaded: dataOwner === userId && hasLoaded,
-    loadError: dataOwner === userId ? loadError : null,
+    snapshot,
+    snapshotStatus: snapshot.status,
+    hasLoaded: snapshot.status === "ready",
+    loadError: snapshotLoadError(snapshot),
     // Data
     vehicles: dataOwner === userId ? visibleVehicles : [],
     maintenanceRecords: dataOwner === userId ? visibleRecords : [],
     scheduledServices: dataOwner === userId ? visibleSchedules : [],
 
     // Loading states
-    isLoading: isVehiclesLoading || isMaintenanceLoading || isScheduledServicesLoading,
-    isVehiclesLoading,
-    isMaintenanceLoading,
-    isScheduledServicesLoading,
+    isLoading: isFetching,
+    isVehiclesLoading: isFetching,
+    isMaintenanceLoading: isFetching,
+    isScheduledServicesLoading: isFetching,
 
     // Actions
     refreshAll,
