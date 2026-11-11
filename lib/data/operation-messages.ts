@@ -74,7 +74,8 @@ type FailedOutcome = Exclude<OperationOutcome["status"], "confirmed" | "blocked"
 const MESSAGES: Record<OperationKind, Record<FailedOutcome | BlockReason, string>> = {
   crud: {
     rejected: CRUD_REJECTED,
-    unknown: "Resultado pendiente de confirmar. No repitas la operación; utiliza Comprobar resultado.",
+    unknown:
+      "Resultado pendiente de confirmar. Comprueba el resultado o reintenta la misma operación; no se repetirá el cambio.",
     conflict: "Resultado pendiente de confirmar. Comprueba la operación anterior antes de continuar.",
     "journal-unreadable":
       "No se pudieron recuperar las referencias pendientes. Recarga cuando el almacenamiento esté disponible.",

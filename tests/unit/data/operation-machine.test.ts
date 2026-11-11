@@ -67,11 +67,11 @@ describe("operation policy (docs/testing/data-owner.md)", () => {
       expect(operationKind(action)).toBe("crud")
   })
 
-  it("lets CRUD send without a durable journal, never auto-checks and never replays", () => {
+  it("lets CRUD send without a durable journal, never auto-checks and allows an explicit replay (D2)", () => {
     expect(OPERATION_POLICY.crud).toEqual({
       requiresDurableJournal: false,
       autoCheckAfterNoProof: false,
-      replayable: false,
+      replayable: true,
     })
   })
 
@@ -134,6 +134,16 @@ describe("submission conflicts", () => {
 
   it("blocks a different batch while one is pending", () => {
     expect(conflictsWith(pending(batch(OPERATION)), { action: "maintenance.batch", operationId: OTHER })).toBe(true)
+  })
+
+  it("lets an unresolved CRUD command replay only through its kind's policy (D2)", () => {
+    const replay = {
+      type: "REPLAY",
+      replayable: OPERATION_POLICY[operationKind("schedule.create")].replayable,
+    } as const
+    expect(transitionOperation("unknown", replay)).toBe("sending")
+    expect(transitionOperation("sending", replay)).toBe("sending")
+    expect(transitionOperation("checking", replay)).toBe("checking")
   })
 
   it("allows only an explicit replay of the same unresolved batch", () => {

@@ -115,6 +115,8 @@ interface DataContextType {
   operationStorageError: boolean
   pendingOperations: PendingDataOperation[]
   reconcileDataOperation: (operationId: string) => Promise<OperationOutcome>
+  /** Explicitly resend an unresolved CRUD command's retained frozen payload with its operation id (D2). */
+  replayDataOperation: (operationId: string) => Promise<OperationOutcome>
   // Data
   vehicles: Vehicle[]
   maintenanceRecords: MaintenanceRecord[]
@@ -370,25 +372,16 @@ export function DataProvider({ children }: DataProviderProps) {
     [userId, supabase, advanceOperation, acceptDataReceipt, refreshAll]
   )
 
-  // CRUD policy (OPERATION_POLICY.crud): sends even if the journal write fails, is never checked
-  // automatically and is never replayed. Only an explicit status query resolves `unknown`.
-  const mutate = useCallback(
-    async (action: DataCommand["action"], id: string, values: unknown): Promise<OperationOutcome> => {
-      if (!userId || scope.current.userId !== userId) return { status: "blocked", reason: "no-session" }
-      if (journalRef.current === "unreadable") return { status: "blocked", reason: "journal-unreadable" }
-      const operationId = crypto.randomUUID()
-      if (pendingRef.current.some((operation) => conflictsWith(operation, { action, id, operationId })))
-        return { status: "blocked", reason: "conflict" }
-      const parsed = dataCommandSchema.safeParse({ operationId, action, id, values })
-      if (!parsed.success) return { status: "rejected" }
-      const command = parsed.data
-      Object.freeze(command.values)
-      Object.freeze(command)
-      // Parsed payload is copied and retained; no caller may change or resend it.
+  // CRUD policy (OPERATION_POLICY.crud): sends even if the journal write fails and is never checked
+  // or resent automatically. `unknown` is resolved by an explicit status query or an explicit
+  // replay of the same frozen command; `mutate_data` is idempotent per operation id (D2).
+  /** Send a command already listed as `sending`; a replay handles its outcome as a first send. */
+  const sendDataCommand = useCallback(
+    async (accountId: string, command: DataCommand): Promise<OperationOutcome> => {
+      const { operationId } = command
       const owner = scope.current
       owner.revision++
-      publishPending([...pendingRef.current, { command, status: "sending" }])
-      const outcome = await executeDataCommand(supabase, userId, command)
+      const outcome = await executeDataCommand(supabase, accountId, command)
       if (scope.current !== owner) return { status: "blocked", reason: "session-changed" }
       if (outcome.status === "unknown") {
         advanceOperation(operationId, { type: "NO_PROOF" })
@@ -403,7 +396,42 @@ export function DataProvider({ children }: DataProviderProps) {
       void refreshAll()
       return { status: "confirmed" }
     },
-    [userId, supabase, publishPending, advanceOperation, acceptDataReceipt, refreshAll]
+    [supabase, advanceOperation, acceptDataReceipt, refreshAll]
+  )
+
+  const mutate = useCallback(
+    async (action: DataCommand["action"], id: string, values: unknown): Promise<OperationOutcome> => {
+      if (!userId || scope.current.userId !== userId) return { status: "blocked", reason: "no-session" }
+      if (journalRef.current === "unreadable") return { status: "blocked", reason: "journal-unreadable" }
+      const operationId = crypto.randomUUID()
+      if (pendingRef.current.some((operation) => conflictsWith(operation, { action, id, operationId })))
+        return { status: "blocked", reason: "conflict" }
+      const parsed = dataCommandSchema.safeParse({ operationId, action, id, values })
+      if (!parsed.success) return { status: "rejected" }
+      const command = parsed.data
+      Object.freeze(command.values)
+      Object.freeze(command)
+      // Parsed payload is copied and retained; no caller may change it. Only an explicit
+      // replay (`replayDataOperation`) resends it, with the same operation id.
+      publishPending([...pendingRef.current, { command, status: "sending" }])
+      return sendDataCommand(userId, command)
+    },
+    [userId, publishPending, sendDataCommand]
+  )
+
+  const replayDataOperation = useCallback(
+    async (operationId: string): Promise<OperationOutcome> => {
+      if (!userId || scope.current.userId !== userId) return { status: "blocked", reason: "no-session" }
+      if (journalRef.current === "unreadable") return { status: "blocked", reason: "journal-unreadable" }
+      const operation = pendingRef.current.find((value) => value.command.operationId === operationId)
+      if (!operation || operation.command.action === "maintenance.batch") return { status: "unknown", operationId }
+      const replay = { type: "REPLAY", replayable: OPERATION_POLICY.crud.replayable } as const
+      // Only `unknown` may be replayed; a command still sending or being checked is left alone.
+      if (transitionOperation(operation.status, replay) !== "sending") return { status: "blocked", reason: "conflict" }
+      advanceOperation(operationId, replay)
+      return sendDataCommand(userId, operation.command)
+    },
+    [userId, advanceOperation, sendDataCommand]
   )
 
   const createVehicle = useCallback(
@@ -679,6 +707,7 @@ export function DataProvider({ children }: DataProviderProps) {
     changeHistoryPage,
     operationStorageError: ownedData.journal !== "healthy",
     reconcileDataOperation,
+    replayDataOperation,
     snapshotStatus: snapshot.status,
     hasLoaded: snapshot.status === "ready",
     loadError: snapshotLoadError(snapshot),

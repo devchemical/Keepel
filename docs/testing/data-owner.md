@@ -41,8 +41,13 @@ Actual public database types are generated from the disposable schema using the 
 
 A confirmed native database error is `rejected`. An aborted wait, transport error, malformed response,
 or missing receipt is `unknown`. No write is automatically resent. CRUD stays unknown until the user
-queries `get_data_operation`; an absent receipt does not establish rollback. Cancellation has exactly
-this contract too. Only a validated matching operation/action/resource/account receipt establishes
+either queries `get_data_operation` or explicitly chooses "Reintentar misma operación" (D2), which
+resends the retained frozen command with the same operation ID through `mutate_data`; an absent
+receipt does not establish rollback. A replay is never automatic and is unavailable while the command
+is sending or being checked. Its outcome is handled as a first send: a receipt confirms, a native
+rejection rejects and removes the journal entry, and no proof leaves it unknown. Because `mutate_data`
+returns the original receipt for a repeated operation ID, a replay writes at most once. Cancellation
+has exactly this contract too. Only a validated matching operation/action/resource/account receipt establishes
 success. Loading failure after a confirmed mutation never changes that mutation into a failed write.
 
 Optimistic changes are overlays on the last snapshot, not saved copies of whole arrays. Rejecting
@@ -53,7 +58,7 @@ Cancellation stays visible until confirmation so its recovery action remains rea
 
 Unresolved CRUD commands are copied/frozen and retained by the owner across modal close/navigation.
 A versioned, account-scoped sessionStorage journal restores their identity and complete payload after
-reload, with status unknown and only a status query. It never restores authentication or sends writes.
+reload, with status unknown, a status query and an explicit same-operation replay. It never restores authentication or sends writes.
 The journal is removed on confirmation/rejection or tab closure; it contains no credentials and sends
 no telemetry. Other accounts do not see it. A storage failure keeps the in-memory command and displays
 a request to keep the tab open. Private receipts remain queryable while that account exists. #93's
