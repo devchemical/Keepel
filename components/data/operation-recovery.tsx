@@ -1,8 +1,15 @@
 "use client"
+import { toast } from "sonner"
 import { useData } from "@/contexts"
 import { Button } from "@/components/ui/button"
 import { OPERATION_POLICY, operationKind } from "@/lib/data/operation-machine"
-import { JOURNAL_RECOVERY_ALERT, OPERATION_LABELS, RECOVERY_STATUS_MESSAGES } from "@/lib/data/operation-messages"
+import type { PendingCommand } from "@/lib/data/pending-operations"
+import {
+  JOURNAL_RECOVERY_ALERT,
+  OPERATION_LABELS,
+  RECOVERY_STATUS_MESSAGES,
+  operationMessage,
+} from "@/lib/data/operation-messages"
 
 export function OperationRecovery() {
   const {
@@ -10,8 +17,16 @@ export function OperationRecovery() {
     reconcileDataOperation,
     reconcileMaintenanceBatch,
     createMaintenanceBatch,
+    replayDataOperation,
     operationStorageError,
   } = useData()
+  // An explicit, user-initiated resend of the retained command with the same operation id. A
+  // rejected CRUD replay leaves the pending list, so its card disappears; say why.
+  const replay = async (command: PendingCommand) => {
+    if (command.action === "maintenance.batch") return void (await createMaintenanceBatch(command))
+    const outcome = await replayDataOperation(command.operationId)
+    if (outcome.status === "rejected") toast.error(operationMessage("crud", outcome))
+  }
   return (
     <>
       {operationStorageError && <p role="alert">{JOURNAL_RECOVERY_ALERT}</p>}
@@ -70,18 +85,16 @@ export function OperationRecovery() {
               Comprobar resultado
             </Button>
           )}
-          {command.action === "maintenance.batch" &&
-            OPERATION_POLICY[operationKind(command.action)].replayable &&
-            status !== "sending" && (
-              <Button
-                type="button"
-                variant="outline"
-                disabled={status === "checking"}
-                onClick={() => void createMaintenanceBatch(command)}
-              >
-                Reintentar misma operación
-              </Button>
-            )}
+          {OPERATION_POLICY[operationKind(command.action)].replayable && status !== "sending" && (
+            <Button
+              type="button"
+              variant="outline"
+              disabled={status === "checking"}
+              onClick={() => void replay(command)}
+            >
+              Reintentar misma operación
+            </Button>
+          )}
         </div>
       ))}
     </>

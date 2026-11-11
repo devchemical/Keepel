@@ -28,7 +28,7 @@ describe("CRUD outcome copy", () => {
     ],
     [
       { status: "unknown", operationId: OPERATION_ID } as const,
-      "Resultado pendiente de confirmar. No repitas la operación; utiliza Comprobar resultado.",
+      "Resultado pendiente de confirmar. Comprueba el resultado o reintenta la misma operación; no se repetirá el cambio.",
     ],
     [
       { status: "rejected" } as const,

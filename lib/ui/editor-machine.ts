@@ -18,8 +18,9 @@
 // decided by `EDITOR_POLICY` outside the machine: a CRUD editor only by its own operation, so an
 // unrelated editor stays usable and the data owner's `conflictsWith` is the only app-wide guard.
 // SUBMIT from `unresolved` is the batch editor's check/replay of its own operation; CRUD editors
-// are frozen while it is pending. After a reload the association is gone and recovery continues
-// through the OperationRecovery panel.
+// are frozen while it is pending and check or replay it (D2) through the OperationRecovery card they
+// embed, then close through OPERATION_SETTLED once it leaves the pending list. After a reload the
+// association is gone and recovery continues through the OperationRecovery panel.
 //
 // Machine 7 (the app-wide unresolved-editor latch) was removed by D1.
 // Machine 8 (row action selection) lives in lib/ui/row-action.ts.
