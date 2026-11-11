@@ -56,8 +56,8 @@ test("Unknown OAuth error values show the generic message without echoing the va
 test("Google sign-in button clears its spinner when the page is shown again", async ({ page, request }) => {
   await resetControlledServices(request, "success")
   await page.goto("/auth/login")
-  // Keep the login page in place so the loading state can be observed after the click.
-  await page.route("**/auth/google?**", (route) => route.abort())
+  // Cancel the link's default navigation after React handles the click, so the loading state can be observed.
+  await page.evaluate(() => window.addEventListener("click", (event) => event.preventDefault()))
 
   const googleLink = page.getByRole("link", { name: "Continuar con Google" })
   await googleLink.click()
