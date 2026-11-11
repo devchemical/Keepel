@@ -1,6 +1,6 @@
 "use client"
 
-import { MAINTENANCE_TYPES } from "@/lib/data/maintenance-types"
+import { maintenanceTypeLabel } from "@/lib/data/maintenance-types"
 
 /* eslint-disable unicorn/consistent-function-scoping -- Formatters stay inside the component to keep display logic local. */
 
@@ -50,16 +50,14 @@ export function MaintenanceList({ records, vehicleId, isLoading }: MaintenanceLi
                   <Calendar className="text-primary h-5 w-5" />
                 </div>
                 <div>
-                  <CardTitle className="text-foreground text-lg">
-                    {MAINTENANCE_TYPES.find((type) => type.value === record.type)?.label ?? record.type}
-                  </CardTitle>
+                  <CardTitle className="text-foreground text-lg">{maintenanceTypeLabel(record.type)}</CardTitle>
                   <p className="text-muted-foreground text-sm">{formatDate(record.service_date)}</p>
                 </div>
               </div>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button
-                    aria-label={`Acciones del mantenimiento ${MAINTENANCE_TYPES.find((type) => type.value === record.type)?.label ?? record.type}`}
+                    aria-label={`Acciones del mantenimiento ${maintenanceTypeLabel(record.type)}`}
                     variant="ghost"
                     size="sm"
                     className="h-8 w-8 p-0"

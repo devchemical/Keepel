@@ -1,8 +1,8 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { MAINTENANCE_TYPES } from "@/lib/data/maintenance-types"
-import { completedForecastWarning } from "@/lib/data/operation-messages"
+import { maintenanceTypeLabel } from "@/lib/data/maintenance-types"
+import { completedForecastWarning } from "@/lib/data/scheduled-service-messages"
 
 import { formatDate } from "@/lib/formatters"
 import { OperationRecovery } from "@/components/data/operation-recovery"
@@ -59,10 +59,8 @@ export function DeleteMaintenanceDialog({ record, open, onOpenChange }: DeleteMa
           </DialogTitle>
           <DialogDescription>
             ¿Estás seguro de que deseas eliminar el registro de{" "}
-            <span className="font-semibold">
-              {MAINTENANCE_TYPES.find((type) => type.value === record.type)?.label ?? record.type}
-            </span>{" "}
-            del {formatDate(record.service_date)}?
+            <span className="font-semibold">{maintenanceTypeLabel(record.type)}</span> del{" "}
+            {formatDate(record.service_date)}?
           </DialogDescription>
         </DialogHeader>
 

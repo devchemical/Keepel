@@ -10,6 +10,7 @@ import {
   readMaintenanceTotals,
   readCompletedForecast,
   HISTORY_PAGE_SIZE,
+  type CompletedForecast,
   type MaintenanceTotals,
 } from "@/lib/data/queries"
 import {
@@ -25,7 +26,6 @@ import {
   type SnapshotStatus,
 } from "@/lib/data/snapshot-machine"
 import { snapshotLoadError } from "@/lib/data/snapshot-messages"
-import type { CompletedForecast } from "@/lib/data/operation-messages"
 import { useAuthProjection } from "./AuthProjectionContext"
 import { useSupabase } from "./SupabaseContext"
 import { AUTH_STATE_STATUS } from "@/lib/auth/contracts"
