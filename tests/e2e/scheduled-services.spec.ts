@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test"
+import { expect, test, type APIRequestContext, type Page } from "@playwright/test"
 import { loginWithPassword } from "./support/auth"
 import { CONTROLLED_SERVICES_URL } from "./support/controlled-services-config"
 
@@ -170,4 +170,101 @@ test("creating and editing optional criteria validates the whole form and clears
   await expect(dialog).toBeHidden()
   saved = await (await request.get(`${CONTROLLED_SERVICES_URL}/__test__/maintenance`)).json()
   expect(saved.schedules[0]).toMatchObject({ scheduled_mileage: 0, scheduled_date: null })
+})
+
+const ownerId = "00000000-0000-4000-8000-000000000051"
+const completingRecordId = "00000000-0000-4000-8000-000000000195"
+const completedForecastWarning =
+  "Este registro completó la previsión de Cambio de Aceite del 1 de enero de 2026. Al eliminarlo, la previsión volverá a quedar pendiente."
+
+async function seedCompletedForecast(
+  request: APIRequestContext,
+  completedRecordId: string | null,
+  completionLookup: "success" | "error" = "success"
+) {
+  await request.post(`${CONTROLLED_SERVICES_URL}/__test__/reset`, {
+    data: {
+      maintenance: true,
+      completionLookup,
+      records: [
+        {
+          id: completingRecordId,
+          vehicle_id: vehicleId,
+          user_id: ownerId,
+          type: "other",
+          description: null,
+          notes: null,
+          cost: null,
+          mileage: null,
+          service_date: "2026-01-02",
+          created_at: "2026-01-02T00:00:00Z",
+          updated_at: "2026-01-02T00:00:00Z",
+        },
+      ],
+      schedules: [
+        {
+          id: "00000000-0000-4000-8000-000000000196",
+          vehicle_id: vehicleId,
+          user_id: ownerId,
+          type: "oil_change",
+          description: null,
+          scheduled_date: "2026-01-01",
+          scheduled_mileage: null,
+          status: completedRecordId ? "completed" : "cancelled",
+          notes: null,
+          completed_record_id: completedRecordId,
+          created_at: "2026-01-01T00:00:00Z",
+          updated_at: "2026-01-01T00:00:00Z",
+        },
+      ],
+    },
+  })
+}
+
+async function openRecordDeletion(page: Page) {
+  await loginWithPassword(page, `/vehicles/${vehicleId}/maintenance`)
+  await page.getByRole("button", { name: "Acciones del mantenimiento Otro" }).click()
+  await page.getByRole("menuitem", { name: "Eliminar", exact: true }).click()
+  return page.getByRole("dialog", { name: "Eliminar Registro de Mantenimiento", exact: true })
+}
+
+test("deleting a record that completed a forecast warns, and the forecast returns to pending", async ({
+  page,
+  request,
+}) => {
+  await seedCompletedForecast(request, completingRecordId)
+  const lookup = page.waitForResponse((response) => response.url().includes("completed_record_id="))
+  const confirmation = await openRecordDeletion(page)
+  await lookup
+  await expect(confirmation.getByRole("note")).toHaveText(completedForecastWarning)
+  await confirmation.getByRole("button", { name: "Eliminar Registro", exact: true }).click()
+  await expect(confirmation).toBeHidden()
+  await expect(page.getByText("No hay registros de mantenimiento", { exact: true })).toBeVisible()
+  const saved = await (await request.get(`${CONTROLLED_SERVICES_URL}/__test__/maintenance`)).json()
+  expect(saved.schedules[0]).toMatchObject({ status: "pending", completed_record_id: null })
+  await page.goto("/")
+  await expect(
+    page.getByRole("list", { name: "Previsiones" }).getByRole("listitem", { name: "Cambio de Aceite", exact: true })
+  ).toContainText("Vencido")
+})
+
+test("deleting a record that completed no forecast shows no forecast warning", async ({ page, request }) => {
+  await seedCompletedForecast(request, null)
+  const lookup = page.waitForResponse((response) => response.url().includes("completed_record_id="))
+  const confirmation = await openRecordDeletion(page)
+  await lookup
+  await expect(confirmation.getByRole("note")).toHaveCount(0)
+})
+
+test("a failed completion lookup shows no warning and does not block deletion", async ({ page, request }) => {
+  await seedCompletedForecast(request, completingRecordId, "error")
+  const lookup = page.waitForResponse((response) => response.url().includes("completed_record_id="))
+  const confirmation = await openRecordDeletion(page)
+  expect((await lookup).status()).toBe(503)
+  await expect(confirmation.getByRole("note")).toHaveCount(0)
+  await confirmation.getByRole("button", { name: "Eliminar Registro", exact: true }).click()
+  await expect(confirmation).toBeHidden()
+  const saved = await (await request.get(`${CONTROLLED_SERVICES_URL}/__test__/maintenance`)).json()
+  expect(saved.records).toEqual([])
+  expect(saved.schedules[0]).toMatchObject({ status: "pending", completed_record_id: null })
 })

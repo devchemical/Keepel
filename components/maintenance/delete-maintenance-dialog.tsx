@@ -1,6 +1,8 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import { MAINTENANCE_TYPES } from "@/lib/data/maintenance-types"
+import { completedForecastWarning } from "@/lib/data/operation-messages"
 
 import { formatDate } from "@/lib/formatters"
 import { OperationRecovery } from "@/components/data/operation-recovery"
@@ -23,7 +25,21 @@ interface DeleteMaintenanceDialogProps {
 }
 
 export function DeleteMaintenanceDialog({ record, open, onOpenChange }: DeleteMaintenanceDialogProps) {
-  const { deleteMaintenance } = useData()
+  const { deleteMaintenance, findCompletedForecast } = useData()
+  // The warning belongs to the record it was read for; a failed or pending read shows none.
+  const [warning, setWarning] = useState<{ recordId: string; message: string } | null>(null)
+
+  useEffect(() => {
+    if (!open) return
+    let current = true
+    void findCompletedForecast(record.id).then((forecast) => {
+      if (current) setWarning(forecast ? { recordId: record.id, message: completedForecastWarning(forecast) } : null)
+    })
+    return () => {
+      current = false
+    }
+  }, [open, record.id, findCompletedForecast])
+  const forecastWarning = open && warning?.recordId === record.id ? warning.message : null
 
   const editor = useEditor({
     kind: "crud",
@@ -56,6 +72,12 @@ export function DeleteMaintenanceDialog({ record, open, onOpenChange }: DeleteMa
             acción no se puede deshacer.
           </p>
         </div>
+
+        {forecastWarning && (
+          <div role="note" className="mb-4 rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-sm">
+            {forecastWarning}
+          </div>
+        )}
 
         <OperationRecovery />
         {editor.error && (
