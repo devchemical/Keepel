@@ -9,7 +9,7 @@ import { isPendingScheduledService, type ScheduledServiceStatus } from "@/lib/da
 // | overdue  | scheduled date before today, or vehicle mileage reached          | shown     |
 // | today    | scheduled date is today                                          | shown     |
 // | upcoming | scheduled date within the horizon (1–30 days)                    | shown     |
-// | later    | anything else: beyond the horizon, unreached or unknown mileage  | hidden    |
+// | later    | anything else: beyond the horizon, unreached or unknown mileage  | collapsed |
 
 export const SCHEDULE_URGENCY = ["overdue", "today", "upcoming", "later"] as const
 export type ScheduleUrgency = (typeof SCHEDULE_URGENCY)[number]
@@ -26,8 +26,10 @@ export interface ScheduleClassification {
   urgency: ScheduleUrgency
   daysUntil: number | null
 }
-/** A classification shown as a dashboard reminder; `later` stays out of the list. */
+/** A classification shown as a dashboard reminder; `later` stays out of the list and its counter. */
 export type ScheduleReminder = ScheduleClassification & { urgency: Exclude<ScheduleUrgency, "later"> }
+/** A classification listed in the dashboard's collapsed "Más adelante" section. */
+export type ScheduleLater = ScheduleClassification & { urgency: "later" }
 
 /** Unreached mileage has no temporal estimate and alone does not enter the date horizon. */
 export function classifyScheduledService(service: ScheduleCriteria, today: string): ScheduleClassification | null {
@@ -59,4 +61,22 @@ export function selectScheduledServices<T extends ScheduleCriteria>(services: re
       const rank = { overdue: 0, today: 1, upcoming: 2 }
       return rank[a.urgency] - rank[b.urgency] || (a.daysUntil ?? Infinity) - (b.daysUntil ?? Infinity)
     })
+}
+
+function isLater(classification: ScheduleClassification | null): classification is ScheduleLater {
+  return classification?.urgency === "later"
+}
+
+/** Later forecasts: dated ones by date, then mileage-only by scheduled mileage, then those with neither. */
+export function selectLaterScheduledServices<T extends ScheduleCriteria>(services: readonly T[], today: string) {
+  return services
+    .flatMap((service) => {
+      const classification = classifyScheduledService(service, today)
+      return isLater(classification) ? [{ service, ...classification }] : []
+    })
+    .toSorted(
+      (a, b) =>
+        (a.daysUntil ?? Infinity) - (b.daysUntil ?? Infinity) ||
+        (a.service.scheduled_mileage ?? Infinity) - (b.service.scheduled_mileage ?? Infinity)
+    )
 }
