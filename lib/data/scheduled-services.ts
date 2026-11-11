@@ -31,6 +31,11 @@ export type ScheduleReminder = ScheduleClassification & { urgency: Exclude<Sched
 /** A classification listed in the dashboard's collapsed "Más adelante" section. */
 export type ScheduleLater = ScheduleClassification & { urgency: "later" }
 
+/** A dashboard row: a service with its reminder or later classification. */
+export type ScheduledServiceRow<T, C extends ScheduleClassification = ScheduleReminder | ScheduleLater> = C & {
+  service: T
+}
+
 /** Unreached mileage has no temporal estimate and alone does not enter the date horizon. */
 export function classifyScheduledService(service: ScheduleCriteria, today: string): ScheduleClassification | null {
   parseCalendarDay(today)

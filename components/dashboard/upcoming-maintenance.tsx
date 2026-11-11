@@ -15,19 +15,18 @@ import { AddMaintenanceDialog } from "@/components/maintenance/add-maintenance-d
 import { EditScheduledServiceDialog } from "@/components/maintenance/edit-scheduled-service-dialog"
 
 import type { ScheduledService } from "@/contexts"
-import type { ScheduleLater, ScheduleReminder } from "@/lib/data/scheduled-services"
+import type { ScheduleLater, ScheduleReminder, ScheduledServiceRow } from "@/lib/data/scheduled-services"
 import { formatCalendarDay } from "@/lib/data/calendar-day"
-import { MAINTENANCE_TYPES } from "@/lib/data/maintenance-types"
+import { maintenanceTypeLabel } from "@/lib/data/maintenance-types"
 import { OPERATION_SUCCESS_MESSAGES, operationMessage } from "@/lib/data/operation-messages"
 import { NO_ROW_ACTION, transitionRowAction } from "@/lib/ui/row-action"
 
-type ScheduledRow = (ScheduleReminder | ScheduleLater) & { service: ScheduledService }
 type RowSelection = { action: "completing" | "editing"; row: ScheduledService }
 
 interface UpcomingMaintenanceProps {
-  upcomingMaintenance: (ScheduleReminder & { service: ScheduledService })[]
+  upcomingMaintenance: ScheduledServiceRow<ScheduledService, ScheduleReminder>[]
   /** Pending forecasts beyond the reminder horizon; listed collapsed and never counted. */
-  laterMaintenance?: (ScheduleLater & { service: ScheduledService })[]
+  laterMaintenance?: ScheduledServiceRow<ScheduledService, ScheduleLater>[]
   isLoading?: boolean
 }
 
@@ -143,6 +142,7 @@ export function UpcomingMaintenance({
               size="sm"
               aria-expanded={showLater}
               aria-controls={laterListId}
+              data-state={showLater ? "expanded" : "collapsed"}
               onClick={() => setShowLater((open) => !open)}
               className="text-muted-foreground w-full justify-between"
             >
@@ -188,7 +188,7 @@ export function UpcomingMaintenance({
   )
 }
 
-type ScheduledServiceRowProps = ScheduledRow & {
+type ScheduledServiceRowProps = ScheduledServiceRow<ScheduledService> & {
   actionsDisabled: boolean
   onSelect: (selection: RowSelection) => void
   onCancel: (id: string) => void
@@ -205,13 +205,14 @@ function ScheduledServiceRow({
   const scheduledDate = maintenance.scheduled_date
   const overdue = urgency === "overdue"
   const later = urgency === "later"
-  const serviceLabel = MAINTENANCE_TYPES.find((type) => type.value === maintenance.type)?.label || maintenance.type
+  const serviceLabel = maintenanceTypeLabel(maintenance.type)
   const accessibleName = maintenance.description || serviceLabel
 
   return (
     <div
       role="listitem"
       aria-label={accessibleName}
+      data-urgency={urgency}
       className="flex items-start gap-4 rounded-xl border border-slate-100 bg-white p-4 transition-colors hover:bg-slate-50/50"
     >
       <div className={`rounded-xl p-2.5 ${overdue ? "bg-red-50" : later ? "bg-slate-100" : "bg-amber-50"}`}>
