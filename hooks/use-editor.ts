@@ -17,12 +17,11 @@ import {
   confirmsDraft,
   editorFrozen,
   isEditorOpen,
+  settledOperation,
   transitionEditor,
-  transitionSettleLatch,
   type EditorEvent,
   type EditorKind,
   type EditorState,
-  type SettleLatch,
 } from "@/lib/ui/editor-machine"
 
 /** What a submit attempt prepared: a validation message, or the write to send. */
@@ -72,17 +71,12 @@ export function useEditor({ kind, action, open, onOpenChange, onConfirmed }: Use
     dispatch({ type: open ? "OPEN" : "CLOSE" }, false)
   }, [open, dispatch])
 
-  const latch = useRef<SettleLatch>("idle")
+  // Only the editor's own operation leaving the pending list closes it and resets its draft (D1).
   useEffect(() => {
-    if (!policy.closeWhenAllSettled) return
-    const previous = latch.current
-    latch.current = transitionSettleLatch(previous, {
-      type: "PENDING_CHANGED",
-      pending: pendingOperations.length,
-      anyUnknown: pendingOperations.some((operation) => operation.status === "unknown"),
-    })
-    if (previous === "armed" && latch.current === "idle") dispatch({ type: "ALL_SETTLED" })
-  }, [pendingOperations, policy.closeWhenAllSettled, dispatch])
+    if (!policy.closeWhenOwnSettled) return
+    const operationId = settledOperation(state, pendingOperations)
+    if (operationId !== null) dispatch({ type: "OPERATION_SETTLED", operationId })
+  }, [state, pendingOperations, policy.closeWhenOwnSettled, dispatch])
 
   const setOpen = useCallback((next: boolean) => dispatch({ type: next ? "OPEN" : "CLOSE" }), [dispatch])
 
@@ -118,7 +112,7 @@ export function useEditor({ kind, action, open, onOpenChange, onConfirmed }: Use
     submit,
     submitting: state.status === "submitting",
     /** Pending operations freeze the fields per `EDITOR_POLICY`. */
-    frozen: editorFrozen(kind, pendingOperations),
+    frozen: editorFrozen(kind, state, pendingOperations),
     error: state.status === "submitting" ? null : state.error,
   }
 }
