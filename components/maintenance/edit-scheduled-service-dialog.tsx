@@ -58,15 +58,16 @@ export function EditScheduledServiceDialog({ service, open, onOpenChange }: Edit
     action: "schedule.update",
     open,
     onOpenChange,
-    failureMessage: "Error desconocido al actualizar servicio",
   })
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     void editor.submit(() => {
-      if (!service?.id) return { invalid: "ID del servicio no válido" }
+      if (!service?.id) return { validationError: "ID del servicio no válido" }
       const parsed = scheduledServiceSchema.safeParse(formData)
       if (!parsed.success)
-        return { invalid: "Indica un tipo válido y al menos una fecha o un kilometraje válido mayor o igual a 0." }
+        return {
+          validationError: "Indica un tipo válido y al menos una fecha o un kilometraje válido mayor o igual a 0.",
+        }
       return { send: () => updateScheduledService(service.id, parsed.data) }
     })
   }

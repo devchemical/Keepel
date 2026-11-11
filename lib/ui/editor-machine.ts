@@ -5,23 +5,20 @@
 // | closed                  | OPEN                             | editing, or unresolved if it kept an op     |
 // | closed (kept op)        | OPERATION_SETTLED (its own id)   | closed, op and error dropped, draft reset   |
 // | closed                  | ALL_SETTLED                      | closed, op and error dropped, draft reset   |
-// | editing, unresolved     | SUBMIT (invalid)                 | editing with `error`                        |
-// | editing, unresolved     | SUBMIT (valid)                   | submitting                                  |
+// | editing, unresolved     | SUBMIT (validationError)         | editing with `error`                        |
+// | editing, unresolved     | SUBMIT (no validationError)      | submitting                                  |
 // | submitting              | OUTCOME confirmed                | closed (draft reset for create editors)     |
-// | submitting              | OUTCOME rejected, blocked/FAILED | editing with `error` (closed if hidden)     |
-// | submitting              | OUTCOME unknown                  | unresolved with `operationId` (closed, kept |
-// |                         |                                  | op, if hidden)                              |
-// | submitting (hidden)     | OPEN                             | submitting, visible again                   |
+// | submitting              | OUTCOME rejected, blocked/FAILED | editing with `error`                        |
+// | submitting              | OUTCOME unknown                  | unresolved with `operationId`               |
 // | unresolved              | OPERATION_SETTLED (its own id)   | closed (draft reset)                        |
 // | editing, unresolved     | ALL_SETTLED                      | closed (draft reset)                        |
 // | editing, unresolved     | CLOSE                            | closed (error and operation retained)       |
-// | submitting              | CLOSE (whileSubmitting: ignore)  | submitting (ignored)                        |
-// | submitting              | CLOSE (whileSubmitting: hide)    | submitting, hidden until the outcome lands  |
 //
-// Every other pair keeps its state; in particular `submitting` ignores SUBMIT (single flight) and
-// ALL_SETTLED. Whether an editor may submit while operations are pending is a freeze decided by
-// `EDITOR_POLICY` outside the machine. SUBMIT from `unresolved` is the batch editor's check/replay of
-// its own operation; CRUD editors are frozen while it is pending.
+// Every other pair keeps its state; in particular `submitting` ignores CLOSE (every editor blocks
+// close while submitting, D3), SUBMIT (single flight) and ALL_SETTLED. Whether an editor may
+// submit while operations are pending is a freeze decided by `EDITOR_POLICY` outside the machine.
+// SUBMIT from `unresolved` is the batch editor's check/replay of its own operation; CRUD editors
+// are frozen while it is pending.
 //
 // Machine 7 — Unresolved-editor latch (today's app-wide close after every pending operation settles).
 //
@@ -32,7 +29,7 @@
 //
 // Machine 8 (row action selection) lives in lib/ui/row-action.ts.
 
-import type { OperationOutcome, PendingOperation } from "@/lib/data/operation-machine"
+import type { OperationKind, OperationOutcome, PendingOperation } from "@/lib/data/operation-machine"
 
 export const EDITOR_STATUS = ["closed", "editing", "submitting", "unresolved"] as const
 export type EditorStatus = (typeof EDITOR_STATUS)[number]
@@ -40,13 +37,14 @@ export type EditorStatus = (typeof EDITOR_STATUS)[number]
 export type EditorState =
   | { status: "closed"; error: string | null; operationId: string | null }
   | { status: "editing"; error: string | null }
-  | { status: "submitting"; hidden: boolean }
+  | { status: "submitting" }
   | { status: "unresolved"; error: string | null; operationId: string }
 
 export type EditorEvent =
   | { type: "OPEN" }
-  | { type: "CLOSE"; whileSubmitting: "ignore" | "hide" }
-  | { type: "SUBMIT"; invalid: string | null }
+  | { type: "CLOSE" }
+  /** `validationError` is the copy for a draft that failed validation, or `null` to send it. */
+  | { type: "SUBMIT"; validationError: string | null }
   | { type: "OUTCOME"; outcome: OperationOutcome; message: string | null }
   | { type: "FAILED"; message: string }
   | { type: "OPERATION_SETTLED"; operationId: string }
@@ -55,18 +53,20 @@ export type EditorEvent =
 export const EDITOR_CLOSED: EditorState = { status: "closed", error: null, operationId: null }
 export const EDITOR_EDITING: EditorState = { status: "editing", error: null }
 
-function submitted(event: EditorEvent & { type: "SUBMIT" }): EditorState {
-  return event.invalid === null ? { status: "submitting", hidden: false } : { status: "editing", error: event.invalid }
+function stateAfterSubmit(event: EditorEvent & { type: "SUBMIT" }): EditorState {
+  return event.validationError === null ? { status: "submitting" } : { status: "editing", error: event.validationError }
 }
 
-function landed(hidden: boolean, event: EditorEvent & { type: "OUTCOME" | "FAILED" }): EditorState {
-  if (event.type === "OUTCOME" && event.outcome.status === "confirmed") return EDITOR_CLOSED
-  const error = event.message
-  if (event.type === "OUTCOME" && event.outcome.status === "unknown") {
-    const { operationId } = event.outcome
-    return hidden ? { status: "closed", error, operationId } : { status: "unresolved", error, operationId }
+function stateAfterSubmission(event: EditorEvent & { type: "OUTCOME" | "FAILED" }): EditorState {
+  if (event.type === "FAILED") return { status: "editing", error: event.message }
+  switch (event.outcome.status) {
+    case "confirmed":
+      return EDITOR_CLOSED
+    case "unknown":
+      return { status: "unresolved", error: event.message, operationId: event.outcome.operationId }
+    default:
+      return { status: "editing", error: event.message }
   }
-  return hidden ? { status: "closed", error, operationId: null } : { status: "editing", error }
 }
 
 export function transitionEditor(state: EditorState, event: EditorEvent): EditorState {
@@ -80,18 +80,15 @@ export function transitionEditor(state: EditorState, event: EditorEvent): Editor
       if (event.type === "OPERATION_SETTLED" && event.operationId === state.operationId) return EDITOR_CLOSED
       return state
     case "editing":
-      if (event.type === "SUBMIT") return submitted(event)
+      if (event.type === "SUBMIT") return stateAfterSubmit(event)
       if (event.type === "CLOSE") return { status: "closed", error: state.error, operationId: null }
       if (event.type === "ALL_SETTLED") return EDITOR_CLOSED
       return state
     case "submitting":
-      if (event.type === "OUTCOME" || event.type === "FAILED") return landed(state.hidden, event)
-      if (event.type === "CLOSE" && event.whileSubmitting === "hide" && !state.hidden)
-        return { status: "submitting", hidden: true }
-      if (event.type === "OPEN" && state.hidden) return { status: "submitting", hidden: false }
+      if (event.type === "OUTCOME" || event.type === "FAILED") return stateAfterSubmission(event)
       return state
     case "unresolved":
-      if (event.type === "SUBMIT") return submitted(event)
+      if (event.type === "SUBMIT") return stateAfterSubmit(event)
       if (event.type === "CLOSE") return { status: "closed", error: state.error, operationId: state.operationId }
       if (event.type === "ALL_SETTLED") return EDITOR_CLOSED
       if (event.type === "OPERATION_SETTLED" && event.operationId === state.operationId) return EDITOR_CLOSED
@@ -102,7 +99,7 @@ export function transitionEditor(state: EditorState, event: EditorEvent): Editor
 }
 
 export function isEditorOpen(state: EditorState): boolean {
-  return state.status === "editing" || state.status === "unresolved" || (state.status === "submitting" && !state.hidden)
+  return state.status !== "closed"
 }
 
 /** Whether `event` confirms the editor's write, so a create editor must reset its draft. */
@@ -134,23 +131,17 @@ export function transitionSettleLatch(latch: SettleLatch, event: SettleLatchEven
   }
 }
 
-export type EditorKind = "crud" | "batch"
+/** Editors are split by the kind of operation they write. */
+export type EditorKind = OperationKind
 
 /**
  * The split between the CRUD editors and the maintenance batch editor. D3 made every editor block
  * close while submitting; D1 (docs/specs/explicit-state-machines.md) changes the freeze, not the machine.
  */
 export const EDITOR_POLICY = {
-  crud: { closeWhileSubmitting: "ignore", freezeOn: "any-operation", closeWhenAllSettled: true },
-  batch: { closeWhileSubmitting: "ignore", freezeOn: "batch-operation", closeWhenAllSettled: false },
-} as const satisfies Record<
-  EditorKind,
-  {
-    closeWhileSubmitting: "ignore" | "hide"
-    freezeOn: "any-operation" | "batch-operation"
-    closeWhenAllSettled: boolean
-  }
->
+  crud: { freezeOn: "any-operation", closeWhenAllSettled: true },
+  batch: { freezeOn: "batch-operation", closeWhenAllSettled: false },
+} as const satisfies Record<EditorKind, { freezeOn: "any-operation" | "batch-operation"; closeWhenAllSettled: boolean }>
 
 /** Whether pending operations freeze the editor's fields. */
 export function editorFrozen(kind: EditorKind, pendingOperations: readonly PendingOperation[]): boolean {

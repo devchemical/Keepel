@@ -62,15 +62,16 @@ export function ScheduleServiceDialog({
     open: controlledOpen,
     onOpenChange,
     onConfirmed: resetDraft,
-    failureMessage: "Error desconocido al programar servicio",
   })
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     void editor.submit(() => {
-      if (!vehicleId) return { invalid: "ID del vehículo no válido" }
+      if (!vehicleId) return { validationError: "ID del vehículo no válido" }
       const parsed = scheduledServiceSchema.safeParse(formData)
       if (!parsed.success)
-        return { invalid: "Indica un tipo válido y al menos una fecha o un kilometraje válido mayor o igual a 0." }
+        return {
+          validationError: "Indica un tipo válido y al menos una fecha o un kilometraje válido mayor o igual a 0.",
+        }
       return { send: () => createScheduledService(vehicleId, parsed.data) }
     })
   }

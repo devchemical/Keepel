@@ -30,7 +30,6 @@ export function DeleteMaintenanceDialog({ record, open, onOpenChange }: DeleteMa
     action: "maintenance.delete",
     open,
     onOpenChange,
-    failureMessage: "Error desconocido al eliminar registro",
   })
   const handleDelete = () => void editor.submit(() => ({ send: () => deleteMaintenance(record.id) }))
 

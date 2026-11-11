@@ -62,16 +62,16 @@ export function EditMaintenanceDialog({ record, vehicleId, open, onOpenChange }:
     action: "maintenance.update",
     open,
     onOpenChange,
-    failureMessage: "Error desconocido al actualizar mantenimiento",
   })
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     void editor.submit(() => {
-      if (!vehicleId) return { invalid: "Vehículo no válido" }
+      if (!vehicleId) return { validationError: "Vehículo no válido" }
       const parsed = maintenanceValuesSchema.safeParse(formData)
       if (!parsed.success)
         return {
-          invalid: "Revisa el tipo, la fecha, el costo y el kilometraje. Los números deben ser mayores o iguales a 0.",
+          validationError:
+            "Revisa el tipo, la fecha, el costo y el kilometraje. Los números deben ser mayores o iguales a 0.",
         }
       return { send: () => updateMaintenance(record.id, parsed.data) }
     })

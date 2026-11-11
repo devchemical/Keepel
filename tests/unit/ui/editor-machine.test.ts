@@ -20,17 +20,15 @@ const STATES: Record<string, EditorState> = {
   "closed(retained)": { status: "closed", error: "unknown copy", operationId: "op-1" },
   editing: { status: "editing", error: null },
   "editing(error)": { status: "editing", error: "old" },
-  submitting: { status: "submitting", hidden: false },
-  "submitting(hidden)": { status: "submitting", hidden: true },
+  submitting: { status: "submitting" },
   unresolved: { status: "unresolved", error: "unknown copy", operationId: "op-1" },
 }
 
 const EVENTS: Record<string, EditorEvent> = {
   OPEN: { type: "OPEN" },
-  "CLOSE(ignore)": { type: "CLOSE", whileSubmitting: "ignore" },
-  "CLOSE(hide)": { type: "CLOSE", whileSubmitting: "hide" },
-  "SUBMIT(invalid)": { type: "SUBMIT", invalid: "invalid copy" },
-  "SUBMIT(valid)": { type: "SUBMIT", invalid: null },
+  CLOSE: { type: "CLOSE" },
+  "SUBMIT(invalid)": { type: "SUBMIT", validationError: "invalid copy" },
+  "SUBMIT(valid)": { type: "SUBMIT", validationError: null },
   "OUTCOME(confirmed)": { type: "OUTCOME", outcome: { status: "confirmed" }, message: null },
   "OUTCOME(rejected)": { type: "OUTCOME", outcome: { status: "rejected" }, message: "rejected copy" },
   "OUTCOME(blocked)": {
@@ -51,11 +49,6 @@ const EVENTS: Record<string, EditorEvent> = {
 
 const CLOSED = STATES.closed
 const editingWith = (error: string): EditorState => ({ status: "editing", error })
-const closedWith = (error: string | null, operationId: string | null = null): EditorState => ({
-  status: "closed",
-  error,
-  operationId,
-})
 
 // Independent copy of the header table. Every pair not listed keeps its state.
 const TABLE: Record<string, Record<string, EditorState>> = {
@@ -67,38 +60,26 @@ const TABLE: Record<string, Record<string, EditorState>> = {
     ALL_SETTLED: CLOSED,
   },
   editing: {
-    "CLOSE(ignore)": CLOSED,
-    "CLOSE(hide)": CLOSED,
+    CLOSE: CLOSED,
     "SUBMIT(invalid)": editingWith("invalid copy"),
     "SUBMIT(valid)": STATES.submitting,
     ALL_SETTLED: CLOSED,
   },
   "editing(error)": {
-    "CLOSE(ignore)": STATES["closed(error)"],
-    "CLOSE(hide)": STATES["closed(error)"],
+    CLOSE: STATES["closed(error)"],
     "SUBMIT(invalid)": editingWith("invalid copy"),
     "SUBMIT(valid)": STATES.submitting,
     ALL_SETTLED: CLOSED,
   },
   submitting: {
-    "CLOSE(hide)": STATES["submitting(hidden)"],
     "OUTCOME(confirmed)": CLOSED,
     "OUTCOME(rejected)": editingWith("rejected copy"),
     "OUTCOME(blocked)": editingWith("blocked copy"),
     "OUTCOME(unknown)": { status: "unresolved", error: "unknown copy 2", operationId: "op-2" },
     FAILED: editingWith("failed copy"),
   },
-  "submitting(hidden)": {
-    OPEN: STATES.submitting,
-    "OUTCOME(confirmed)": CLOSED,
-    "OUTCOME(rejected)": closedWith("rejected copy"),
-    "OUTCOME(blocked)": closedWith("blocked copy"),
-    "OUTCOME(unknown)": closedWith("unknown copy 2", "op-2"),
-    FAILED: closedWith("failed copy"),
-  },
   unresolved: {
-    "CLOSE(ignore)": STATES["closed(retained)"],
-    "CLOSE(hide)": STATES["closed(retained)"],
+    CLOSE: STATES["closed(retained)"],
     "SUBMIT(invalid)": editingWith("invalid copy"),
     "SUBMIT(valid)": STATES.submitting,
     "OPERATION_SETTLED(own)": CLOSED,
@@ -115,7 +96,7 @@ describe("editor dialog", () => {
       })
     }
 
-  it("is open while editing, unresolved or visibly submitting", () => {
+  it("is open while editing, submitting or unresolved", () => {
     const open = Object.entries(STATES)
       .filter(([, state]) => isEditorOpen(state))
       .map(([name]) => name)
@@ -124,7 +105,6 @@ describe("editor dialog", () => {
 
   it("resets the draft on a confirmed outcome and on a settle it accepts", () => {
     expect(confirmsDraft(STATES.submitting, EVENTS["OUTCOME(confirmed)"])).toBe(true)
-    expect(confirmsDraft(STATES["submitting(hidden)"], EVENTS["OUTCOME(confirmed)"])).toBe(true)
     expect(confirmsDraft(STATES.submitting, EVENTS["OUTCOME(rejected)"])).toBe(false)
     expect(confirmsDraft(STATES.editing, EVENTS["OUTCOME(confirmed)"])).toBe(false)
     // Today's app-wide latch resets every mounted editor, even a closed one (D1 changes this).
@@ -164,12 +144,10 @@ const operation = (action: PendingCommand["action"]): PendingOperation => ({
 describe("editor policy", () => {
   it("blocks close while submitting in every editor; only CRUD editors freeze app-wide (D3)", () => {
     expect(EDITOR_POLICY.crud).toEqual({
-      closeWhileSubmitting: "ignore",
       freezeOn: "any-operation",
       closeWhenAllSettled: true,
     })
     expect(EDITOR_POLICY.batch).toEqual({
-      closeWhileSubmitting: "ignore",
       freezeOn: "batch-operation",
       closeWhenAllSettled: false,
     })

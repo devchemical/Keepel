@@ -4,8 +4,12 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
 import { useData } from "@/contexts"
 import type { OperationOutcome } from "@/lib/data/operation-machine"
-import { OPERATION_SUCCESS_MESSAGES, operationMessage } from "@/lib/data/operation-messages"
-import type { PendingCommand } from "@/lib/data/pending-operations"
+import {
+  EDITOR_FAILURE_MESSAGES,
+  OPERATION_SUCCESS_MESSAGES,
+  operationMessage,
+  type EditorAction,
+} from "@/lib/data/operation-messages"
 import {
   EDITOR_CLOSED,
   EDITOR_EDITING,
@@ -22,7 +26,7 @@ import {
 } from "@/lib/ui/editor-machine"
 
 /** What a submit attempt prepared: a validation message, or the write to send. */
-export type EditorAttempt = { invalid: string } | { send: () => Promise<OperationOutcome> }
+export type EditorAttempt = { validationError: string } | { send: () => Promise<OperationOutcome> }
 
 export type EditorSubmitResult = {
   status: OperationOutcome["status"] | "invalid" | "failed"
@@ -32,19 +36,17 @@ export type EditorSubmitResult = {
 
 type UseEditorOptions = {
   kind: EditorKind
-  /** The command the editor writes; selects its success toast. */
-  action: PendingCommand["action"]
+  /** The command the editor writes; selects its success toast and failure copy. */
+  action: EditorAction
   /** Controlled visibility. When omitted, the editor owns it. */
   open?: boolean
   onOpenChange?: (open: boolean) => void
   /** Reset a create editor's draft after its write is confirmed. */
   onConfirmed?: () => void
-  /** Copy for a write that threw instead of returning an outcome. */
-  failureMessage: string
 }
 
 /** React binding for the editor dialog machine (lib/ui/editor-machine.ts). */
-export function useEditor({ kind, action, open, onOpenChange, onConfirmed, failureMessage }: UseEditorOptions) {
+export function useEditor({ kind, action, open, onOpenChange, onConfirmed }: UseEditorOptions) {
   const policy = EDITOR_POLICY[kind]
   const { pendingOperations } = useData()
   const [state, setState] = useState<EditorState>(() => (open ? EDITOR_EDITING : EDITOR_CLOSED))
@@ -67,8 +69,8 @@ export function useEditor({ kind, action, open, onOpenChange, onConfirmed, failu
   // A controlled parent opens the editor without going through `setOpen`.
   useEffect(() => {
     if (open === undefined || open === isEditorOpen(current.current)) return
-    dispatch(open ? { type: "OPEN" } : { type: "CLOSE", whileSubmitting: policy.closeWhileSubmitting }, false)
-  }, [open, dispatch, policy.closeWhileSubmitting])
+    dispatch({ type: open ? "OPEN" : "CLOSE" }, false)
+  }, [open, dispatch])
 
   const latch = useRef<SettleLatch>("idle")
   useEffect(() => {
@@ -82,26 +84,22 @@ export function useEditor({ kind, action, open, onOpenChange, onConfirmed, failu
     if (previous === "armed" && latch.current === "idle") dispatch({ type: "ALL_SETTLED" })
   }, [pendingOperations, policy.closeWhenAllSettled, dispatch])
 
-  const setOpen = useCallback(
-    (next: boolean) =>
-      dispatch(next ? { type: "OPEN" } : { type: "CLOSE", whileSubmitting: policy.closeWhileSubmitting }),
-    [dispatch, policy.closeWhileSubmitting]
-  )
+  const setOpen = useCallback((next: boolean) => dispatch({ type: next ? "OPEN" : "CLOSE" }), [dispatch])
 
   const submit = async (attempt: () => EditorAttempt): Promise<EditorSubmitResult | null> => {
     const { status } = current.current
     if (status !== "editing" && status !== "unresolved") return null
     const prepared = attempt()
-    if ("invalid" in prepared) {
-      dispatch({ type: "SUBMIT", invalid: prepared.invalid })
-      return { status: "invalid", message: prepared.invalid }
+    if ("validationError" in prepared) {
+      dispatch({ type: "SUBMIT", validationError: prepared.validationError })
+      return { status: "invalid", message: prepared.validationError }
     }
-    dispatch({ type: "SUBMIT", invalid: null })
+    dispatch({ type: "SUBMIT", validationError: null })
     let outcome: OperationOutcome
     try {
       outcome = await prepared.send()
     } catch (error: unknown) {
-      const message = kind === "crud" && error instanceof Error ? error.message : failureMessage
+      const message = kind === "crud" && error instanceof Error ? error.message : EDITOR_FAILURE_MESSAGES[action]
       dispatch({ type: "FAILED", message })
       return { status: "failed", message }
     }
