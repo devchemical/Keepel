@@ -16,7 +16,6 @@ import {
   historyRequest as requestedHistoryOf,
   requestFreshness,
   snapshotIsFetching,
-  snapshotLoadError,
   transitionHistory,
   transitionSnapshot,
   type HistoryEvent,
@@ -24,6 +23,7 @@ import {
   type SnapshotState,
   type SnapshotStatus,
 } from "@/lib/data/snapshot-machine"
+import { snapshotLoadError } from "@/lib/data/snapshot-messages"
 import { useAuthProjection } from "./AuthProjectionContext"
 import { useSupabase } from "./SupabaseContext"
 import { AUTH_STATE_STATUS } from "@/lib/auth/contracts"

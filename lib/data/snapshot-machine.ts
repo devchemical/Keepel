@@ -20,6 +20,16 @@
 // A result is `revised` when a write was accepted while it was in flight: the result is not
 // published, but the request still owns the fetch activity and a failure is still reported.
 //
+// Request scope guard: a load's token against the owner's scope (`requestFreshness`).
+//
+// | from    | event (scope change)              | to      |
+// | ------- | --------------------------------- | ------- |
+// | current | WRITE_ACCEPTED (revision changes) | revised |
+// | revised | WRITE_ACCEPTED                    | revised |
+// | any     | ACCOUNT_CHANGED (generation)      | stale   |
+// | any     | LOAD_STARTED (a newer request)    | stale   |
+// | stale   | any                               | stale   |
+//
 // History pagination:
 //
 // | from             | event            | to                                                     |
@@ -55,8 +65,6 @@ export type SnapshotEvent =
 
 // Matches the legacy initial flags: not loaded, no error, loading.
 export const INITIAL_SNAPSHOT_STATE: SnapshotState = { status: "pending", isFetching: true }
-
-export const SNAPSHOT_LOAD_ERROR_MESSAGE = "No se pudieron cargar los datos. Se conservan los últimos datos válidos."
 
 export function transitionSnapshot(state: SnapshotState, event: SnapshotEvent): SnapshotState {
   if (event.type === "ACCOUNT_CHANGED")
@@ -94,12 +102,6 @@ export function snapshotView(state: SnapshotState): SnapshotView {
     default:
       return state satisfies never
   }
-}
-
-export function snapshotLoadError(state: SnapshotState): string | null {
-  return state.status === "error" || (state.status === "ready" && state.refreshError)
-    ? SNAPSHOT_LOAD_ERROR_MESSAGE
-    : null
 }
 
 export function snapshotIsFetching(state: SnapshotState): boolean {
