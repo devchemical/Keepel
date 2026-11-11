@@ -146,14 +146,14 @@ describe("request scope guard", () => {
     "stale request": { generation: 2, request: 4, revision: 1 },
     "stale generation": { generation: 1, request: 5, revision: 1 },
   }
-  const EVENTS: Record<string, (value: Token) => Token> = {
+  const SCOPE_EVENTS: Record<string, (value: Token) => Token> = {
     none: (value) => value,
     ACCOUNT_CHANGED: (value) => ({ generation: value.generation + 1, request: 0, revision: 0 }),
     LOAD_STARTED: (value) => ({ ...value, request: value.request + 1 }),
     WRITE_ACCEPTED: (value) => ({ ...value, revision: value.revision + 1 }),
   }
   // Independent copy of the header table.
-  const TABLE: Record<string, Record<string, "current" | "revised" | "stale">> = {
+  const SCOPE_TABLE: Record<string, Record<string, "current" | "revised" | "stale">> = {
     current: { none: "current", ACCOUNT_CHANGED: "stale", LOAD_STARTED: "stale", WRITE_ACCEPTED: "revised" },
     revised: { none: "revised", ACCOUNT_CHANGED: "stale", LOAD_STARTED: "stale", WRITE_ACCEPTED: "revised" },
     "stale request": { none: "stale", ACCOUNT_CHANGED: "stale", LOAD_STARTED: "stale", WRITE_ACCEPTED: "stale" },
@@ -161,8 +161,8 @@ describe("request scope guard", () => {
   }
 
   for (const [tokenName, token] of Object.entries(TOKENS))
-    for (const [eventName, advance] of Object.entries(EVENTS)) {
-      const freshness = TABLE[tokenName][eventName]
+    for (const [eventName, advance] of Object.entries(SCOPE_EVENTS)) {
+      const freshness = SCOPE_TABLE[tokenName][eventName]
       it(`${tokenName} + ${eventName} -> ${freshness}`, () => {
         expect(requestFreshness(advance(scope), token)).toBe(freshness)
         expect(isCurrent(advance(scope), token)).toBe(freshness === "current")
@@ -254,6 +254,12 @@ describe("history pagination", () => {
   })
 })
 
+const loadingHistory = (vehicleId: string): HistoryState<HistoryRecord, Totals> => ({
+  status: "loading",
+  vehicleId,
+  cursors: [undefined],
+})
+
 describe("history pagination table", () => {
   type State = HistoryState<HistoryRecord, Totals>
   type Cursors = (HistoryRecord | undefined)[]
@@ -267,18 +273,17 @@ describe("history pagination table", () => {
     records: [r("10"), r("11")],
     totals: { record_count: 99 },
   })
-  const loading = (vehicleId: string): State => ({ status: "loading", vehicleId, cursors: [undefined] })
   const none: State = { status: "none" }
 
-  const STATES: Record<string, State> = {
+  const HISTORY_STATES: Record<string, State> = {
     none,
-    loading: loading("v1"),
+    loading: loadingHistory("v1"),
     "page 1": readyPage([undefined], true),
     "page 2": readyPage([undefined, r("01")], true),
     "last page 2": readyPage([undefined, r("01")], false),
     "page 2 requesting 1": readyPage([undefined, r("01")], true, [undefined]),
   }
-  const EVENTS: Record<string, HistoryEvent<HistoryRecord, Totals>> = {
+  const HISTORY_EVENTS: Record<string, HistoryEvent<HistoryRecord, Totals>> = {
     "SELECT v1": { type: "SELECT", vehicleId: "v1" },
     "SELECT v2": { type: "SELECT", vehicleId: "v2" },
     "SELECT none": { type: "SELECT" },
@@ -293,12 +298,12 @@ describe("history pagination table", () => {
     "LOADED none": { type: "LOADED", request: null, result: null },
   }
   const loaded = readyPage([undefined, r("01")], true)
-  const always = { "SELECT v2": loading("v2"), "LOADED page 2": loaded, "LOADED none": none }
-  const shown = { ...always, "SELECT none": none, INVALIDATE: loading("v1") }
+  const always = { "SELECT v2": loadingHistory("v2"), "LOADED page 2": loaded, "LOADED none": none }
+  const shown = { ...always, "SELECT none": none, INVALIDATE: loadingHistory("v1") }
 
   // Independent copy of the header table. Every pair not listed keeps its state.
-  const TABLE: Record<string, Record<string, State>> = {
-    none: { ...always, "SELECT v1": loading("v1") },
+  const HISTORY_TABLE: Record<string, Record<string, State>> = {
+    none: { ...always, "SELECT v1": loadingHistory("v1") },
     loading: shown,
     "page 1": { ...shown, "PAGE next": readyPage([undefined], true, [undefined, r("11")]) },
     "page 2": {
@@ -313,9 +318,9 @@ describe("history pagination table", () => {
     },
   }
 
-  for (const [stateName, state] of Object.entries(STATES))
-    for (const [eventName, event] of Object.entries(EVENTS)) {
-      const expected = TABLE[stateName][eventName] ?? state
+  for (const [stateName, state] of Object.entries(HISTORY_STATES))
+    for (const [eventName, event] of Object.entries(HISTORY_EVENTS)) {
+      const expected = HISTORY_TABLE[stateName][eventName] ?? state
       it(`${stateName} + ${eventName} -> ${expected.status}`, () => {
         expect(transitionHistory(state, event)).toEqual(expected)
       })
