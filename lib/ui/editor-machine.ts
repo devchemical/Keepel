@@ -3,13 +3,15 @@
 // | from                    | event                            | to                                          |
 // | ----------------------- | -------------------------------- | ------------------------------------------- |
 // | closed                  | OPEN                             | editing, or unresolved if it kept an op     |
-// | closed (kept op)        | OPERATION_SETTLED (its own id)   | closed, op and error dropped, draft reset   |
+// | closed (kept op)        | OPERATION_SETTLED (own, confirmed) | closed, op and error dropped, draft reset |
+// | closed (kept op)        | OPERATION_SETTLED (own, rejected)  | closed with `error`, op dropped, draft kept |
 // | editing, unresolved     | SUBMIT (validationError)         | editing with `error`                        |
 // | editing, unresolved     | SUBMIT (no validationError)      | submitting                                  |
 // | submitting              | OUTCOME confirmed                | closed (draft reset for create editors)     |
 // | submitting              | OUTCOME rejected, blocked/FAILED | editing with `error`                        |
 // | submitting              | OUTCOME unknown                  | unresolved with `operationId`               |
-// | unresolved              | OPERATION_SETTLED (its own id)   | closed (draft reset)                        |
+// | unresolved              | OPERATION_SETTLED (own, confirmed) | closed (draft reset)                      |
+// | unresolved              | OPERATION_SETTLED (own, rejected)  | editing with `error`, draft kept          |
 // | editing, unresolved     | CLOSE                            | closed (error and operation retained)       |
 //
 // Every other pair keeps its state; in particular `submitting` ignores CLOSE (every editor blocks
@@ -19,7 +21,8 @@
 // unrelated editor stays usable and the data owner's `conflictsWith` is the only app-wide guard.
 // SUBMIT from `unresolved` is the batch editor's check/replay of its own operation; CRUD editors
 // are frozen while it is pending and check or replay it (D2) through the OperationRecovery card they
-// embed, then close through OPERATION_SETTLED once it leaves the pending list. After a reload the
+// embed, then close through OPERATION_SETTLED once it leaves the pending list confirmed; a rejected
+// replay returns them to editing with the rejection inline, like a rejected first send. After a reload the
 // association is gone and recovery continues through the OperationRecovery panel.
 //
 // Machine 7 (the app-wide unresolved-editor latch) was removed by D1.
@@ -43,7 +46,9 @@ export type EditorEvent =
   | { type: "SUBMIT"; validationError: string | null }
   | { type: "OUTCOME"; outcome: OperationOutcome; message: string | null }
   | { type: "FAILED"; message: string }
-  | { type: "OPERATION_SETTLED"; operationId: string }
+  /** The editor's own operation left the pending list; `message` is the rejection copy. */
+  | { type: "OPERATION_SETTLED"; operationId: string; outcome: "confirmed"; message: null }
+  | { type: "OPERATION_SETTLED"; operationId: string; outcome: "rejected"; message: string }
 
 export const EDITOR_CLOSED: EditorState = { status: "closed", error: null, operationId: null }
 export const EDITOR_EDITING: EditorState = { status: "editing", error: null }
@@ -71,7 +76,10 @@ export function transitionEditor(state: EditorState, event: EditorEvent): Editor
         return state.operationId === null
           ? { status: "editing", error: state.error }
           : { status: "unresolved", error: state.error, operationId: state.operationId }
-      if (event.type === "OPERATION_SETTLED" && event.operationId === state.operationId) return EDITOR_CLOSED
+      if (event.type === "OPERATION_SETTLED" && event.operationId === state.operationId)
+        return event.outcome === "confirmed"
+          ? EDITOR_CLOSED
+          : { status: "closed", error: event.message, operationId: null }
       return state
     case "editing":
       if (event.type === "SUBMIT") return stateAfterSubmit(event)
@@ -83,7 +91,8 @@ export function transitionEditor(state: EditorState, event: EditorEvent): Editor
     case "unresolved":
       if (event.type === "SUBMIT") return stateAfterSubmit(event)
       if (event.type === "CLOSE") return { status: "closed", error: state.error, operationId: state.operationId }
-      if (event.type === "OPERATION_SETTLED" && event.operationId === state.operationId) return EDITOR_CLOSED
+      if (event.type === "OPERATION_SETTLED" && event.operationId === state.operationId)
+        return event.outcome === "confirmed" ? EDITOR_CLOSED : { status: "editing", error: event.message }
       return state
     default:
       return state satisfies never
@@ -100,7 +109,11 @@ export function confirmsDraft(state: EditorState, event: EditorEvent): boolean {
     case "OUTCOME":
       return state.status === "submitting" && event.outcome.status === "confirmed"
     case "OPERATION_SETTLED":
-      return (state.status === "closed" || state.status === "unresolved") && state.operationId === event.operationId
+      return (
+        event.outcome === "confirmed" &&
+        (state.status === "closed" || state.status === "unresolved") &&
+        state.operationId === event.operationId
+      )
     default:
       return false
   }
@@ -136,9 +149,16 @@ export function editorFrozen(
   return own !== null && pendingOperations.some((operation) => operation.command.operationId === own)
 }
 
-/** The editor's own operation once it has left the owner's pending list, or `null`. */
-export function settledOperation(state: EditorState, pendingOperations: readonly PendingOperation[]): string | null {
+/**
+ * The editor's own operation once it has left the owner's pending list, and whether it left
+ * rejected (listed in the owner's `rejectedOperations`) or confirmed; `null` while still pending.
+ */
+export function settledOperation(
+  state: EditorState,
+  pendingOperations: readonly PendingOperation[],
+  rejectedOperations: readonly string[]
+): { operationId: string; outcome: "confirmed" | "rejected" } | null {
   const own = ownOperationId(state)
   if (own === null || pendingOperations.some((operation) => operation.command.operationId === own)) return null
-  return own
+  return { operationId: own, outcome: rejectedOperations.includes(own) ? "rejected" : "confirmed" }
 }

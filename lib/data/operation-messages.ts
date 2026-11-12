@@ -102,6 +102,11 @@ const MESSAGES: Record<OperationKind, Record<FailedOutcome | BlockReason, string
 }
 
 /** Copy for an outcome, or `null` when it was confirmed and needs no message. */
+export function operationMessage(
+  kind: OperationKind,
+  outcome: Exclude<OperationOutcome, { status: "confirmed" }>
+): string
+export function operationMessage(kind: OperationKind, outcome: OperationOutcome): string | null
 export function operationMessage(kind: OperationKind, outcome: OperationOutcome): string | null {
   if (outcome.status === "confirmed") return null
   return MESSAGES[kind][outcome.status === "blocked" ? outcome.reason : outcome.status]
