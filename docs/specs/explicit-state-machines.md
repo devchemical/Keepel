@@ -418,8 +418,11 @@ Taken by the maintainer after phases 0–4 and D3, D5, D6 merged.
 2. **D2 — accepted.** An unresolved CRUD command offers the same explicit, user-initiated
    "Reintentar misma operación" as a batch, replaying the retained frozen command with the same
    `operation_id`. Never automatic. Supersedes the #95 "can only query its status" contract.
+   A rejected replay of an editor's own operation is reported only inline in that editor; the
+   standalone recovery panel, which no editor owns, reports it with a toast (#111).
 3. **D4 — accepted, minimal form.** The dashboard reminders card lists `later` forecasts in a
-   collapsed "Más adelante" section with the same edit/cancel actions; the counter is unchanged.
+   collapsed "Más adelante" section with the same complete/edit/cancel actions (completion added by
+   #111); the counter and reminder list are unchanged.
    Deleting a maintenance record that completed a forecast warns, in the confirmation dialog, that
    the forecast will return to pending.
 
