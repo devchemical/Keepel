@@ -363,6 +363,8 @@ test("a rejected CRUD replay returns its editor to editing with the draft and th
   await dialog.getByRole("button", { name: "Reintentar misma operación", exact: true }).click()
   await expect(dialog.getByRole("alert")).toContainText("No se realizó la operación")
   await expect(dialog).toBeVisible()
+  // The owning editor reports the rejection inline only; the embedded recovery card does not toast it.
+  await expect(page.locator("[data-sonner-toast]")).toHaveCount(0)
   await expect(dialog.getByLabel("Kilometraje Programado")).toHaveValue("4321")
   await expect(dialog.getByLabel("Kilometraje Programado")).toBeEnabled()
   // The rejected operation left the recovery list.
@@ -370,6 +372,38 @@ test("a rejected CRUD replay returns its editor to editing with the draft and th
   await expect(dialog.getByRole("button", { name: "Reintentar misma operación", exact: true })).toHaveCount(0)
   expect(operationIds).toEqual([operationIds[0], operationIds[0]])
   expect(await read()).toHaveLength(before)
+})
+
+test("a rejected CRUD replay from the standalone recovery panel is explained by a toast", async ({ page, request }) => {
+  await request.post(`${CONTROLLED_SERVICES_URL}/__test__/reset`, { data: { maintenance: true } })
+  await loginWithPassword(page, "/vehicles/00000000-0000-4000-8000-000000000093/maintenance")
+  const operationIds: string[] = []
+  await page.route("**/rest/v1/rpc/mutate_data", async (route) => {
+    operationIds.push((route.request().postDataJSON() as { p_operation_id: string }).p_operation_id)
+    // The first request never reaches the database; the replay is rejected by it.
+    if (operationIds.length === 1) await route.abort("failed")
+    else await route.fulfill({ status: 400, json: { code: "P0001", message: "Controlled rejection" } })
+  })
+  await page.getByRole("button", { name: "Agregar", exact: true }).click()
+  await page.getByRole("menuitem", { name: "Programar Servicio", exact: true }).click()
+  const dialog = page.getByRole("dialog", { name: "Programar Servicio", exact: true })
+  await dialog.getByLabel("Tipo de Servicio", { exact: false }).click()
+  await page.getByRole("option", { name: "Otro", exact: true }).click()
+  await dialog.getByLabel("Kilometraje Programado").fill("4321")
+  await dialog.getByRole("button", { name: "Programar Servicio", exact: true }).click()
+  await expect(dialog.getByRole("status")).toContainText("Resultado pendiente de confirmar")
+  const reference = await dialog.getByText("Referencia:", { exact: false }).textContent()
+  if (!reference) throw new Error("Missing unresolved operation reference")
+
+  // After a reload no editor owns the operation; only the page's recovery panel lists it.
+  await page.reload()
+  await expect(page.getByText(reference, { exact: true })).toBeVisible()
+  await page.getByRole("button", { name: "Reintentar misma operación", exact: true }).click()
+  await expect(page.getByText(reference, { exact: true })).toHaveCount(0)
+  const toast = page.locator("[data-sonner-toast]")
+  await expect(toast).toHaveCount(1)
+  await expect(toast).toContainText("No se realizó la operación")
+  expect(operationIds).toEqual([operationIds[0], operationIds[0]])
 })
 
 test("maintenance editing preserves zero and NULL, then deletion updates the owned history", async ({

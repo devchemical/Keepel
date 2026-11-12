@@ -17,6 +17,7 @@ import {
   confirmsDraft,
   editorFrozen,
   isEditorOpen,
+  ownOperationId,
   settledOperation,
   transitionEditor,
   type EditorEvent,
@@ -125,5 +126,7 @@ export function useEditor({ kind, action, open, onOpenChange, onConfirmed }: Use
     /** Pending operations freeze the fields per `EDITOR_POLICY`. */
     frozen: editorFrozen(kind, state, pendingOperations),
     error: state.status === "submitting" ? null : state.error,
+    /** The operation whose settlement this editor reports inline; its embedded recovery card stays silent. */
+    ownedOperationId: policy.closeWhenOwnSettled ? ownOperationId(state) : null,
   }
 }

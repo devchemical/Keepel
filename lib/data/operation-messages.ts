@@ -2,6 +2,7 @@
 // Strings are user-visible contracts asserted by e2e tests; change them deliberately.
 
 import type { PendingCommand } from "./pending-operations"
+import { operationKind } from "./operation-machine"
 import type { BlockReason, OperationKind, OperationOutcome, PendingOperationStatus } from "./operation-machine"
 
 export const OPERATION_LABELS: Record<PendingCommand["action"], string> = {
@@ -110,4 +111,18 @@ export function operationMessage(kind: OperationKind, outcome: OperationOutcome)
 export function operationMessage(kind: OperationKind, outcome: OperationOutcome): string | null {
   if (outcome.status === "confirmed") return null
   return MESSAGES[kind][outcome.status === "blocked" ? outcome.reason : outcome.status]
+}
+
+/**
+ * The toast for a rejected CRUD replay, or `null`. A rejected replay leaves the pending list, so its
+ * recovery card disappears and the panel says why — unless the editor embedding that card owns the
+ * operation (`ownedOperationId`), which already shows the rejection inline (D2).
+ */
+export function replayRejectionToast(
+  command: Pick<PendingCommand, "operationId" | "action">,
+  outcome: OperationOutcome,
+  ownedOperationId: string | null
+): string | null {
+  if (outcome.status !== "rejected" || operationKind(command.action) !== "crud") return null
+  return command.operationId === ownedOperationId ? null : operationMessage("crud", outcome)
 }

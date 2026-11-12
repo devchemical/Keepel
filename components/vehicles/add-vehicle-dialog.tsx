@@ -97,7 +97,7 @@ export function AddVehicleDialog({ children }: AddVehicleDialogProps) {
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4" data-editor-state={editor.state.status}>
-          <OperationRecovery />
+          <OperationRecovery ownedOperationId={editor.ownedOperationId} />
           <fieldset disabled={editor.frozen || editor.submitting} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">

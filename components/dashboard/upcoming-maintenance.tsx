@@ -264,14 +264,12 @@ function ScheduledServiceRow({
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          {!later && (
-            <DropdownMenuItem
-              disabled={actionsDisabled}
-              onClick={() => onSelect({ action: "completing", row: maintenance })}
-            >
-              Completar previsión
-            </DropdownMenuItem>
-          )}
+          <DropdownMenuItem
+            disabled={actionsDisabled}
+            onClick={() => onSelect({ action: "completing", row: maintenance })}
+          >
+            Completar previsión
+          </DropdownMenuItem>
           <DropdownMenuItem disabled={actionsDisabled} onClick={() => onCancel(maintenance.id)}>
             Cancelar previsión
           </DropdownMenuItem>

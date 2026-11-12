@@ -271,10 +271,7 @@ test("a failed completion lookup shows no warning and does not block deletion", 
 
 test.describe("later forecasts", () => {
   test.use({ timezoneId: "Europe/Madrid" })
-  test("a forecast 60 days out and a mileage-only forecast are listed under Más adelante, cancellable and uncounted", async ({
-    page,
-    request,
-  }) => {
+  const seedLaterForecasts = async (request: APIRequestContext) => {
     const schedule = (
       id: number,
       description: string,
@@ -305,6 +302,13 @@ test.describe("later forecasts", () => {
         ],
       },
     })
+  }
+
+  test("a forecast 60 days out and a mileage-only forecast are listed under Más adelante, cancellable and uncounted", async ({
+    page,
+    request,
+  }) => {
+    await seedLaterForecasts(request)
     await page.clock.setFixedTime(new Date("2026-11-05T10:00:00Z"))
     await loginWithPassword(page)
     const counter = page.getByText("Próximos Servicios", { exact: true }).locator("../..")
@@ -328,7 +332,7 @@ test.describe("later forecasts", () => {
     await expect(later.getByRole("listitem", { name: "Por kilometraje" })).toContainText("15.000 km")
 
     await later.getByRole("button", { name: "Acciones de En 60 días", exact: true }).click()
-    await expect(page.getByRole("menuitem", { name: "Completar previsión", exact: true })).toHaveCount(0)
+    await expect(page.getByRole("menuitem", { name: "Completar previsión", exact: true })).toBeVisible()
     await page.getByRole("menuitem", { name: "Cancelar previsión", exact: true }).click()
     await expect(later.getByRole("listitem", { name: "En 60 días" })).toHaveCount(0)
     await later.getByRole("button", { name: "Acciones de Por kilometraje", exact: true }).click()
@@ -340,5 +344,35 @@ test.describe("later forecasts", () => {
 
     const saved = await (await request.get(`${CONTROLLED_SERVICES_URL}/__test__/maintenance`)).json()
     expect(saved.schedules.map((row: { status: string }) => row.status)).toEqual(["cancelled", "cancelled", "pending"])
+  })
+  test("completing a later forecast removes it from Más adelante and leaves the reminders and counter unchanged", async ({
+    page,
+    request,
+  }) => {
+    await seedLaterForecasts(request)
+    await page.clock.setFixedTime(new Date("2026-11-05T10:00:00Z"))
+    await loginWithPassword(page)
+    const counter = page.getByText("Próximos Servicios", { exact: true }).locator("../..")
+    const reminders = page.getByRole("list", { name: "Previsiones" })
+    await expect(reminders.getByRole("listitem")).toHaveCount(1)
+    await page.getByRole("button", { name: "Más adelante (2)" }).click()
+    const later = page.getByRole("list", { name: "Más adelante" })
+    await later.getByRole("button", { name: "Acciones de En 60 días", exact: true }).click()
+    await page.getByRole("menuitem", { name: "Completar previsión", exact: true }).click()
+    const dialog = page.getByRole("dialog", { name: "Agregar Mantenimiento" })
+    await expect(dialog.getByLabel("Resolver una previsión (opcional)")).toContainText("2027-01-04")
+    await dialog.getByRole("combobox").first().click()
+    await page.getByRole("option", { name: "Otro", exact: true }).click()
+    await dialog.getByRole("button", { name: "Agregar Mantenimiento", exact: true }).click()
+    await expect(dialog).toBeHidden()
+
+    await expect(later.getByRole("listitem", { name: "En 60 días" })).toHaveCount(0)
+    await expect(later.getByRole("listitem")).toHaveCount(1)
+    await expect(page.getByRole("button", { name: "Más adelante (1)" })).toBeVisible()
+    await expect(reminders.getByRole("listitem")).toHaveCount(1)
+    await expect(counter).toContainText("1")
+    const saved = await (await request.get(`${CONTROLLED_SERVICES_URL}/__test__/maintenance`)).json()
+    expect(saved.schedules[1]).toMatchObject({ status: "completed", completed_record_id: saved.records[0].id })
+    expect([saved.schedules[0].status, saved.schedules[2].status]).toEqual(["pending", "pending"])
   })
 })

@@ -89,7 +89,7 @@ export function ScheduleServiceDialog({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4" data-editor-state={editor.state.status}>
-          <OperationRecovery />
+          <OperationRecovery ownedOperationId={editor.ownedOperationId} />
           <fieldset disabled={editor.frozen || editor.submitting} className="space-y-4">
             <div className="space-y-1.5">
               <Label htmlFor="type" className="text-sm font-medium">
