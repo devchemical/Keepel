@@ -289,3 +289,58 @@ test("sparse complete updates fail at the command boundary and SQL guard without
     expect((await alice.client.from(table).select().eq("id", row.id).single()).data).toEqual(row)
   }
 })
+
+test("an explicit CRUD replay of the same operation returns the original receipt and never writes twice (D2)", async () => {
+  const { executeDataCommand } = await import("../../lib/data/data-command")
+  let loseResponses = true
+  const account = await createAccount("crud-replay", (async (input, init) => {
+    const response = await fetch(input, init)
+    if (loseResponses && String(input).endsWith("/rpc/mutate_data") && response.ok)
+      return new Response(JSON.stringify({ message: "Lost response" }), { status: 503 })
+    return response
+  }) as typeof fetch)
+  const vehicleId = randomUUID()
+  loseResponses = false
+  expect(
+    await executeDataCommand(account.client, account.id, {
+      operationId: randomUUID(),
+      action: "vehicle.create",
+      id: vehicleId,
+      values: { make: "Replay", model: "Test", year: 2026, mileage: 0, license_plate: null, color: null, vin: null },
+    })
+  ).toMatchObject({ status: "success" })
+  const command: DataCommand = {
+    operationId: randomUUID(),
+    action: "schedule.create",
+    id: randomUUID(),
+    values: {
+      vehicle_id: vehicleId,
+      type: "oil_change",
+      scheduled_date: null,
+      scheduled_mileage: 0,
+      notes: null,
+      description: null,
+    },
+  }
+  loseResponses = true
+  expect(await executeDataCommand(account.client, account.id, command)).toEqual({ status: "unknown" })
+  loseResponses = false
+  const replayed = await executeDataCommand(account.client, account.id, command)
+  expect(replayed).toMatchObject({
+    status: "success",
+    receipt: { operation_id: command.operationId, action: "schedule.create", row: { id: command.id } },
+  })
+  expect(await executeDataCommand(account.client, account.id, command)).toEqual(replayed)
+  expect((await account.client.from("scheduled_services").select("id").eq("vehicle_id", vehicleId)).data).toEqual([
+    { id: command.id },
+  ])
+  expect(
+    await executeDataCommand(account.client, account.id, {
+      ...command,
+      values: { ...command.values, scheduled_mileage: 1000 },
+    } as DataCommand)
+  ).toEqual({ status: "rejected" })
+  expect(
+    (await account.client.from("scheduled_services").select("scheduled_mileage").eq("id", command.id)).data
+  ).toEqual([{ scheduled_mileage: 0 }])
+})

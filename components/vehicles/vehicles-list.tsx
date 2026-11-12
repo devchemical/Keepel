@@ -7,10 +7,11 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Car, MoreVertical, Edit, Trash2, Calendar, Gauge } from "lucide-react"
 import { EditVehicleDialog } from "./edit-vehicle-dialog"
 import { DeleteVehicleDialog } from "./delete-vehicle-dialog"
-import { useState } from "react"
+import { useReducer } from "react"
 import Link from "next/link"
 import { formatMileage } from "@/lib/formatters"
 import { VehiclesSkeleton } from "@/components/skeletons/vehicles-skeleton"
+import { NO_ROW_ACTION, transitionRowAction } from "@/lib/ui/row-action"
 
 import type { Vehicle } from "@/contexts/DataContext"
 
@@ -20,8 +21,7 @@ interface VehiclesListProps {
 }
 
 export function VehiclesList({ vehicles, isLoading }: VehiclesListProps) {
-  const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null)
-  const [deletingVehicle, setDeletingVehicle] = useState<Vehicle | null>(null)
+  const [rowAction, dispatchRowAction] = useReducer(transitionRowAction<Vehicle>, NO_ROW_ACTION)
 
   if (isLoading) {
     return <VehiclesSkeleton />
@@ -51,7 +51,10 @@ export function VehiclesList({ vehicles, isLoading }: VehiclesListProps) {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem className="cursor-pointer" onClick={() => setEditingVehicle(vehicle)}>
+                  <DropdownMenuItem
+                    className="cursor-pointer"
+                    onClick={() => dispatchRowAction({ type: "SELECT", action: "editing", row: vehicle })}
+                  >
                     <Edit className="mr-2 h-4 w-4" />
                     Editar
                   </DropdownMenuItem>
@@ -62,7 +65,7 @@ export function VehiclesList({ vehicles, isLoading }: VehiclesListProps) {
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem
-                    onClick={() => setDeletingVehicle(vehicle)}
+                    onClick={() => dispatchRowAction({ type: "SELECT", action: "deleting", row: vehicle })}
                     className="text-destructive focus:text-destructive cursor-pointer"
                   >
                     <Trash2 className="mr-2 h-4 w-4" />
@@ -117,19 +120,19 @@ export function VehiclesList({ vehicles, isLoading }: VehiclesListProps) {
         </Card>
       ))}
 
-      {editingVehicle && (
+      {rowAction.status === "editing" && (
         <EditVehicleDialog
-          vehicle={editingVehicle}
-          open={!!editingVehicle}
-          onOpenChange={(open) => !open && setEditingVehicle(null)}
+          vehicle={rowAction.row}
+          open
+          onOpenChange={(open) => !open && dispatchRowAction({ type: "CLEAR", action: "editing" })}
         />
       )}
 
-      {deletingVehicle && (
+      {rowAction.status === "deleting" && (
         <DeleteVehicleDialog
-          vehicle={deletingVehicle}
-          open={!!deletingVehicle}
-          onOpenChange={(open) => !open && setDeletingVehicle(null)}
+          vehicle={rowAction.row}
+          open
+          onOpenChange={(open) => !open && dispatchRowAction({ type: "CLEAR", action: "deleting" })}
         />
       )}
     </div>

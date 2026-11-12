@@ -1,13 +1,13 @@
 "use client"
 
-import { MAINTENANCE_TYPES } from "@/lib/data/maintenance-types"
-
-/* eslint-disable eslint/no-shadow -- The caught error is rendered by the form error state. */
+import { useEffect, useState } from "react"
+import { maintenanceTypeLabel } from "@/lib/data/maintenance-types"
+import { completedForecastWarning } from "@/lib/data/scheduled-service-messages"
 
 import { formatDate } from "@/lib/formatters"
-import { useState } from "react"
-import { OperationRecovery, usePendingDataOperation } from "@/components/data/operation-recovery"
+import { OperationRecovery } from "@/components/data/operation-recovery"
 import { useData } from "@/contexts"
+import { useEditor } from "@/hooks/use-editor"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { AlertTriangle, Loader2 } from "lucide-react"
@@ -25,34 +25,33 @@ interface DeleteMaintenanceDialogProps {
 }
 
 export function DeleteMaintenanceDialog({ record, open, onOpenChange }: DeleteMaintenanceDialogProps) {
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const { deleteMaintenance, findCompletedForecast } = useData()
+  // The warning belongs to the record it was read for; a failed or pending read shows none.
+  const [warning, setWarning] = useState<{ recordId: string; message: string } | null>(null)
 
-  const { deleteMaintenanceOptimistic } = useData()
-
-  const pending = usePendingDataOperation(() => {
-    setError(null)
-    onOpenChange(false)
-  })
-  const handleDelete = async () => {
-    setIsLoading(true)
-    setError(null)
-
-    try {
-      await deleteMaintenanceOptimistic(record.id)
-
-      onOpenChange(false)
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : "Error desconocido al eliminar registro"
-      setError(errorMessage)
-    } finally {
-      setIsLoading(false)
+  useEffect(() => {
+    if (!open) return
+    let current = true
+    void findCompletedForecast(record.id).then((forecast) => {
+      if (current) setWarning(forecast ? { recordId: record.id, message: completedForecastWarning(forecast) } : null)
+    })
+    return () => {
+      current = false
     }
-  }
+  }, [open, record.id, findCompletedForecast])
+  const forecastWarning = open && warning?.recordId === record.id ? warning.message : null
+
+  const editor = useEditor({
+    kind: "crud",
+    action: "maintenance.delete",
+    open,
+    onOpenChange,
+  })
+  const handleDelete = () => void editor.submit(() => ({ send: () => deleteMaintenance(record.id) }))
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[400px]">
+    <Dialog open={editor.open} onOpenChange={editor.setOpen}>
+      <DialogContent className="sm:max-w-[400px]" data-editor-state={editor.state.status}>
         <DialogHeader>
           <DialogTitle className="text-destructive flex items-center gap-2">
             <AlertTriangle className="h-5 w-5" />
@@ -60,10 +59,8 @@ export function DeleteMaintenanceDialog({ record, open, onOpenChange }: DeleteMa
           </DialogTitle>
           <DialogDescription>
             ¿Estás seguro de que deseas eliminar el registro de{" "}
-            <span className="font-semibold">
-              {MAINTENANCE_TYPES.find((type) => type.value === record.type)?.label ?? record.type}
-            </span>{" "}
-            del {formatDate(record.service_date)}?
+            <span className="font-semibold">{maintenanceTypeLabel(record.type)}</span> del{" "}
+            {formatDate(record.service_date)}?
           </DialogDescription>
         </DialogHeader>
 
@@ -74,22 +71,39 @@ export function DeleteMaintenanceDialog({ record, open, onOpenChange }: DeleteMa
           </p>
         </div>
 
-        <OperationRecovery />
-        {error && (
+        {forecastWarning && (
+          <div role="note" className="mb-4 rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-sm">
+            {forecastWarning}
+          </div>
+        )}
+
+        <OperationRecovery ownedOperationId={editor.ownedOperationId} />
+        {editor.error && (
           <div
             role="alert"
             className="text-destructive-foreground bg-destructive/10 border-destructive/20 rounded-md border p-3 text-sm"
           >
-            {error}
+            {editor.error}
           </div>
         )}
 
         <div className="flex gap-2 pt-4">
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="flex-1">
+          <Button
+            type="button"
+            variant="outline"
+            disabled={editor.submitting}
+            onClick={() => editor.setOpen(false)}
+            className="flex-1"
+          >
             Cancelar
           </Button>
-          <Button onClick={handleDelete} disabled={isLoading || pending} variant="destructive" className="flex-1">
-            {isLoading ? (
+          <Button
+            onClick={handleDelete}
+            disabled={editor.submitting || editor.frozen}
+            variant="destructive"
+            className="flex-1"
+          >
+            {editor.submitting ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Eliminando...

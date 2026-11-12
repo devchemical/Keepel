@@ -3,8 +3,9 @@
 import type React from "react"
 
 import { useState, useEffect } from "react"
-import { OperationRecovery, usePendingDataOperation } from "@/components/data/operation-recovery"
+import { OperationRecovery } from "@/components/data/operation-recovery"
 import { useData } from "@/contexts"
+import { useEditor } from "@/hooks/use-editor"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
@@ -12,7 +13,6 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Calendar, Loader2 } from "lucide-react"
-import { toast } from "sonner"
 
 import { MAINTENANCE_TYPES as maintenanceTypes } from "@/lib/data/maintenance-types"
 import { scheduledServiceSchema } from "@/lib/data/scheduled-command"
@@ -33,10 +33,7 @@ interface EditScheduledServiceDialogProps {
 }
 
 export function EditScheduledServiceDialog({ service, open, onOpenChange }: EditScheduledServiceDialogProps) {
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  const { updateScheduledServiceOptimistic } = useData()
+  const { updateScheduledService } = useData()
 
   const [formData, setFormData] = useState({
     type: service.type,
@@ -56,37 +53,27 @@ export function EditScheduledServiceDialog({ service, open, onOpenChange }: Edit
     })
   }, [service])
 
-  const pending = usePendingDataOperation(() => {
-    setError(null)
-    onOpenChange(false)
+  const editor = useEditor({
+    kind: "crud",
+    action: "schedule.update",
+    open,
+    onOpenChange,
   })
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    setIsLoading(true)
-    setError(null)
-
-    try {
-      if (!service?.id) {
-        throw new Error("ID del servicio no válido")
-      }
-
+    void editor.submit(() => {
+      if (!service?.id) return { validationError: "ID del servicio no válido" }
       const parsed = scheduledServiceSchema.safeParse(formData)
       if (!parsed.success)
-        throw new Error("Indica un tipo válido y al menos una fecha o un kilometraje válido mayor o igual a 0.")
-      await updateScheduledServiceOptimistic(service.id, parsed.data)
-      toast.success("Servicio actualizado correctamente")
-      onOpenChange(false)
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Error desconocido al actualizar servicio"
-      setError(message)
-      toast.error(message)
-    } finally {
-      setIsLoading(false)
-    }
+        return {
+          validationError: "Indica un tipo válido y al menos una fecha o un kilometraje válido mayor o igual a 0.",
+        }
+      return { send: () => updateScheduledService(service.id, parsed.data) }
+    })
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={editor.open} onOpenChange={editor.setOpen}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader className="space-y-2">
           <DialogTitle className="flex items-center gap-2 text-lg">
@@ -96,15 +83,15 @@ export function EditScheduledServiceDialog({ service, open, onOpenChange }: Edit
           <DialogDescription className="text-sm">Modifica los detalles del mantenimiento programado.</DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <OperationRecovery />
-          <fieldset disabled={pending || isLoading} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4" data-editor-state={editor.state.status}>
+          <OperationRecovery ownedOperationId={editor.ownedOperationId} />
+          <fieldset disabled={editor.frozen || editor.submitting} className="space-y-4">
             <div className="space-y-1.5">
               <Label htmlFor="type" className="text-sm font-medium">
                 Tipo de Servicio *
               </Label>
               <Select value={formData.type} onValueChange={(value) => setFormData({ ...formData, type: value })}>
-                <SelectTrigger disabled={pending || isLoading} id="type" className="h-10">
+                <SelectTrigger disabled={editor.frozen || editor.submitting} id="type" className="h-10">
                   <SelectValue placeholder="Seleccionar tipo" />
                 </SelectTrigger>
                 <SelectContent>
@@ -176,12 +163,12 @@ export function EditScheduledServiceDialog({ service, open, onOpenChange }: Edit
               />
             </div>
 
-            {error && (
+            {editor.error && (
               <div
                 role="alert"
                 className="text-destructive-foreground bg-destructive/10 border-destructive/20 rounded-md border p-2.5 text-xs sm:text-sm"
               >
-                {error}
+                {editor.error}
               </div>
             )}
 
@@ -189,17 +176,18 @@ export function EditScheduledServiceDialog({ service, open, onOpenChange }: Edit
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => onOpenChange(false)}
+                disabled={editor.submitting}
+                onClick={() => editor.setOpen(false)}
                 className="h-10 flex-1 sm:h-11"
               >
                 Cancelar
               </Button>
               <Button
                 type="submit"
-                disabled={isLoading || !formData.type}
+                disabled={editor.submitting || !formData.type}
                 className="bg-primary hover:bg-primary/90 h-10 flex-1 font-medium sm:h-11"
               >
-                {isLoading ? (
+                {editor.submitting ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Actualizando...

@@ -8,20 +8,22 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Car, Plus } from "lucide-react"
 import { Layout } from "@/components/layout/Layout"
+import { snapshotView } from "@/lib/data/snapshot-machine"
 
 export function VehiclesScreen() {
-  const { vehicles, isLoading, hasLoaded } = useData()
+  const { vehicles, isLoading, snapshot } = useData()
+  const hasContent = snapshotView(snapshot) === "content"
   return (
     <Layout showHeader={true}>
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 py-8" data-snapshot-status={snapshot.status}>
         <div className="mb-8">
           <h1 className="text-foreground flex items-center gap-2 text-3xl font-bold">Mis Vehículos</h1>
           <p className="text-muted-foreground mt-2">Gestiona todos tus vehículos desde aquí</p>
         </div>
 
         <DataRecovery />
-        {hasLoaded && <VehiclesList vehicles={vehicles} />}
-        {!hasLoaded ? (
+        {hasContent && <VehiclesList vehicles={vehicles} />}
+        {!hasContent ? (
           isLoading ? (
             <p role="status">Cargando vehículos…</p>
           ) : null

@@ -38,6 +38,7 @@ const maintenanceReceipts = new Map<string, unknown>()
 const maintenanceAttempts: string[] = []
 let maintenanceAvailable = true
 let maintenanceSchedules: Record<string, unknown>[] = []
+let completionLookupMode: "success" | "error" = "success"
 const maintenanceVehicle = {
   id: "00000000-0000-4000-8000-000000000093",
   user_id: "00000000-0000-4000-8000-000000000051",
@@ -185,10 +186,12 @@ async function handleRequest(request: IncomingMessage, response: ServerResponse)
       schedules?: Record<string, unknown>[]
       vehicleMileage?: number
       records?: Record<string, unknown>[]
+      completionLookup?: unknown
     } | null
     maintenanceMode = body?.maintenance === true
     maintenanceRecords.length = 0
     maintenanceRecords.push(...(body?.records ?? []))
+    completionLookupMode = body?.completionLookup === "error" ? "error" : "success"
     maintenanceVehicle.id = "00000000-0000-4000-8000-000000000093"
     dataReceipts.clear()
     vehicleExists = body?.emptyVehicles !== true
@@ -403,7 +406,13 @@ async function handleRequest(request: IncomingMessage, response: ServerResponse)
     } else if (body.p_action === "maintenance.update" || body.p_action === "maintenance.delete") {
       row = maintenanceRecords.find((value) => value.id === body.p_id)
       if (row && body.p_action === "maintenance.update") Object.assign(row, body.p_values)
-      if (row && body.p_action === "maintenance.delete") maintenanceRecords.splice(maintenanceRecords.indexOf(row), 1)
+      if (row && body.p_action === "maintenance.delete") {
+        maintenanceRecords.splice(maintenanceRecords.indexOf(row), 1)
+        // Mirrors ON DELETE SET NULL plus the `clear_deleted_completion` trigger.
+        for (const forecast of maintenanceSchedules)
+          if (forecast.completed_record_id === row.id)
+            Object.assign(forecast, { status: "pending", completed_record_id: null })
+      }
     }
     if (!row) {
       sendJson(response, 400, { code: "P0001", message: "No affected row" })
@@ -434,6 +443,28 @@ async function handleRequest(request: IncomingMessage, response: ServerResponse)
         : vehicleExists && !url.searchParams.has("id")
           ? [maintenanceVehicle]
           : []
+    )
+    return
+  }
+  if (
+    maintenanceMode &&
+    request.method === "GET" &&
+    url.pathname === "/rest/v1/scheduled_services" &&
+    url.searchParams.has("completed_record_id")
+  ) {
+    if (completionLookupMode === "error") {
+      sendJson(response, 503, { message: "Controlled unavailable response" })
+      return
+    }
+    sendJson(
+      response,
+      200,
+      maintenanceSchedules.filter(
+        (row) =>
+          `eq.${row.completed_record_id}` === url.searchParams.get("completed_record_id") &&
+          `eq.${row.user_id}` === url.searchParams.get("user_id") &&
+          row.status === "completed"
+      )
     )
     return
   }

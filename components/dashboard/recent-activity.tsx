@@ -1,6 +1,6 @@
 "use client"
 
-import { MAINTENANCE_TYPES } from "@/lib/data/maintenance-types"
+import { maintenanceTypeLabel } from "@/lib/data/maintenance-types"
 
 /* eslint-disable react/no-array-index-key, unicorn/consistent-function-scoping -- Static skeleton placeholders have no ids; formatters stay near usage for readability. */
 
@@ -115,9 +115,7 @@ export function RecentActivity({ maintenanceRecords, isLoading }: RecentActivity
 
               <div className="min-w-0 flex-1">
                 <div className="mb-1 flex items-center gap-2">
-                  <span className="text-sm font-medium text-slate-900">
-                    {MAINTENANCE_TYPES.find((type) => type.value === record.type)?.label ?? record.type}
-                  </span>
+                  <span className="text-sm font-medium text-slate-900">{maintenanceTypeLabel(record.type)}</span>
                   <Badge variant="outline" className="border-slate-200 bg-slate-50 text-xs text-slate-600">
                     {formatCurrency(record.cost ?? null)}
                   </Badge>

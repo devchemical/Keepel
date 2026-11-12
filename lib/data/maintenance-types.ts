@@ -16,6 +16,11 @@ export const MAINTENANCE_TYPES = [
 
 export type MaintenanceType = (typeof MAINTENANCE_TYPES)[number]["value"]
 
+/** The Spanish label of a maintenance type, or the raw value for an unknown (legacy) type. */
+export function maintenanceTypeLabel(type: string): string {
+  return MAINTENANCE_TYPES.find((value) => value.value === type)?.label ?? type
+}
+
 export function isMaintenanceType(value: unknown): value is MaintenanceType {
   return MAINTENANCE_TYPES.some((type) => type.value === value)
 }

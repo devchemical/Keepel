@@ -1,43 +1,48 @@
 "use client"
-import { useEffect, useRef } from "react"
+import { toast } from "sonner"
 import { useData } from "@/contexts"
 import { Button } from "@/components/ui/button"
+import type { PendingCommand } from "@/lib/data/pending-operations"
+import {
+  JOURNAL_RECOVERY_ALERT,
+  OPERATION_LABELS,
+  RECOVERY_STATUS_MESSAGES,
+  replayRejectionToast,
+} from "@/lib/data/operation-messages"
 
-const labels = {
-  "maintenance.batch": "Alta múltiple de mantenimiento",
-  "vehicle.create": "Alta de vehículo",
-  "vehicle.update": "Edición de vehículo",
-  "vehicle.delete": "Eliminación de vehículo",
-  "maintenance.update": "Edición de mantenimiento",
-  "maintenance.delete": "Eliminación de mantenimiento",
-  "schedule.create": "Programación de servicio",
-  "schedule.update": "Edición de previsión",
-  "schedule.cancel": "Cancelación de previsión",
+type OperationRecoveryProps = {
+  /**
+   * The operation owned by the editor embedding this panel. That editor shows its rejection inline,
+   * so the panel does not toast it too; the standalone panel omits it.
+   */
+  ownedOperationId?: string | null
 }
-export function OperationRecovery() {
+
+export function OperationRecovery({ ownedOperationId = null }: OperationRecoveryProps = {}) {
   const {
     pendingOperations,
     reconcileDataOperation,
     reconcileMaintenanceBatch,
-    createMaintenanceBatch,
+    replayOperation,
     operationStorageError,
   } = useData()
+  // An explicit, user-initiated resend of the retained command with the same operation id.
+  const replay = async (command: PendingCommand) => {
+    const message = replayRejectionToast(command, await replayOperation(command.operationId), ownedOperationId)
+    if (message) toast.error(message)
+  }
   return (
     <>
-      {operationStorageError && (
-        <p role="alert">
-          No se pudieron conservar o recuperar las referencias en esta pestaña. Recarga cuando el almacenamiento esté
-          disponible. No se enviará un lote nuevo sin guardarla. Mantén esta página abierta si hay una operación
-          pendiente.
-        </p>
-      )}
+      {operationStorageError && <p role="alert">{JOURNAL_RECOVERY_ALERT}</p>}
       {pendingOperations.map(({ command, status }) => (
-        <div key={command.operationId} className="my-2 space-y-2 rounded-md border p-3">
+        <div
+          key={command.operationId}
+          className="my-2 space-y-2 rounded-md border p-3"
+          data-operation-status={status}
+          data-operation-id={command.operationId}
+        >
           <p role="status">
-            {labels[command.action]}:{" "}
-            {status === "unknown"
-              ? "Resultado pendiente de confirmar. No repitas la operación."
-              : "Comprobando operación…"}
+            {OPERATION_LABELS[command.action]}: {RECOVERY_STATUS_MESSAGES[status]}
           </p>
           <p className="text-muted-foreground text-xs">Referencia: {command.operationId}</p>
           {command.action === "maintenance.batch" && (
@@ -84,12 +89,12 @@ export function OperationRecovery() {
               Comprobar resultado
             </Button>
           )}
-          {command.action === "maintenance.batch" && status !== "sending" && (
+          {status !== "sending" && (
             <Button
               type="button"
               variant="outline"
               disabled={status === "checking"}
-              onClick={() => void createMaintenanceBatch(command)}
+              onClick={() => void replay(command)}
             >
               Reintentar misma operación
             </Button>
@@ -98,18 +103,4 @@ export function OperationRecovery() {
       ))}
     </>
   )
-}
-
-/** Keep the unresolved editor frozen; closing it does not discard the owner's operation. */
-export function usePendingDataOperation(onConfirmed: () => void) {
-  const { pendingOperations } = useData()
-  const unresolved = useRef(false)
-  useEffect(() => {
-    if (pendingOperations.some((operation) => operation.status === "unknown")) unresolved.current = true
-    if (unresolved.current && pendingOperations.length === 0) {
-      unresolved.current = false
-      onConfirmed()
-    }
-  }, [pendingOperations, onConfirmed])
-  return pendingOperations.length > 0
 }

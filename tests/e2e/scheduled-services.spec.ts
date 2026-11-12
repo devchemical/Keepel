@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test"
+import { expect, test, type APIRequestContext, type Page } from "@playwright/test"
 import { loginWithPassword } from "./support/auth"
 import { CONTROLLED_SERVICES_URL } from "./support/controlled-services-config"
 
@@ -170,4 +170,209 @@ test("creating and editing optional criteria validates the whole form and clears
   await expect(dialog).toBeHidden()
   saved = await (await request.get(`${CONTROLLED_SERVICES_URL}/__test__/maintenance`)).json()
   expect(saved.schedules[0]).toMatchObject({ scheduled_mileage: 0, scheduled_date: null })
+})
+
+const ownerId = "00000000-0000-4000-8000-000000000051"
+const completingRecordId = "00000000-0000-4000-8000-000000000195"
+const completedForecastWarning =
+  "Este registro completó la previsión de Cambio de Aceite del 1 de enero de 2026. Al eliminarlo, la previsión volverá a quedar pendiente."
+
+async function seedCompletedForecast(
+  request: APIRequestContext,
+  completedRecordId: string | null,
+  completionLookup: "success" | "error" = "success"
+) {
+  await request.post(`${CONTROLLED_SERVICES_URL}/__test__/reset`, {
+    data: {
+      maintenance: true,
+      completionLookup,
+      records: [
+        {
+          id: completingRecordId,
+          vehicle_id: vehicleId,
+          user_id: ownerId,
+          type: "other",
+          description: null,
+          notes: null,
+          cost: null,
+          mileage: null,
+          service_date: "2026-01-02",
+          created_at: "2026-01-02T00:00:00Z",
+          updated_at: "2026-01-02T00:00:00Z",
+        },
+      ],
+      schedules: [
+        {
+          id: "00000000-0000-4000-8000-000000000196",
+          vehicle_id: vehicleId,
+          user_id: ownerId,
+          type: "oil_change",
+          description: null,
+          scheduled_date: "2026-01-01",
+          scheduled_mileage: null,
+          status: completedRecordId ? "completed" : "cancelled",
+          notes: null,
+          completed_record_id: completedRecordId,
+          created_at: "2026-01-01T00:00:00Z",
+          updated_at: "2026-01-01T00:00:00Z",
+        },
+      ],
+    },
+  })
+}
+
+async function openRecordDeletion(page: Page) {
+  await loginWithPassword(page, `/vehicles/${vehicleId}/maintenance`)
+  await page.getByRole("button", { name: "Acciones del mantenimiento Otro" }).click()
+  await page.getByRole("menuitem", { name: "Eliminar", exact: true }).click()
+  return page.getByRole("dialog", { name: "Eliminar Registro de Mantenimiento", exact: true })
+}
+
+test("deleting a record that completed a forecast warns, and the forecast returns to pending", async ({
+  page,
+  request,
+}) => {
+  await seedCompletedForecast(request, completingRecordId)
+  const lookup = page.waitForResponse((response) => response.url().includes("completed_record_id="))
+  const confirmation = await openRecordDeletion(page)
+  await lookup
+  await expect(confirmation.getByRole("note")).toHaveText(completedForecastWarning)
+  await confirmation.getByRole("button", { name: "Eliminar Registro", exact: true }).click()
+  await expect(confirmation).toBeHidden()
+  await expect(page.getByText("No hay registros de mantenimiento", { exact: true })).toBeVisible()
+  const saved = await (await request.get(`${CONTROLLED_SERVICES_URL}/__test__/maintenance`)).json()
+  expect(saved.schedules[0]).toMatchObject({ status: "pending", completed_record_id: null })
+  await page.goto("/")
+  await expect(
+    page.getByRole("list", { name: "Previsiones" }).getByRole("listitem", { name: "Cambio de Aceite", exact: true })
+  ).toContainText("Vencido")
+})
+
+test("deleting a record that completed no forecast shows no forecast warning", async ({ page, request }) => {
+  await seedCompletedForecast(request, null)
+  const lookup = page.waitForResponse((response) => response.url().includes("completed_record_id="))
+  const confirmation = await openRecordDeletion(page)
+  await lookup
+  await expect(confirmation.getByRole("note")).toHaveCount(0)
+})
+
+test("a failed completion lookup shows no warning and does not block deletion", async ({ page, request }) => {
+  await seedCompletedForecast(request, completingRecordId, "error")
+  const lookup = page.waitForResponse((response) => response.url().includes("completed_record_id="))
+  const confirmation = await openRecordDeletion(page)
+  expect((await lookup).status()).toBe(503)
+  await expect(confirmation.getByRole("note")).toHaveCount(0)
+  await confirmation.getByRole("button", { name: "Eliminar Registro", exact: true }).click()
+  await expect(confirmation).toBeHidden()
+  const saved = await (await request.get(`${CONTROLLED_SERVICES_URL}/__test__/maintenance`)).json()
+  expect(saved.records).toEqual([])
+  expect(saved.schedules[0]).toMatchObject({ status: "pending", completed_record_id: null })
+})
+
+test.describe("later forecasts", () => {
+  test.use({ timezoneId: "Europe/Madrid" })
+  const seedLaterForecasts = async (request: APIRequestContext) => {
+    const schedule = (
+      id: number,
+      description: string,
+      scheduled_date: string | null,
+      scheduled_mileage: number | null
+    ) => ({
+      id: `00000000-0000-4000-8000-${String(id).padStart(12, "0")}`,
+      vehicle_id: vehicleId,
+      user_id: "00000000-0000-4000-8000-000000000051",
+      type: "oil_change",
+      description,
+      scheduled_date,
+      scheduled_mileage,
+      status: "pending",
+      notes: null,
+      completed_record_id: null,
+      created_at: "2026-01-01T00:00:00Z",
+      updated_at: "2026-01-01T00:00:00Z",
+    })
+    await request.post(`${CONTROLLED_SERVICES_URL}/__test__/reset`, {
+      data: {
+        maintenance: true,
+        vehicleMileage: 100,
+        schedules: [
+          schedule(1, "Por kilometraje", null, 15000),
+          schedule(2, "En 60 días", "2027-01-04", null),
+          schedule(3, "Próxima semana", "2026-11-10", null),
+        ],
+      },
+    })
+  }
+
+  test("a forecast 60 days out and a mileage-only forecast are listed under Más adelante, cancellable and uncounted", async ({
+    page,
+    request,
+  }) => {
+    await seedLaterForecasts(request)
+    await page.clock.setFixedTime(new Date("2026-11-05T10:00:00Z"))
+    await loginWithPassword(page)
+    const counter = page.getByText("Próximos Servicios", { exact: true }).locator("../..")
+    const reminders = page.getByRole("list", { name: "Previsiones" })
+    await expect(reminders.getByRole("listitem")).toHaveCount(1)
+    await expect(reminders.getByRole("listitem")).toHaveAttribute("data-urgency", /^(overdue|today|upcoming)$/)
+    await expect(counter).toContainText("1")
+
+    const toggle = page.getByRole("button", { name: "Más adelante (2)" })
+    await expect(toggle).toHaveAttribute("aria-expanded", "false")
+    await expect(toggle).toHaveAttribute("data-state", "collapsed")
+    const later = page.getByRole("list", { name: "Más adelante" })
+    await expect(later).toHaveCount(0)
+    await toggle.focus()
+    await page.keyboard.press("Enter")
+    await expect(toggle).toHaveAttribute("aria-expanded", "true")
+    await expect(toggle).toHaveAttribute("data-state", "expanded")
+    await expect(later.getByRole("listitem").nth(0)).toHaveAttribute("data-urgency", "later")
+    await expect(later.getByRole("listitem").nth(0)).toHaveAccessibleName("En 60 días")
+    await expect(later.getByRole("listitem").nth(1)).toHaveAccessibleName("Por kilometraje")
+    await expect(later.getByRole("listitem", { name: "Por kilometraje" })).toContainText("15.000 km")
+
+    await later.getByRole("button", { name: "Acciones de En 60 días", exact: true }).click()
+    await expect(page.getByRole("menuitem", { name: "Completar previsión", exact: true })).toBeVisible()
+    await page.getByRole("menuitem", { name: "Cancelar previsión", exact: true }).click()
+    await expect(later.getByRole("listitem", { name: "En 60 días" })).toHaveCount(0)
+    await later.getByRole("button", { name: "Acciones de Por kilometraje", exact: true }).click()
+    await page.getByRole("menuitem", { name: "Cancelar previsión", exact: true }).click()
+    await expect(later).toHaveCount(0)
+    await expect(page.getByRole("button", { name: /Más adelante/ })).toHaveCount(0)
+    await expect(reminders.getByRole("listitem")).toHaveCount(1)
+    await expect(counter).toContainText("1")
+
+    const saved = await (await request.get(`${CONTROLLED_SERVICES_URL}/__test__/maintenance`)).json()
+    expect(saved.schedules.map((row: { status: string }) => row.status)).toEqual(["cancelled", "cancelled", "pending"])
+  })
+  test("completing a later forecast removes it from Más adelante and leaves the reminders and counter unchanged", async ({
+    page,
+    request,
+  }) => {
+    await seedLaterForecasts(request)
+    await page.clock.setFixedTime(new Date("2026-11-05T10:00:00Z"))
+    await loginWithPassword(page)
+    const counter = page.getByText("Próximos Servicios", { exact: true }).locator("../..")
+    const reminders = page.getByRole("list", { name: "Previsiones" })
+    await expect(reminders.getByRole("listitem")).toHaveCount(1)
+    await page.getByRole("button", { name: "Más adelante (2)" }).click()
+    const later = page.getByRole("list", { name: "Más adelante" })
+    await later.getByRole("button", { name: "Acciones de En 60 días", exact: true }).click()
+    await page.getByRole("menuitem", { name: "Completar previsión", exact: true }).click()
+    const dialog = page.getByRole("dialog", { name: "Agregar Mantenimiento" })
+    await expect(dialog.getByLabel("Resolver una previsión (opcional)")).toContainText("2027-01-04")
+    await dialog.getByRole("combobox").first().click()
+    await page.getByRole("option", { name: "Otro", exact: true }).click()
+    await dialog.getByRole("button", { name: "Agregar Mantenimiento", exact: true }).click()
+    await expect(dialog).toBeHidden()
+
+    await expect(later.getByRole("listitem", { name: "En 60 días" })).toHaveCount(0)
+    await expect(later.getByRole("listitem")).toHaveCount(1)
+    await expect(page.getByRole("button", { name: "Más adelante (1)" })).toBeVisible()
+    await expect(reminders.getByRole("listitem")).toHaveCount(1)
+    await expect(counter).toContainText("1")
+    const saved = await (await request.get(`${CONTROLLED_SERVICES_URL}/__test__/maintenance`)).json()
+    expect(saved.schedules[1]).toMatchObject({ status: "completed", completed_record_id: saved.records[0].id })
+    expect([saved.schedules[0].status, saved.schedules[2].status]).toEqual(["pending", "pending"])
+  })
 })

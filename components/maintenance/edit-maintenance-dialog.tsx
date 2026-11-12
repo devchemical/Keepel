@@ -2,14 +2,13 @@
 
 import { MAINTENANCE_TYPES as maintenanceTypes } from "@/lib/data/maintenance-types"
 
-/* eslint-disable eslint/no-shadow -- The caught error is rendered by the form error state. */
-
 import { maintenanceValuesSchema } from "@/lib/data/data-command"
 import type React from "react"
 
 import { useState, useEffect } from "react"
-import { OperationRecovery, usePendingDataOperation } from "@/components/data/operation-recovery"
+import { OperationRecovery } from "@/components/data/operation-recovery"
 import { useData } from "@/contexts"
+import { useEditor } from "@/hooks/use-editor"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
@@ -36,10 +35,7 @@ interface EditMaintenanceDialogProps {
 }
 
 export function EditMaintenanceDialog({ record, vehicleId, open, onOpenChange }: EditMaintenanceDialogProps) {
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  const { updateMaintenanceOptimistic } = useData()
+  const { updateMaintenance } = useData()
 
   const [formData, setFormData] = useState({
     type: record.type,
@@ -61,35 +57,28 @@ export function EditMaintenanceDialog({ record, vehicleId, open, onOpenChange }:
     })
   }, [record])
 
-  const pending = usePendingDataOperation(() => {
-    setError(null)
-    onOpenChange(false)
+  const editor = useEditor({
+    kind: "crud",
+    action: "maintenance.update",
+    open,
+    onOpenChange,
   })
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    setIsLoading(true)
-    setError(null)
-
-    try {
-      if (!vehicleId) throw new Error("Vehículo no válido")
+    void editor.submit(() => {
+      if (!vehicleId) return { validationError: "Vehículo no válido" }
       const parsed = maintenanceValuesSchema.safeParse(formData)
       if (!parsed.success)
-        throw new Error(
-          "Revisa el tipo, la fecha, el costo y el kilometraje. Los números deben ser mayores o iguales a 0."
-        )
-      await updateMaintenanceOptimistic(record.id, parsed.data)
-
-      onOpenChange(false)
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : "Error desconocido al actualizar mantenimiento"
-      setError(errorMessage)
-    } finally {
-      setIsLoading(false)
-    }
+        return {
+          validationError:
+            "Revisa el tipo, la fecha, el costo y el kilometraje. Los números deben ser mayores o iguales a 0.",
+        }
+      return { send: () => updateMaintenance(record.id, parsed.data) }
+    })
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={editor.open} onOpenChange={editor.setOpen}>
       <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-[600px]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -99,14 +88,14 @@ export function EditMaintenanceDialog({ record, vehicleId, open, onOpenChange }:
           <DialogDescription>Actualiza la información del registro de mantenimiento.</DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <OperationRecovery />
-          <fieldset disabled={pending || isLoading} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4" data-editor-state={editor.state.status}>
+          <OperationRecovery ownedOperationId={editor.ownedOperationId} />
+          <fieldset disabled={editor.frozen || editor.submitting} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="type">Tipo de Mantenimiento *</Label>
                 <Select value={formData.type} onValueChange={(value) => setFormData({ ...formData, type: value })}>
-                  <SelectTrigger disabled={pending || isLoading}>
+                  <SelectTrigger disabled={editor.frozen || editor.submitting}>
                     <SelectValue placeholder="Seleccionar tipo" />
                   </SelectTrigger>
                   <SelectContent>
@@ -175,25 +164,31 @@ export function EditMaintenanceDialog({ record, vehicleId, open, onOpenChange }:
               />
             </div>
 
-            {error && (
+            {editor.error && (
               <div
                 role="alert"
                 className="text-destructive-foreground bg-destructive/10 border-destructive/20 rounded-md border p-3 text-sm"
               >
-                {error}
+                {editor.error}
               </div>
             )}
 
             <div className="flex gap-2 pt-4">
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="flex-1">
+              <Button
+                type="button"
+                variant="outline"
+                disabled={editor.submitting}
+                onClick={() => editor.setOpen(false)}
+                className="flex-1"
+              >
                 Cancelar
               </Button>
               <Button
                 type="submit"
-                disabled={isLoading || !formData.type}
+                disabled={editor.submitting || !formData.type}
                 className="bg-primary hover:bg-primary/90 flex-1"
               >
-                {isLoading ? (
+                {editor.submitting ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Actualizando...
