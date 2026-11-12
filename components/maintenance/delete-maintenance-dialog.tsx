@@ -77,7 +77,7 @@ export function DeleteMaintenanceDialog({ record, open, onOpenChange }: DeleteMa
           </div>
         )}
 
-        <OperationRecovery />
+        <OperationRecovery ownedOperationId={editor.ownedOperationId} />
         {editor.error && (
           <div
             role="alert"

@@ -133,7 +133,7 @@ export const EDITOR_POLICY = {
 } as const satisfies Record<EditorKind, { freezeOn: "own-operation" | "batch-operation"; closeWhenOwnSettled: boolean }>
 
 /** The operation this editor submitted and still waits on, if any. */
-function ownOperationId(state: EditorState): string | null {
+export function ownOperationId(state: EditorState): string | null {
   return state.status === "closed" || state.status === "unresolved" ? state.operationId : null
 }
 

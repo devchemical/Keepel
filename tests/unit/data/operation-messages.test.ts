@@ -5,6 +5,7 @@ import {
   OPERATION_SUCCESS_MESSAGES,
   operationMessage,
   RECOVERY_STATUS_MESSAGES,
+  replayRejectionToast,
 } from "@/lib/data/operation-messages"
 
 // Characterization: the copy CRUD dialogs rendered from thrown errors and the batch editor
@@ -103,5 +104,31 @@ describe("editor failure copy", () => {
       "schedule.create": "Error desconocido al programar servicio",
       "schedule.update": "Error desconocido al actualizar servicio",
     })
+  })
+})
+
+describe("replay rejection toast", () => {
+  const CRUD_REJECTED =
+    "No se realizó la operación. No se confirmó ninguna fila; revisa los datos y vuelve a intentarlo."
+  const OTHER_ID = "44444444-4444-4444-8444-444444444444"
+  const crud = { operationId: OPERATION_ID, action: "schedule.create" } as const
+  const rejected = { status: "rejected" } as const
+
+  it("toasts a rejected CRUD replay from the standalone recovery panel", () => {
+    expect(replayRejectionToast(crud, rejected, null)).toBe(CRUD_REJECTED)
+  })
+
+  it("stays silent when the embedding editor owns the operation and shows the rejection inline", () => {
+    expect(replayRejectionToast(crud, rejected, OPERATION_ID)).toBeNull()
+  })
+
+  it("toasts a rejected replay of an operation another editor owns", () => {
+    expect(replayRejectionToast(crud, rejected, OTHER_ID)).toBe(CRUD_REJECTED)
+  })
+
+  it("never toasts a confirmed or unknown replay, or a batch replay", () => {
+    expect(replayRejectionToast(crud, { status: "confirmed" }, null)).toBeNull()
+    expect(replayRejectionToast(crud, { status: "unknown", operationId: OPERATION_ID }, null)).toBeNull()
+    expect(replayRejectionToast({ operationId: OPERATION_ID, action: "maintenance.batch" }, rejected, null)).toBeNull()
   })
 })

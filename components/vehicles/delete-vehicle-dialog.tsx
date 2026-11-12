@@ -55,7 +55,7 @@ export function DeleteVehicleDialog({ vehicle, open, onOpenChange }: DeleteVehic
           </p>
         </div>
 
-        <OperationRecovery />
+        <OperationRecovery ownedOperationId={editor.ownedOperationId} />
         {editor.error && (
           <div
             role="alert"

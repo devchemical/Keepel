@@ -4,6 +4,7 @@ import {
   confirmsDraft,
   editorFrozen,
   isEditorOpen,
+  ownOperationId,
   settledOperation,
   transitionEditor,
   type EditorEvent,
@@ -164,5 +165,14 @@ describe("editor policy", () => {
     expect(settledOperation(STATES.editing, [], [])).toBeNull()
     expect(settledOperation(STATES.closed, [], [])).toBeNull()
     expect(settledOperation(STATES.submitting, [], [])).toBeNull()
+  })
+})
+
+describe("ownOperationId", () => {
+  it("names the operation an editor submitted and still waits on, open or closed", () => {
+    expect(ownOperationId(STATES.unresolved)).toBe("op-1")
+    expect(ownOperationId(STATES["closed(retained)"])).toBe("op-1")
+    for (const name of ["closed", "closed(error)", "editing", "editing(error)", "submitting"])
+      expect(ownOperationId(STATES[name])).toBeNull()
   })
 })

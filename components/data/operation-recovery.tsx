@@ -2,16 +2,23 @@
 import { toast } from "sonner"
 import { useData } from "@/contexts"
 import { Button } from "@/components/ui/button"
-import { operationKind } from "@/lib/data/operation-machine"
 import type { PendingCommand } from "@/lib/data/pending-operations"
 import {
   JOURNAL_RECOVERY_ALERT,
   OPERATION_LABELS,
   RECOVERY_STATUS_MESSAGES,
-  operationMessage,
+  replayRejectionToast,
 } from "@/lib/data/operation-messages"
 
-export function OperationRecovery() {
+type OperationRecoveryProps = {
+  /**
+   * The operation owned by the editor embedding this panel. That editor shows its rejection inline,
+   * so the panel does not toast it too; the standalone panel omits it.
+   */
+  ownedOperationId?: string | null
+}
+
+export function OperationRecovery({ ownedOperationId = null }: OperationRecoveryProps = {}) {
   const {
     pendingOperations,
     reconcileDataOperation,
@@ -19,12 +26,10 @@ export function OperationRecovery() {
     replayOperation,
     operationStorageError,
   } = useData()
-  // An explicit, user-initiated resend of the retained command with the same operation id. A
-  // rejected CRUD replay leaves the pending list, so its card disappears; say why.
+  // An explicit, user-initiated resend of the retained command with the same operation id.
   const replay = async (command: PendingCommand) => {
-    const outcome = await replayOperation(command.operationId)
-    if (outcome.status === "rejected" && operationKind(command.action) === "crud")
-      toast.error(operationMessage("crud", outcome))
+    const message = replayRejectionToast(command, await replayOperation(command.operationId), ownedOperationId)
+    if (message) toast.error(message)
   }
   return (
     <>
