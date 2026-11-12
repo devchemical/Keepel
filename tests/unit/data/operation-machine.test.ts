@@ -20,18 +20,16 @@ const EVENTS: OperationEvent[] = [
   { type: "REJECTED" },
   { type: "NO_PROOF" },
   { type: "CHECK" },
-  { type: "REPLAY", replayable: true },
-  { type: "REPLAY", replayable: false },
+  { type: "REPLAY" },
   { type: "RESTORED" },
 ]
 
-const name = (event: OperationEvent) =>
-  event.type === "REPLAY" ? `REPLAY(${event.replayable ? "replayable" : "not replayable"})` : event.type
+const name = (event: OperationEvent) => event.type
 
 // Independent copy of the header table: every pair not listed keeps its state.
 const TABLE: Partial<Record<OperationStatus, Record<string, OperationStatus>>> = {
   sending: { RECEIPT: "confirmed", REJECTED: "rejected", NO_PROOF: "unknown", RESTORED: "unknown" },
-  unknown: { CHECK: "checking", "REPLAY(replayable)": "sending" },
+  unknown: { CHECK: "checking", REPLAY: "sending" },
   checking: { RECEIPT: "confirmed", NO_PROOF: "unknown", RESTORED: "unknown" },
 }
 
@@ -67,20 +65,12 @@ describe("operation policy (docs/testing/data-owner.md)", () => {
       expect(operationKind(action)).toBe("crud")
   })
 
-  it("lets CRUD send without a durable journal, never auto-checks and allows an explicit replay (D2)", () => {
-    expect(OPERATION_POLICY.crud).toEqual({
-      requiresDurableJournal: false,
-      autoCheckAfterNoProof: false,
-      replayable: true,
-    })
+  it("lets CRUD send without a durable journal, never auto-checks (D2 allows an explicit replay of either kind)", () => {
+    expect(OPERATION_POLICY.crud).toEqual({ requiresDurableJournal: false, autoCheckAfterNoProof: false })
   })
 
-  it("never sends a batch without a durable journal, auto-checks once and allows an explicit replay", () => {
-    expect(OPERATION_POLICY.batch).toEqual({
-      requiresDurableJournal: true,
-      autoCheckAfterNoProof: true,
-      replayable: true,
-    })
+  it("never sends a batch without a durable journal, and auto-checks once", () => {
+    expect(OPERATION_POLICY.batch).toEqual({ requiresDurableJournal: true, autoCheckAfterNoProof: true })
   })
 })
 
@@ -134,16 +124,6 @@ describe("submission conflicts", () => {
 
   it("blocks a different batch while one is pending", () => {
     expect(conflictsWith(pending(batch(OPERATION)), { action: "maintenance.batch", operationId: OTHER })).toBe(true)
-  })
-
-  it("lets an unresolved CRUD command replay only through its kind's policy (D2)", () => {
-    const replay = {
-      type: "REPLAY",
-      replayable: OPERATION_POLICY[operationKind("schedule.create")].replayable,
-    } as const
-    expect(transitionOperation("unknown", replay)).toBe("sending")
-    expect(transitionOperation("sending", replay)).toBe("sending")
-    expect(transitionOperation("checking", replay)).toBe("checking")
   })
 
   it("allows only an explicit replay of the same unresolved batch", () => {

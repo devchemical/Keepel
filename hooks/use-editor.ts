@@ -47,7 +47,7 @@ type UseEditorOptions = {
 /** React binding for the editor dialog machine (lib/ui/editor-machine.ts). */
 export function useEditor({ kind, action, open, onOpenChange, onConfirmed }: UseEditorOptions) {
   const policy = EDITOR_POLICY[kind]
-  const { pendingOperations } = useData()
+  const { pendingOperations, rejectedOperations } = useData()
   const [state, setState] = useState<EditorState>(() => (open ? EDITOR_EDITING : EDITOR_CLOSED))
   const current = useRef(state)
   const callbacks = useRef({ onOpenChange, onConfirmed })
@@ -71,12 +71,23 @@ export function useEditor({ kind, action, open, onOpenChange, onConfirmed }: Use
     dispatch({ type: open ? "OPEN" : "CLOSE" }, false)
   }, [open, dispatch])
 
-  // Only the editor's own operation leaving the pending list closes it and resets its draft (D1).
+  // Only the editor's own operation leaving the pending list confirmed closes it and resets its
+  // draft (D1); a rejected replay returns it to editing with the rejection inline (D2).
   useEffect(() => {
     if (!policy.closeWhenOwnSettled) return
-    const operationId = settledOperation(state, pendingOperations)
-    if (operationId !== null) dispatch({ type: "OPERATION_SETTLED", operationId })
-  }, [state, pendingOperations, policy.closeWhenOwnSettled, dispatch])
+    const settled = settledOperation(state, pendingOperations, rejectedOperations)
+    if (settled === null) return
+    dispatch(
+      settled.outcome === "confirmed"
+        ? { type: "OPERATION_SETTLED", operationId: settled.operationId, outcome: "confirmed", message: null }
+        : {
+            type: "OPERATION_SETTLED",
+            operationId: settled.operationId,
+            outcome: "rejected",
+            message: operationMessage(kind, { status: "rejected" }),
+          }
+    )
+  }, [state, pendingOperations, rejectedOperations, policy.closeWhenOwnSettled, kind, dispatch])
 
   const setOpen = useCallback((next: boolean) => dispatch({ type: next ? "OPEN" : "CLOSE" }), [dispatch])
 

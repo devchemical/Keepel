@@ -2,7 +2,7 @@
 import { toast } from "sonner"
 import { useData } from "@/contexts"
 import { Button } from "@/components/ui/button"
-import { OPERATION_POLICY, operationKind } from "@/lib/data/operation-machine"
+import { operationKind } from "@/lib/data/operation-machine"
 import type { PendingCommand } from "@/lib/data/pending-operations"
 import {
   JOURNAL_RECOVERY_ALERT,
@@ -16,16 +16,15 @@ export function OperationRecovery() {
     pendingOperations,
     reconcileDataOperation,
     reconcileMaintenanceBatch,
-    createMaintenanceBatch,
-    replayDataOperation,
+    replayOperation,
     operationStorageError,
   } = useData()
   // An explicit, user-initiated resend of the retained command with the same operation id. A
   // rejected CRUD replay leaves the pending list, so its card disappears; say why.
   const replay = async (command: PendingCommand) => {
-    if (command.action === "maintenance.batch") return void (await createMaintenanceBatch(command))
-    const outcome = await replayDataOperation(command.operationId)
-    if (outcome.status === "rejected") toast.error(operationMessage("crud", outcome))
+    const outcome = await replayOperation(command.operationId)
+    if (outcome.status === "rejected" && operationKind(command.action) === "crud")
+      toast.error(operationMessage("crud", outcome))
   }
   return (
     <>
@@ -85,7 +84,7 @@ export function OperationRecovery() {
               Comprobar resultado
             </Button>
           )}
-          {OPERATION_POLICY[operationKind(command.action)].replayable && status !== "sending" && (
+          {status !== "sending" && (
             <Button
               type="button"
               variant="outline"

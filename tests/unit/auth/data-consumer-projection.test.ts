@@ -21,7 +21,7 @@ describe("projected authentication data consumers", () => {
     expectTypeOf<DataContextValue["updateScheduledService"]>().returns.toEqualTypeOf<Promise<OperationOutcome>>()
     expectTypeOf<DataContextValue["cancelScheduledService"]>().returns.toEqualTypeOf<Promise<OperationOutcome>>()
     expectTypeOf<DataContextValue["reconcileDataOperation"]>().returns.toEqualTypeOf<Promise<OperationOutcome>>()
-    expectTypeOf<DataContextValue["replayDataOperation"]>().toEqualTypeOf<
+    expectTypeOf<DataContextValue["replayOperation"]>().toEqualTypeOf<
       (operationId: string) => Promise<OperationOutcome>
     >()
     expectTypeOf<DataContextValue["journal"]>().toEqualTypeOf<"healthy" | "unwritable" | "unreadable">()

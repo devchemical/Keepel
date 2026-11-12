@@ -1,7 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import type { Database, Tables } from "@/lib/supabase/database.types"
 import { PENDING_SCHEDULED_SERVICE } from "@/lib/data/scheduled-service-lifecycle"
-import type { CompletedForecast } from "@/lib/data/operation-messages"
 
 export const HISTORY_PAGE_SIZE = 25
 export type HistoryCursor = { service_date: string; id: string }
@@ -84,9 +83,15 @@ async function readSchedules(client: SupabaseClient<Database>, userId: string, s
   }
 }
 
+/** A forecast completed by a maintenance record; deleting the record returns it to pending. */
+export interface CompletedForecast {
+  type: string
+  scheduled_date: string | null
+}
+
 /**
  * The owner's forecast completed by a maintenance record, or `null` when it completed none.
- * Completed forecasts are outside the snapshot, so this is read only when a delete is confirmed.
+ * Completed forecasts are outside the snapshot, so this is read when the delete dialog opens.
  */
 export async function readCompletedForecast(
   client: SupabaseClient<Database>,
@@ -102,7 +107,7 @@ export async function readCompletedForecast(
     .limit(1)
     .abortSignal(AbortSignal.timeout(15000))
     .retry(false)
-  if (result.error || !result.data) throw new Error("No se pudo comprobar la previsión completada")
+  if (result.error || !result.data) throw new Error("Completed forecast lookup failed")
   return result.data[0] ?? null
 }
 

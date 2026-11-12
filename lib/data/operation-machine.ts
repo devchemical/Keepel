@@ -10,7 +10,7 @@
 // | sending  | NO_PROOF           | unknown   | timeout, transport, malformed or missing receipt    |
 // | sending  | RESTORED           | unknown   | reload of the same account's journal                |
 // | unknown  | CHECK              | checking  | user query, or automatic once if policy says so     |
-// | unknown  | REPLAY             | sending   | `replayable` policy only; same frozen command (D2)  |
+// | unknown  | REPLAY             | sending   | explicit, either kind; same frozen command (D2)     |
 // | checking | RECEIPT            | confirmed |                                                     |
 // | checking | NO_PROOF           | unknown   | a missing receipt never proves rollback             |
 // | checking | RESTORED           | unknown   |                                                     |
@@ -44,7 +44,7 @@ export type OperationEvent =
   | { type: "REJECTED" }
   | { type: "NO_PROOF" }
   | { type: "CHECK" }
-  | { type: "REPLAY"; replayable: boolean }
+  | { type: "REPLAY" }
   | { type: "RESTORED" }
 
 export function transitionOperation(status: OperationStatus, event: OperationEvent): OperationStatus {
@@ -56,7 +56,7 @@ export function transitionOperation(status: OperationStatus, event: OperationEve
       return status
     case "unknown":
       if (event.type === "CHECK") return "checking"
-      if (event.type === "REPLAY" && event.replayable) return "sending"
+      if (event.type === "REPLAY") return "sending"
       return status
     case "checking":
       if (event.type === "RECEIPT") return "confirmed"
@@ -109,12 +109,9 @@ export function operationKind(action: PendingCommand["action"]): OperationKind {
  * (docs/testing/data-owner.md). A policy change is a decision, not an edit to the owner.
  */
 export const OPERATION_POLICY = {
-  crud: { requiresDurableJournal: false, autoCheckAfterNoProof: false, replayable: true },
-  batch: { requiresDurableJournal: true, autoCheckAfterNoProof: true, replayable: true },
-} as const satisfies Record<
-  OperationKind,
-  { requiresDurableJournal: boolean; autoCheckAfterNoProof: boolean; replayable: boolean }
->
+  crud: { requiresDurableJournal: false, autoCheckAfterNoProof: false },
+  batch: { requiresDurableJournal: true, autoCheckAfterNoProof: true },
+} as const satisfies Record<OperationKind, { requiresDurableJournal: boolean; autoCheckAfterNoProof: boolean }>
 
 export type OperationCandidate = { action: PendingCommand["action"]; operationId: string; id?: string }
 
@@ -139,6 +136,8 @@ export const BLOCK_REASON = [
   "journal-unreadable",
   "journal-unwritable",
   "no-session",
+  "not-pending",
+  "not-replayable",
   "session-changed",
 ] as const
 export type BlockReason = (typeof BLOCK_REASON)[number]

@@ -40,8 +40,20 @@ const EVENTS: Record<string, EditorEvent> = {
     message: "unknown copy 2",
   },
   FAILED: { type: "FAILED", message: "failed copy" },
-  "OPERATION_SETTLED(own)": { type: "OPERATION_SETTLED", operationId: "op-1" },
-  "OPERATION_SETTLED(other)": { type: "OPERATION_SETTLED", operationId: "op-9" },
+  "OPERATION_SETTLED(own)": { type: "OPERATION_SETTLED", operationId: "op-1", outcome: "confirmed", message: null },
+  "OPERATION_SETTLED(other)": { type: "OPERATION_SETTLED", operationId: "op-9", outcome: "confirmed", message: null },
+  "OPERATION_SETTLED(own, rejected)": {
+    type: "OPERATION_SETTLED",
+    operationId: "op-1",
+    outcome: "rejected",
+    message: "rejected copy",
+  },
+  "OPERATION_SETTLED(other, rejected)": {
+    type: "OPERATION_SETTLED",
+    operationId: "op-9",
+    outcome: "rejected",
+    message: "rejected copy",
+  },
 }
 
 const CLOSED = STATES.closed
@@ -54,6 +66,8 @@ const TABLE: Record<string, Record<string, EditorState>> = {
   "closed(retained)": {
     OPEN: STATES.unresolved,
     "OPERATION_SETTLED(own)": CLOSED,
+    // A rejected replay keeps the draft; reopening shows the rejection inline.
+    "OPERATION_SETTLED(own, rejected)": { status: "closed", error: "rejected copy", operationId: null },
   },
   editing: {
     CLOSE: CLOSED,
@@ -77,6 +91,8 @@ const TABLE: Record<string, Record<string, EditorState>> = {
     "SUBMIT(invalid)": editingWith("invalid copy"),
     "SUBMIT(valid)": STATES.submitting,
     "OPERATION_SETTLED(own)": CLOSED,
+    // A rejected replay returns to editing like a rejected first send (D2).
+    "OPERATION_SETTLED(own, rejected)": editingWith("rejected copy"),
   },
 }
 
@@ -107,6 +123,9 @@ describe("editor dialog", () => {
     expect(confirmsDraft(STATES.unresolved, EVENTS["OPERATION_SETTLED(own)"])).toBe(true)
     expect(confirmsDraft(STATES["closed(retained)"], EVENTS["OPERATION_SETTLED(own)"])).toBe(true)
     expect(confirmsDraft(STATES.unresolved, EVENTS["OPERATION_SETTLED(other)"])).toBe(false)
+    // A rejected replay never resets the draft.
+    expect(confirmsDraft(STATES.unresolved, EVENTS["OPERATION_SETTLED(own, rejected)"])).toBe(false)
+    expect(confirmsDraft(STATES["closed(retained)"], EVENTS["OPERATION_SETTLED(own, rejected)"])).toBe(false)
   })
 })
 
@@ -135,12 +154,15 @@ describe("editor policy", () => {
     expect(editorFrozen("batch", STATES.editing, [operation("maintenance.batch")])).toBe(true)
   })
 
-  it("reports the editor's own operation once it leaves the pending list", () => {
-    expect(settledOperation(STATES.unresolved, [operation("vehicle.update", "op-1")])).toBeNull()
-    expect(settledOperation(STATES.unresolved, [operation("vehicle.update")])).toBe("op-1")
-    expect(settledOperation(STATES["closed(retained)"], [])).toBe("op-1")
-    expect(settledOperation(STATES.editing, [])).toBeNull()
-    expect(settledOperation(STATES.closed, [])).toBeNull()
-    expect(settledOperation(STATES.submitting, [])).toBeNull()
+  it("reports the editor's own operation and how it settled once it leaves the pending list", () => {
+    const confirmed = { operationId: "op-1", outcome: "confirmed" }
+    expect(settledOperation(STATES.unresolved, [operation("vehicle.update", "op-1")], [])).toBeNull()
+    expect(settledOperation(STATES.unresolved, [operation("vehicle.update")], [])).toEqual(confirmed)
+    expect(settledOperation(STATES["closed(retained)"], [], [])).toEqual(confirmed)
+    expect(settledOperation(STATES.unresolved, [], ["op-9"])).toEqual(confirmed)
+    expect(settledOperation(STATES.unresolved, [], ["op-1"])).toEqual({ operationId: "op-1", outcome: "rejected" })
+    expect(settledOperation(STATES.editing, [], [])).toBeNull()
+    expect(settledOperation(STATES.closed, [], [])).toBeNull()
+    expect(settledOperation(STATES.submitting, [], [])).toBeNull()
   })
 })

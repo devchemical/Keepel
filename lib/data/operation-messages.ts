@@ -3,8 +3,6 @@
 
 import type { PendingCommand } from "./pending-operations"
 import type { BlockReason, OperationKind, OperationOutcome, PendingOperationStatus } from "./operation-machine"
-import { MAINTENANCE_TYPES } from "./maintenance-types"
-import { formatDate } from "@/lib/formatters"
 
 export const OPERATION_LABELS: Record<PendingCommand["action"], string> = {
   "maintenance.batch": "Alta múltiple de mantenimiento",
@@ -68,6 +66,10 @@ const CRUD_REJECTED = "No se realizó la operación. No se confirmó ninguna fil
 const BATCH_REJECTED = "No se pudo guardar el mantenimiento. Revisa los datos y la sesión e inténtalo de nuevo."
 const BATCH_UNKNOWN =
   "Resultado pendiente de confirmar. Comprueba el resultado o reintenta la misma operación; no se duplicarán los servicios."
+// A replay or check names an operation that has already left the pending list, or one that is
+// still being sent or checked.
+const NOT_PENDING = "La operación ya no está pendiente."
+const NOT_REPLAYABLE = "La operación todavía se está comprobando. Espera a que termine antes de reintentarla."
 
 type FailedOutcome = Exclude<OperationOutcome["status"], "confirmed" | "blocked">
 
@@ -82,6 +84,8 @@ const MESSAGES: Record<OperationKind, Record<FailedOutcome | BlockReason, string
     // CRUD policy does not require a durable journal, so the owner never reports this for CRUD.
     "journal-unwritable": CRUD_REJECTED,
     "no-session": "No hay sesión activa",
+    "not-pending": NOT_PENDING,
+    "not-replayable": NOT_REPLAYABLE,
     "session-changed": "La sesión ha cambiado. No se aplicó una respuesta anterior.",
   },
   batch: {
@@ -91,25 +95,19 @@ const MESSAGES: Record<OperationKind, Record<FailedOutcome | BlockReason, string
     "journal-unreadable": BATCH_REJECTED,
     "journal-unwritable": BATCH_REJECTED,
     "no-session": BATCH_REJECTED,
+    "not-pending": NOT_PENDING,
+    "not-replayable": NOT_REPLAYABLE,
     "session-changed": BATCH_UNKNOWN,
   },
 }
 
 /** Copy for an outcome, or `null` when it was confirmed and needs no message. */
+export function operationMessage(
+  kind: OperationKind,
+  outcome: Exclude<OperationOutcome, { status: "confirmed" }>
+): string
+export function operationMessage(kind: OperationKind, outcome: OperationOutcome): string | null
 export function operationMessage(kind: OperationKind, outcome: OperationOutcome): string | null {
   if (outcome.status === "confirmed") return null
   return MESSAGES[kind][outcome.status === "blocked" ? outcome.reason : outcome.status]
-}
-
-/** A forecast completed by a maintenance record; deleting the record returns it to pending. */
-export interface CompletedForecast {
-  type: string
-  scheduled_date: string | null
-}
-
-/** Delete-dialog warning for a record that completed a forecast. */
-export function completedForecastWarning(forecast: CompletedForecast): string {
-  const label = MAINTENANCE_TYPES.find((type) => type.value === forecast.type)?.label ?? forecast.type
-  const date = forecast.scheduled_date ? ` del ${formatDate(forecast.scheduled_date)}` : ""
-  return `Este registro completó la previsión de ${label}${date}. Al eliminarlo, la previsión volverá a quedar pendiente.`
 }
