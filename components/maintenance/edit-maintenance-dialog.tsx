@@ -91,7 +91,7 @@ export function EditMaintenanceDialog({ record, vehicleId, open, onOpenChange }:
         <form onSubmit={handleSubmit} className="space-y-4" data-editor-state={editor.state.status}>
           <OperationRecovery ownedOperationId={editor.ownedOperationId} />
           <fieldset disabled={editor.frozen || editor.submitting} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="type">Tipo de Mantenimiento *</Label>
                 <Select value={formData.type} onValueChange={(value) => setFormData({ ...formData, type: value })}>
@@ -129,7 +129,7 @@ export function EditMaintenanceDialog({ record, vehicleId, open, onOpenChange }:
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="cost">Costo (€)</Label>
                 <Input

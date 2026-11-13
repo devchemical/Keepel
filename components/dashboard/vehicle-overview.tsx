@@ -109,12 +109,13 @@ export function VehicleOverview({ vehicles, isLoading }: VehicleOverviewProps) {
       <CardContent>
         <div className="space-y-3">
           {vehicles.slice(0, 3).map((vehicle) => (
-            <div
+            <Link
               key={vehicle.id}
-              className="border-border/50 bg-card hover:bg-accent/50 flex cursor-pointer items-center justify-between rounded-xl border p-4 transition-all duration-200 active:scale-[0.98]"
+              href={`/vehicles/${vehicle.id}/maintenance`}
+              className="border-border/50 bg-card hover:bg-accent/50 focus-visible:ring-ring flex items-center justify-between rounded-xl border p-4 transition-all duration-200 outline-none focus-visible:ring-2 active:scale-[0.98]"
             >
-              <div className="flex items-center gap-4">
-                <div className="bg-primary/10 rounded-xl p-2.5">
+              <div className="flex min-w-0 items-center gap-4">
+                <div className="bg-primary/10 shrink-0 rounded-xl p-2.5">
                   <Car className="text-primary h-5 w-5" />
                 </div>
                 <div className="min-w-0 flex-1">
@@ -133,7 +134,7 @@ export function VehicleOverview({ vehicles, isLoading }: VehicleOverviewProps) {
                 <Gauge className="text-muted-foreground/60 h-4 w-4" />
                 <span className="whitespace-nowrap">{formatMileage(vehicle.mileage)}</span>
               </div>
-            </div>
+            </Link>
           ))}
 
           {vehicles.length > 3 && (

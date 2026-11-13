@@ -11,7 +11,7 @@ export function LandingPage() {
       {/* Hero Section */}
       <section className="container mx-auto px-4 py-20 text-center">
         <div className="mx-auto max-w-4xl">
-          <h1 className="text-foreground mb-6 text-5xl leading-tight font-bold">
+          <h1 className="text-foreground mb-6 text-4xl leading-tight font-bold text-balance sm:text-5xl">
             Gestiona el cuidado de tu <span className="text-primary">vehículo</span> de manera{" "}
             <span className="text-primary">inteligente</span>
           </h1>

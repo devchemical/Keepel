@@ -14,6 +14,8 @@ import { ArrowLeft, Car, Plus, Wrench, Gauge } from "lucide-react"
 import Link from "next/link"
 import { Layout } from "@/components/layout/Layout"
 import { snapshotView } from "@/lib/data/snapshot-machine"
+import { MaintenanceSkeleton } from "@/components/skeletons/maintenance-skeleton"
+import { VehicleDetailSkeleton } from "@/components/skeletons/vehicle-detail-skeleton"
 
 export function VehicleHistoryScreen({ id }: { id: string }) {
   const { vehicles, history, selectHistory, changeHistoryPage, snapshot, isLoading } = useData()
@@ -31,7 +33,7 @@ export function VehicleHistoryScreen({ id }: { id: string }) {
         <div className="container mx-auto px-4 py-8" data-snapshot-status={snapshot.status}>
           <DataRecovery />
           {isLoading ? (
-            <p role="status">Cargando historial…</p>
+            <VehicleDetailSkeleton className="px-0 py-0" />
           ) : hasContent ? (
             <p>
               Vehículo no disponible. <Link href="/vehicles">Volver a Vehículos</Link>
@@ -96,9 +98,10 @@ export function VehicleHistoryScreen({ id }: { id: string }) {
         {currentHistory && (
           <p className="text-muted-foreground mb-4">Gasto total: {formatCurrency(currentHistory.totals.total_cost)}</p>
         )}
-        {!currentHistory && isLoading && <p role="status">Cargando historial…</p>}
+        {!currentHistory && isLoading && <MaintenanceSkeleton />}
         <MaintenanceList records={maintenanceRecords} vehicleId={id} />
-        {currentHistory && (
+        {/* An empty first page has nothing to page through; the empty state below says so. */}
+        {currentHistory && !(currentHistory.page === 1 && currentHistory.totals.record_count === 0) && (
           <nav
             aria-label="Paginación del historial"
             className="my-6 flex flex-wrap items-center justify-center gap-4"
@@ -136,7 +139,10 @@ export function VehicleHistoryScreen({ id }: { id: string }) {
             </CardHeader>
             <CardContent>
               <AddMaintenanceDialog vehicleId={id}>
-                <Button size="lg" className="bg-primary hover:bg-primary/90">
+                <Button
+                  size="lg"
+                  className="bg-primary hover:bg-primary/90 h-auto min-h-10 w-full py-2.5 whitespace-normal sm:w-auto"
+                >
                   <Plus className="mr-2 h-5 w-5" />
                   Agregar Primer Mantenimiento
                 </Button>

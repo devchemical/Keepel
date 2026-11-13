@@ -56,15 +56,15 @@ export function Dashboard({ vehicles, maintenanceRecords, upcomingMaintenance, i
       <DashboardStats vehicles={vehicles} reminderCount={reminders.length} isLoading={isLoading} />
 
       {/* Main Content Grid */}
-      <div className="mt-10 grid gap-8 lg:grid-cols-3">
+      <div className="mt-10 grid grid-cols-1 gap-8 lg:grid-cols-3">
         {/* Left Column - Vehicle Overview */}
-        <div className="space-y-8 lg:col-span-2">
+        <div className="min-w-0 space-y-8 lg:col-span-2">
           <VehicleOverview vehicles={vehicles} isLoading={isLoading} />
           <RecentActivity maintenanceRecords={maintenanceRecords} isLoading={isLoading} />
         </div>
 
         {/* Right Column - Upcoming Maintenance */}
-        <div className="space-y-8">
+        <div className="min-w-0 space-y-8">
           <UpcomingMaintenance
             upcomingMaintenance={reminders}
             laterMaintenance={laterForecasts}

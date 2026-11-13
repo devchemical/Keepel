@@ -7,7 +7,17 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { Calendar, AlertTriangle, CheckCircle, Car, MoreVertical, Edit, ChevronDown, Clock } from "lucide-react"
+import {
+  Calendar,
+  AlertTriangle,
+  CheckCircle,
+  Car,
+  MoreVertical,
+  Edit,
+  ChevronDown,
+  Clock,
+  XCircle,
+} from "lucide-react"
 import { useId, useReducer, useState } from "react"
 import { useData } from "@/contexts"
 import { toast } from "sonner"
@@ -213,9 +223,9 @@ function ScheduledServiceRow({
       role="listitem"
       aria-label={accessibleName}
       data-urgency={urgency}
-      className="flex items-start gap-4 rounded-xl border border-slate-100 bg-white p-4 transition-colors hover:bg-slate-50/50"
+      className="flex items-start gap-3 rounded-xl border border-slate-100 bg-white p-4 transition-colors hover:bg-slate-50/50 sm:gap-4"
     >
-      <div className={`rounded-xl p-2.5 ${overdue ? "bg-red-50" : later ? "bg-slate-100" : "bg-amber-50"}`}>
+      <div className={`shrink-0 rounded-xl p-2.5 ${overdue ? "bg-red-50" : later ? "bg-slate-100" : "bg-amber-50"}`}>
         {overdue ? (
           <AlertTriangle className="h-5 w-5 text-red-600" />
         ) : later ? (
@@ -226,12 +236,12 @@ function ScheduledServiceRow({
       </div>
 
       <div className="min-w-0 flex-1">
-        <div className="mb-1.5 flex items-center gap-2">
+        <div className="mb-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
           <span className="text-sm font-medium text-slate-900">{serviceLabel}</span>
           {!later && (
             <Badge
               variant={overdue ? "destructive" : "secondary"}
-              className={`border-0 text-xs ${overdue ? "" : "bg-amber-100 text-amber-700"}`}
+              className={`shrink-0 border-0 text-xs ${overdue ? "" : "bg-amber-100 text-amber-700"}`}
             >
               {overdue ? "Vencido" : urgency === "today" ? "Hoy" : `${daysUntil} días`}
             </Badge>
@@ -239,7 +249,7 @@ function ScheduledServiceRow({
         </div>
 
         <div className="flex items-center gap-2 text-xs text-slate-500">
-          <Car className="h-3.5 w-3.5 text-slate-400" />
+          <Car className="h-3.5 w-3.5 shrink-0 text-slate-400" />
           {maintenance.vehicles && (
             <span>
               {maintenance.vehicles.make} {maintenance.vehicles.model} {maintenance.vehicles.year}
@@ -259,7 +269,12 @@ function ScheduledServiceRow({
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="sm" aria-label={`Acciones de ${accessibleName}`} className="h-8 w-8 p-0">
+          <Button
+            variant="ghost"
+            size="sm"
+            aria-label={`Acciones de ${accessibleName}`}
+            className="-mt-1 -mr-2 h-10 w-10 shrink-0 p-0"
+          >
             <MoreVertical className="h-4 w-4" />
           </Button>
         </DropdownMenuTrigger>
@@ -268,9 +283,11 @@ function ScheduledServiceRow({
             disabled={actionsDisabled}
             onClick={() => onSelect({ action: "completing", row: maintenance })}
           >
+            <CheckCircle className="mr-2 h-4 w-4" />
             Completar previsión
           </DropdownMenuItem>
           <DropdownMenuItem disabled={actionsDisabled} onClick={() => onCancel(maintenance.id)}>
+            <XCircle className="mr-2 h-4 w-4" />
             Cancelar previsión
           </DropdownMenuItem>
           <DropdownMenuItem

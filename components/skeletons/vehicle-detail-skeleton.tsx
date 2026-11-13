@@ -4,11 +4,12 @@
 
 import { Skeleton } from "@/components/ui/skeleton"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
+import { cn } from "@/lib/utils"
 
-export function VehicleDetailSkeleton() {
+export function VehicleDetailSkeleton({ className }: { className?: string }) {
   return (
     <div
-      className="container mx-auto px-4 py-8"
+      className={cn("container mx-auto px-4 py-8", className)}
       aria-busy="true"
       role="status"
       aria-label="Cargando detalles del vehículo"
