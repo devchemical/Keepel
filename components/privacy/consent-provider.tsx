@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react"
+import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from "react"
 import { savePrivacyConsent } from "@/app/actions/privacy"
 import { PrivacyConsentBanner } from "./privacy-consent-banner"
 import { PrivacyPreferencesDialog } from "./privacy-preferences-dialog"
@@ -8,7 +8,8 @@ import type { PrivacyConsentChoice, PrivacyConsentState } from "@/lib/privacy/co
 
 interface PrivacyConsentContextValue {
   consent: PrivacyConsentState
-  openPreferences(): void
+  /** `returnFocusTo` names where focus goes on close when the opening control will no longer exist. */
+  openPreferences(returnFocusTo?: HTMLElement | null): void
 }
 
 const PrivacyConsentContext = createContext<PrivacyConsentContextValue | null>(null)
@@ -23,29 +24,40 @@ export function ConsentProvider({ children, initialConsent }: ConsentProviderPro
   const [isPreferencesOpen, setIsPreferencesOpen] = useState(false)
   const [isPending, setIsPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const returnFocusRef = useRef<HTMLElement | null>(null)
 
-  const saveChoice = useCallback(async (choice: PrivacyConsentChoice, closePreferences = false) => {
-    setIsPending(true)
-    setError(null)
-
-    try {
-      const result = await savePrivacyConsent(choice)
-
-      if (result.status === "error") {
-        setError("No hemos podido guardar tu elección. Inténtalo de nuevo.")
-        return
-      }
-
-      setConsent(result.consent)
-      if (closePreferences) setIsPreferencesOpen(false)
-    } catch {
-      setError("No hemos podido guardar tu elección. Inténtalo de nuevo.")
-    } finally {
-      setIsPending(false)
-    }
+  const closePreferences = useCallback(() => {
+    setIsPreferencesOpen(false)
+    window.requestAnimationFrame(() => returnFocusRef.current?.focus())
   }, [])
 
-  const openPreferences = useCallback(() => {
+  const saveChoice = useCallback(
+    async (choice: PrivacyConsentChoice, closeOnSuccess = false) => {
+      setIsPending(true)
+      setError(null)
+
+      try {
+        const result = await savePrivacyConsent(choice)
+
+        if (result.status === "error") {
+          setError("No hemos podido guardar tu elección. Inténtalo de nuevo.")
+          return
+        }
+
+        setConsent(result.consent)
+        if (closeOnSuccess) closePreferences()
+      } catch {
+        setError("No hemos podido guardar tu elección. Inténtalo de nuevo.")
+      } finally {
+        setIsPending(false)
+      }
+    },
+    [closePreferences]
+  )
+
+  const openPreferences = useCallback((returnFocusTo?: HTMLElement | null) => {
+    returnFocusRef.current =
+      returnFocusTo ?? (document.activeElement instanceof HTMLElement ? document.activeElement : null)
     setError(null)
     setIsPreferencesOpen(true)
   }, [])
@@ -69,8 +81,8 @@ export function ConsentProvider({ children, initialConsent }: ConsentProviderPro
         isPending={isPending}
         preference={consent.preference}
         onAccept={() => void saveChoice("accepted", true)}
-        onClose={() => setIsPreferencesOpen(false)}
-        onOpenChange={setIsPreferencesOpen}
+        onClose={closePreferences}
+        onOpenChange={(open) => (open ? setIsPreferencesOpen(true) : closePreferences())}
         onReject={() => void saveChoice("rejected", true)}
       />
     </PrivacyConsentContext.Provider>

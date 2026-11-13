@@ -513,6 +513,8 @@ test("the first vehicle create keeps its editor and immutable payload while its 
 }) => {
   await request.post(`${CONTROLLED_SERVICES_URL}/__test__/reset`, { data: { maintenance: true, emptyVehicles: true } })
   await loginWithPassword(page, "/vehicles")
+  // The consent banner overlays the empty-state action until a choice is made.
+  await page.getByRole("button", { name: "Rechazar analítica" }).click()
   await page.getByRole("button", { name: "Agregar Mi Primer Vehículo", exact: true }).click()
   const dialog = page.getByRole("dialog", { name: "Agregar Nuevo Vehículo", exact: true })
   await dialog.getByLabel("Marca", { exact: false }).fill("First")
