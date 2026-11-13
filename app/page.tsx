@@ -17,7 +17,9 @@ export default function HomePage() {
     <Layout showHeader={true}>
       {authState.status === AUTH_STATE_STATUS.AUTHENTICATED ? (
         <div data-snapshot-status={snapshot.status}>
-          <DataRecovery />
+          <div className="container mx-auto px-4 pt-8">
+            <DataRecovery />
+          </div>
           {view === "blockingError" ? null : (
             <Dashboard
               vehicles={vehicles}

@@ -107,29 +107,29 @@ export function RecentActivity({ maintenanceRecords, isLoading }: RecentActivity
           {maintenanceRecords.slice(0, 5).map((record) => (
             <div
               key={record.id}
-              className="flex items-center gap-4 rounded-xl border border-slate-100 bg-white p-4 transition-colors hover:bg-slate-50/50"
+              className="flex items-center gap-3 rounded-xl border border-slate-100 bg-white p-4 transition-colors hover:bg-slate-50/50 sm:gap-4"
             >
-              <div className="rounded-xl bg-green-100 p-2.5">
+              <div className="shrink-0 rounded-xl bg-green-100 p-2.5">
                 <Activity className="h-5 w-5 text-green-700" />
               </div>
 
               <div className="min-w-0 flex-1">
-                <div className="mb-1 flex items-center gap-2">
+                <div className="mb-1 flex flex-wrap items-center gap-x-2 gap-y-1">
                   <span className="text-sm font-medium text-slate-900">{maintenanceTypeLabel(record.type)}</span>
                   <Badge variant="outline" className="border-slate-200 bg-slate-50 text-xs text-slate-600">
                     {formatCurrency(record.cost ?? null)}
                   </Badge>
                 </div>
 
-                <div className="flex items-center gap-2 text-xs text-slate-500">
-                  <Car className="h-3.5 w-3.5 text-slate-400" />
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-slate-500">
+                  <Car className="h-3.5 w-3.5 shrink-0 text-slate-400" />
                   <span>
                     {record.vehicles
                       ? `${record.vehicles.make} ${record.vehicles.model} ${record.vehicles.year}`
                       : "Vehículo no disponible"}
                   </span>
                   <span className="text-slate-300">•</span>
-                  <span>{formatShortDate(record.service_date)}</span>
+                  <span className="whitespace-nowrap">{formatShortDate(record.service_date)}</span>
                 </div>
               </div>
             </div>

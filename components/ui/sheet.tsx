@@ -65,7 +65,7 @@ const SheetContent = React.forwardRef<React.ElementRef<typeof SheetPrimitive.Con
           {/* Drag handle para bottom sheets - patrón moderno */}
           {isBottom && <div className="bg-muted-foreground/20 mx-auto mb-4 h-1.5 w-12 rounded-full" />}
           {children}
-          <SheetPrimitive.Close className="ring-offset-background focus:ring-ring data-[state=open]:bg-secondary absolute top-4 right-4 rounded-sm opacity-70 transition-opacity hover:opacity-100 focus:ring-2 focus:ring-offset-2 focus:outline-none disabled:pointer-events-none">
+          <SheetPrimitive.Close className="ring-offset-background focus:ring-ring data-[state=open]:bg-secondary absolute top-0.5 right-0.5 rounded-md p-3.5 opacity-70 transition-opacity hover:opacity-100 focus:ring-2 focus:ring-offset-2 focus:outline-none disabled:pointer-events-none">
             <X className="h-4 w-4" />
             <span className="sr-only">Cerrar</span>
           </SheetPrimitive.Close>

@@ -10,8 +10,8 @@ export function DashboardSkeleton() {
     <div className="container mx-auto px-4 py-8" aria-busy="true" role="status" aria-label="Cargando panel de control">
       {/* Welcome Section Skeleton */}
       <div className="mb-10 space-y-2">
-        <Skeleton className="h-9 w-64" />
-        <Skeleton className="h-5 w-80" />
+        <Skeleton className="h-9 w-full max-w-64" />
+        <Skeleton className="h-5 w-full max-w-80" />
       </div>
 
       {/* Quick Actions Skeleton */}

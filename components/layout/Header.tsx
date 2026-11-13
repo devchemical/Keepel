@@ -3,7 +3,6 @@
 import { useState } from "react"
 import Link from "next/link"
 import Image from "next/image"
-import { useRouter } from "next/navigation"
 import { Car, User, LogOut, Plus, ChevronDown, Menu } from "lucide-react"
 
 import { useAuthProjection, useData } from "@/contexts"
@@ -21,6 +20,14 @@ import {
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetClose } from "@/components/ui/sheet"
 import { AUTH_STATE_STATUS } from "@/lib/auth/contracts"
 
+/**
+ * A touch tap on a non-modal menu's trigger opens the menu on pointerdown and then delivers a click that the
+ * menu reads as an outside interaction, closing it again. The trigger already toggles the menu itself.
+ */
+function ignoreTriggerInteraction(event: { target: EventTarget | null; preventDefault: () => void }) {
+  if (event.target instanceof Element && event.target.closest("[data-header-menu-trigger]")) event.preventDefault()
+}
+
 export function Header() {
   const authState = useAuthProjection()
   const user = authState.status === AUTH_STATE_STATUS.AUTHENTICATED ? authState.user : null
@@ -28,7 +35,6 @@ export function Header() {
   const [showVehiclesDropdown, setShowVehiclesDropdown] = useState(false)
   const [showUserDropdown, setShowUserDropdown] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const router = useRouter()
 
   return (
     <header className="border-border/50 bg-background/80 fixed top-0 right-0 left-0 z-50 w-full border-b backdrop-blur-md">
@@ -36,7 +42,9 @@ export function Header() {
         {/* Logo y nombre */}
         <Link href="/" className="flex shrink-0 items-center gap-2 transition-opacity hover:opacity-80">
           <Image src="/logo_keepel_grueso.svg" alt="Keepel" width={41} height={32} priority />
-          <span className="text-foreground text-xl font-semibold tracking-tight sm:text-2xl">Keepel</span>
+          <span className="text-foreground hidden text-xl font-semibold tracking-tight min-[360px]:inline sm:text-2xl">
+            Keepel
+          </span>
         </Link>
 
         {/* Navegación del usuario autenticado */}
@@ -55,15 +63,21 @@ export function Header() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => router.push("/vehicles")}
                     className="hover:bg-accent cursor-pointer"
+                    data-header-menu-trigger=""
                   >
                     <Car className="mr-2 h-4 w-4" />
                     Vehículo
                     <ChevronDown className="ml-2 h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-64">
+                <DropdownMenuContent align="end" className="w-64" onInteractOutside={ignoreTriggerInteraction}>
+                  <DropdownMenuItem asChild>
+                    <Link href="/vehicles" className="cursor-pointer">
+                      <Car className="mr-2 h-4 w-4" />
+                      Ver todos los vehículos
+                    </Link>
+                  </DropdownMenuItem>
                   <DropdownMenuItem asChild>
                     <Link href="/vehicles" className="cursor-pointer">
                       <Plus className="mr-2 h-4 w-4" />
@@ -81,7 +95,7 @@ export function Header() {
                   {vehicles.length > 0 ? (
                     vehicles.map((vehicle) => (
                       <DropdownMenuItem key={vehicle.id} asChild>
-                        <Link href={`/vehicles/${vehicle.id}`} className="flex cursor-pointer items-center">
+                        <Link href={`/vehicles/${vehicle.id}/maintenance`} className="flex cursor-pointer items-center">
                           <Car className="text-muted-foreground mr-2 h-4 w-4" />
                           <div className="flex flex-col">
                             <span className="text-sm font-medium">
@@ -109,6 +123,7 @@ export function Header() {
                     size="sm"
                     aria-label="Abrir menú de usuario"
                     className="hover:bg-accent flex cursor-pointer items-center gap-2"
+                    data-header-menu-trigger=""
                   >
                     <div className="bg-primary/10 flex h-8 w-8 items-center justify-center rounded-full">
                       <User className="text-primary h-4 w-4" />
@@ -116,7 +131,7 @@ export function Header() {
                     <ChevronDown className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuContent align="end" className="w-56" onInteractOutside={ignoreTriggerInteraction}>
                   <DropdownMenuLabel>
                     <HeaderUserIdentity user={user} />
                   </DropdownMenuLabel>
@@ -184,7 +199,7 @@ export function Header() {
                           {vehicles.map((vehicle) => (
                             <SheetClose asChild key={vehicle.id}>
                               <Link
-                                href={`/vehicles/${vehicle.id}`}
+                                href={`/vehicles/${vehicle.id}/maintenance`}
                                 className="hover:bg-accent flex items-center gap-3 rounded-lg p-3 transition-colors"
                               >
                                 <Car className="text-muted-foreground h-5 w-5" />

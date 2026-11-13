@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Car, Plus } from "lucide-react"
 import { Layout } from "@/components/layout/Layout"
 import { snapshotView } from "@/lib/data/snapshot-machine"
+import { VehicleCardsSkeleton } from "@/components/skeletons/vehicles-skeleton"
 
 export function VehiclesScreen() {
   const { vehicles, isLoading, snapshot } = useData()
@@ -25,7 +26,9 @@ export function VehiclesScreen() {
         {hasContent && <VehiclesList vehicles={vehicles} />}
         {!hasContent ? (
           isLoading ? (
-            <p role="status">Cargando vehículos…</p>
+            <div role="status" aria-label="Cargando vehículos" aria-busy="true">
+              <VehicleCardsSkeleton />
+            </div>
           ) : null
         ) : (
           <>

@@ -99,7 +99,7 @@ export function AddVehicleDialog({ children }: AddVehicleDialogProps) {
         <form onSubmit={handleSubmit} className="space-y-4" data-editor-state={editor.state.status}>
           <OperationRecovery ownedOperationId={editor.ownedOperationId} />
           <fieldset disabled={editor.frozen || editor.submitting} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="make">Marca *</Label>
                 <Input
@@ -122,7 +122,7 @@ export function AddVehicleDialog({ children }: AddVehicleDialogProps) {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="year">Año *</Label>
                 <Select value={formData.year} onValueChange={(value) => setFormData({ ...formData, year: value })}>
