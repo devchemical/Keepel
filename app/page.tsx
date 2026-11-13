@@ -13,25 +13,28 @@ export default function HomePage() {
   const { vehicles, maintenanceRecords, scheduledServices, snapshot } = useData()
   const view = snapshotView(snapshot)
 
+  // The authenticated application shell frames the dashboard; only the anonymous landing uses the public layout.
+  if (authState.status === AUTH_STATE_STATUS.AUTHENTICATED) {
+    return (
+      <div data-snapshot-status={snapshot.status}>
+        <div className="container mx-auto px-4 pt-8">
+          <DataRecovery />
+        </div>
+        {view === "blockingError" ? null : (
+          <Dashboard
+            vehicles={vehicles}
+            maintenanceRecords={maintenanceRecords}
+            upcomingMaintenance={scheduledServices}
+            isLoading={view === "skeleton"}
+          />
+        )}
+      </div>
+    )
+  }
+
   return (
     <Layout showHeader={true}>
-      {authState.status === AUTH_STATE_STATUS.AUTHENTICATED ? (
-        <div data-snapshot-status={snapshot.status}>
-          <div className="container mx-auto px-4 pt-8">
-            <DataRecovery />
-          </div>
-          {view === "blockingError" ? null : (
-            <Dashboard
-              vehicles={vehicles}
-              maintenanceRecords={maintenanceRecords}
-              upcomingMaintenance={scheduledServices}
-              isLoading={view === "skeleton"}
-            />
-          )}
-        </div>
-      ) : (
-        <LandingPage />
-      )}
+      <LandingPage />
     </Layout>
   )
 }

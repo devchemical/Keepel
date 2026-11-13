@@ -26,7 +26,7 @@ async function horizontalOverflow(page: Page) {
 test.describe("phone width with touch", () => {
   test.use({ viewport: { width: 320, height: 640 }, hasTouch: true, isMobile: true })
 
-  test("authenticated screens fit a 320px viewport and the mobile menu opens a vehicle's history", async ({
+  test("authenticated screens fit a 320px viewport and the navigation drawer reaches a vehicle's history", async ({
     page,
     request,
   }) => {
@@ -43,11 +43,11 @@ test.describe("phone width with touch", () => {
     await expect(page.getByRole("navigation", { name: "Paginación del historial" })).toHaveCount(0)
     expect(await horizontalOverflow(page)).toBe(0)
 
-    await page.getByRole("button", { name: "Abrir menú" }).tap()
-    await page
-      .getByRole("dialog")
-      .getByRole("link", { name: /Synthetic Maintenance/ })
-      .tap()
+    await page.getByRole("button", { name: "Abrir navegación" }).tap()
+    await page.getByRole("dialog", { name: "Navegación de Keepel" }).getByRole("link", { name: "Vehículos" }).tap()
+    await expect(page).toHaveURL(/\/vehicles$/)
+    expect(await horizontalOverflow(page)).toBe(0)
+    await page.getByRole("link", { name: "Ver Mantenimientos" }).tap()
     await expect(page).toHaveURL(historyPath)
     await expect(page.getByRole("heading", { name: "Historial de Mantenimiento" })).toBeVisible()
   })
@@ -61,37 +61,17 @@ test.describe("phone width with touch", () => {
   })
 })
 
-test("the desktop Vehículo control opens its menu instead of navigating away", async ({ page, request }) => {
-  await request.post(`${CONTROLLED_SERVICES_URL}/__test__/reset`, { data: { maintenance: true } })
-  await loginWithPassword(page)
-  await page.getByRole("button", { name: "Vehículo", exact: true }).click()
-  const menu = page.getByRole("menu")
-  await expect(menu).toBeVisible()
-  await expect(page).toHaveURL("/")
-  await menu.getByRole("menuitem", { name: /Synthetic Maintenance/ }).click()
-  await expect(page).toHaveURL(historyPath)
-})
-
 test.describe("tablet width with touch", () => {
   test.use({ viewport: { width: 1024, height: 768 }, hasTouch: true, isMobile: true })
 
-  test("header menus stay open after a tap on their trigger", async ({ page, request }) => {
+  test("the compact rail replaces the drawer and navigates on tap", async ({ page, request }) => {
     await request.post(`${CONTROLLED_SERVICES_URL}/__test__/reset`, { data: { maintenance: true } })
     await loginWithPassword(page)
-    for (const [trigger, item] of [
-      [
-        page.getByRole("button", { name: "Abrir menú de usuario" }),
-        page.getByRole("menuitem", { name: "Cerrar Sesión" }),
-      ],
-      [page.getByRole("button", { name: "Vehículo", exact: true }), page.getByRole("menuitem", { name: /Synthetic/ })],
-    ] as const) {
-      await trigger.tap()
-      // The regression opened the menu for a frame and closed it on the tap's trailing click.
-      await page.waitForTimeout(500)
-      await expect(trigger).toHaveAttribute("aria-expanded", "true")
-      await expect(item).toBeVisible()
-      await page.keyboard.press("Escape")
-      await expect(trigger).toHaveAttribute("aria-expanded", "false")
-    }
+    await expect(page.getByRole("button", { name: "Abrir navegación" })).toBeHidden()
+    const navigation = page.getByRole("navigation", { name: "Navegación principal" })
+    await navigation.getByRole("link", { name: "Vehículos" }).tap()
+    await expect(page).toHaveURL(/\/vehicles$/)
+    await expect(navigation.getByRole("link", { name: "Vehículos" })).toHaveAttribute("aria-current", "page")
+    expect(await horizontalOverflow(page)).toBe(0)
   })
 })

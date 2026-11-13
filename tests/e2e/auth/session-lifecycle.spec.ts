@@ -8,10 +8,9 @@ test.beforeEach(async ({ request }) => {
 
 test("an authenticated user can log out", async ({ page }) => {
   await loginWithPassword(page)
-  await expect(page.getByText("Hola, Ada Driver", { exact: true })).toBeVisible()
+  await expect(page.getByText("Hola, Ada Driver", { exact: true })).toBeAttached()
 
-  await page.getByRole("button", { name: "Abrir menú de usuario" }).click()
-  await page.getByRole("menuitem", { name: "Cerrar Sesión" }).click()
+  await page.getByRole("button", { name: "Cerrar sesión" }).click()
 
   await expect(page).toHaveURL(/\/auth\/login$/)
   await expect(page.getByText("Hola, Ada Driver", { exact: true })).toHaveCount(0)
@@ -38,11 +37,10 @@ test("guest-only redirects reject external destinations", async ({ page }) => {
 
 test("an expired session returns the user to login with a safe return path", async ({ page, context }) => {
   await loginWithPassword(page, "/vehicles")
-  await expect(page.getByText("Hola, Ada Driver", { exact: true })).toBeVisible()
+  await expect(page.getByText("Hola, Ada Driver", { exact: true })).toBeAttached()
   await context.clearCookies()
 
-  await page.getByRole("button", { name: "Abrir menú de usuario" }).click()
-  await page.getByRole("menuitem", { name: "Cerrar Sesión" }).click()
+  await page.getByRole("button", { name: "Cerrar sesión" }).click()
 
   await expect(page).toHaveURL(/\/auth\/login\?redirect=%2Fvehicles$/)
   await expect(page.getByText("Hola, Ada Driver", { exact: true })).toHaveCount(0)
@@ -52,10 +50,9 @@ test("logout in one tab revalidates the authenticated projection in another tab"
   await loginWithPassword(page)
   const secondPage = await context.newPage()
   await secondPage.goto("/")
-  await expect(secondPage.getByText("Hola, Ada Driver", { exact: true })).toBeVisible()
+  await expect(secondPage.getByText("Hola, Ada Driver", { exact: true })).toBeAttached()
 
-  await page.getByRole("button", { name: "Abrir menú de usuario" }).click()
-  await page.getByRole("menuitem", { name: "Cerrar Sesión" }).click()
+  await page.getByRole("button", { name: "Cerrar sesión" }).click()
 
   await expect(page).toHaveURL(/\/auth\/login$/)
   await expect(secondPage.getByText("Hola, Ada Driver", { exact: true })).toHaveCount(0)

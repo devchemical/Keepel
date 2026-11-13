@@ -10,6 +10,8 @@ const nextConfig = {
     unoptimized: true,
   },
   poweredByHeader: false,
+  // The authenticated navigation rail owns the bottom-left corner, where the dev indicator would cover its controls.
+  devIndicators: { position: "bottom-right" },
   async headers() {
     return [
       {

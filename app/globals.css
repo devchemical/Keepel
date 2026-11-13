@@ -119,6 +119,31 @@
   --color-sidebar-ring: var(--sidebar-ring);
 }
 
+/* Authenticated application shell (components/layout/authenticated-application-shell.tsx). */
+.dashboard-shell {
+  --shell-canvas: #f3f6f4;
+  --shell-surface: #ffffff;
+  --shell-elevated: #edf3ef;
+  --shell-border: #dce6df;
+  --shell-foreground: #17231b;
+  --shell-muted: #607067;
+  --shell-focus: #15803d;
+  --shell-active: #dcefe2;
+  --shell-active-foreground: #166534;
+}
+
+.dark .dashboard-shell {
+  --shell-canvas: #0f172a;
+  --shell-surface: #111827;
+  --shell-elevated: #1e293b;
+  --shell-border: #334155;
+  --shell-foreground: #f1f5f9;
+  --shell-muted: #94a3b8;
+  --shell-focus: #22c55e;
+  --shell-active: #14532d;
+  --shell-active-foreground: #bbf7d0;
+}
+
 /* ── Modern CSS Reset 2026 ────────────────────────────────────────────── */
 @layer base {
   /* 1. Box model & inheritance (Tailwind preflight covers box-sizing, we enhance) */
