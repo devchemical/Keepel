@@ -50,7 +50,9 @@ test("logout in one tab revalidates the authenticated projection in another tab"
   await loginWithPassword(page)
   const secondPage = await context.newPage()
   await secondPage.goto("/")
-  await expect(secondPage.getByText("Hola, Ada Driver", { exact: true })).toBeAttached()
+  // The greeting is server-rendered; expanding the rail proves the tab hydrated and listens for invalidation.
+  await secondPage.getByRole("button", { name: "Expandir navegación" }).click()
+  await expect(secondPage.getByText("Hola, Ada Driver", { exact: true })).toBeVisible()
 
   await page.getByRole("button", { name: "Cerrar sesión" }).click()
 
