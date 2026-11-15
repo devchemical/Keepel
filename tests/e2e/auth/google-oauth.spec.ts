@@ -8,7 +8,8 @@ test("Google OAuth returns through the PKCE callback to authenticated UI", async
   await page.getByRole("link", { name: "Continuar con Google" }).click()
 
   await expect(page).toHaveURL(/\/vehicles$/)
-  await expect(page.getByRole("banner").getByText("Hola, Ada Driver", { exact: true })).toBeVisible()
+  await expect(page.getByRole("navigation", { name: "Navegación principal" })).toBeVisible()
+  await expect(page.getByText("Hola, Ada Driver", { exact: true })).toBeAttached()
   expect(page.url()).not.toContain("code=")
   expect(page.url()).not.toContain("access_token")
 })

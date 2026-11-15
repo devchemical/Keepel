@@ -1,6 +1,6 @@
 import type { Metadata } from "next"
 import Link from "next/link"
-import { Layout } from "@/components/layout/Layout"
+import { PrivacyPageLayout } from "@/components/privacy/privacy-page-layout"
 import { PrivacySettingsTrigger } from "@/components/privacy/privacy-settings-trigger"
 
 export const metadata: Metadata = {
@@ -41,7 +41,7 @@ const linkClassName = "text-primary font-medium underline underline-offset-4"
 
 export default function PrivacyPage() {
   return (
-    <Layout>
+    <PrivacyPageLayout>
       <article className="container mx-auto max-w-4xl px-4 py-10 sm:py-14">
         <header className="border-border mb-10 space-y-5 border-b pb-8">
           <p className="text-primary text-sm font-semibold tracking-wide uppercase">Privacidad en Keepel</p>
@@ -412,6 +412,6 @@ export default function PrivacyPage() {
           </section>
         </div>
       </article>
-    </Layout>
+    </PrivacyPageLayout>
   )
 }

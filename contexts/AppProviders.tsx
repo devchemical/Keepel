@@ -7,6 +7,7 @@ import { DataProvider } from "./DataContext"
 import { SupabaseProvider } from "./SupabaseContext"
 import { ConsentProvider } from "@/components/privacy/consent-provider"
 import { ContextErrorBoundary } from "@/components/ui/context-error-boundary"
+import { AuthenticatedApplicationBoundary } from "@/components/layout/authenticated-application-shell"
 import type { AuthState } from "@/lib/auth/contracts"
 import type { PrivacyConsentState } from "@/lib/privacy/consent"
 
@@ -24,7 +25,7 @@ export function AppProviders({ children, initialAuthState, initialPrivacyConsent
           <AuthProjectionSynchronization>
             <SupabaseProvider>
               <DataProvider>
-                {children}
+                <AuthenticatedApplicationBoundary>{children}</AuthenticatedApplicationBoundary>
                 <Toaster />
               </DataProvider>
             </SupabaseProvider>
